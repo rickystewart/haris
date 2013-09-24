@@ -147,11 +147,11 @@ float haris_read_float32(unsigned char *b)
   
   if (i == 0) return 0.0;
   
-  result = (i & ((1LL << FLOAT32_SIGBITS) - 1));
-  result /= (1LL << FLOAT32_SIGBITS); 
+  result = (i & ((1LL << HARIS_FLOAT32_SIGBITS) - 1));
+  result /= (1LL << HARIS_FLOAT32_SIGBITS); 
   result += 1.0;
 
-  shift = ((i >> FLOAT32_SIGBITS) & 255) - FLOAT32_BIAS;
+  shift = ((i >> HARIS_FLOAT32_SIGBITS) & 255) - HARIS_FLOAT32_BIAS;
   while (shift > 0) { result *= 2.0; shift--; }
   while (shift < 0) { result /= 2.0; shift++; }
 
@@ -168,11 +168,11 @@ double haris_read_float64(unsigned char *b)
   
   if (i == 0) return 0.0;
   
-  result = (i & (( 1LL << FLOAT64_SIGBITS) - 1));
-  result /= (1LL << FLOAT64_SIGBITS); 
+  result = (i & (( 1LL << HARIS_FLOAT64_SIGBITS) - 1));
+  result /= (1LL << HARIS_FLOAT64_SIGBITS); 
   result += 1.0;
 
-  shift = ((i >> FLOAT64_SIGBITS) & 2047) - FLOAT64_BIAS;
+  shift = ((i >> HARIS_FLOAT64_SIGBITS) & 2047) - HARIS_FLOAT64_BIAS;
   while (shift > 0) { result *= 2.0; shift--; }
   while (shift < 0) { result /= 2.0; shift++; }
 
@@ -206,7 +206,7 @@ void haris_write_float32(unsigned char *b, float f)
   while (fnorm < 1.0) { fnorm *= 2.0; shift--; }
   fnorm = fnorm - 1.0;
 
-  significand = fnorm * ((1LL << FLOAT32_SIGBITS) + 0.5f);
+  significand = fnorm * ((1LL << HARIS_FLOAT32_SIGBITS) + 0.5f);
 
   exp = shift + ((1<<7) - 1); 
 
@@ -239,7 +239,7 @@ void haris_write_float64(unsigned char *b, double f)
   while (fnorm < 1.0) { fnorm *= 2.0; shift--; }
   fnorm = fnorm - 1.0;
 
-  significand = fnorm * ((1LL<<FLOAT64_SIGBITS) + 0.5f);
+  significand = fnorm * ((1LL<<HARIS_FLOAT64_SIGBITS) + 0.5f);
 
   exp = shift + ((1<<10) - 1); 
 

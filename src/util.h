@@ -36,10 +36,10 @@ typedef int_fast64_t    haris_int64_t;
    modify
 */
 
-#define FLOAT32_SIGBITS 23
-#define FLOAT32_BIAS    127
-#define FLOAT64_SIGBITS 52
-#define FLOAT64_BIAS    1023
+#define HARIS_FLOAT32_SIGBITS 23
+#define HARIS_FLOAT32_BIAS    127
+#define HARIS_FLOAT64_SIGBITS 52
+#define HARIS_FLOAT64_BIAS    1023
 
 haris_uint8_t haris_read_uint8(unsigned char *);
 haris_int8_t haris_read_int8(unsigned char *);
