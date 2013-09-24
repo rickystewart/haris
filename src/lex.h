@@ -16,7 +16,6 @@
 typedef enum { 
   TOKEN_LPAR, TOKEN_RPAR, TOKEN_FORWARD, TOKEN_LIST, TOKEN_NULLABLE, 
     TOKEN_COMMA,
-  TOKEN_INT, TOKEN_FLOAT, 
   TOKEN_STRING, TOKEN_SYMBOL
 } Token;
 
@@ -25,15 +24,13 @@ typedef enum {
 } LexerStatus;
 
 typedef enum {
-  LONG_STRING, BAD_NUMBER, UNEXPECTED_CHAR
+  LONG_STRING, UNEXPECTED_CHAR
 } LexerError;
 
 typedef struct {
   char *filename;
   FILE *stream;
   char *buffer;
-  long int_tok;
-  double float_tok;
   long line_no;
   int previous; 
   LexerError errno;

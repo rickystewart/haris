@@ -1,8 +1,6 @@
 #include "lex.h"
 
 static LexerStatus handle_symbol_token(Lexer *, Token *);
-static LexerStatus handle_num_token(Lexer *, Token *);
-static LexerStatus handle_float_token(Lexer *, Token *, long);
 static LexerStatus handle_string_token(Lexer *, Token *);
 static void handle_comment(Lexer *, Token *);
 
@@ -72,9 +70,6 @@ LexerStatus next_token(Lexer *lex, Token *tok)
       return LEXER_DONE;
     else if (SYMBOL_INIT_CHAR(next_char)) 
       return handle_symbol_token(lex, tok);
-    else if ((next_char >= '0' && next_char <= '9') ||
-	     (next_char == '-'))
-      return handle_num_token(lex, tok);
     else if (next_char == ',') {
       *tok = TOKEN_COMMA;
       lex->previous = fgetc(lex->stream);
@@ -160,44 +155,6 @@ static LexerStatus handle_string_token(Lexer *lex, Token *tok)
   }
   *tok = TOKEN_STRING;
   lex->buffer[ind] = '\0';
-  lex->previous = ch;
-  return LEXER_OK;
-}
-
-static LexerStatus handle_num_token(Lexer *lex, Token *tok)
-{
-  int ch = lex->previous, sign = 1;
-  long acc = 0;
-  if (ch == '-') {
-    sign *= -1;
-    ch = fgetc(lex->stream);
-    if (!(ch >= '0' && ch <= '9')) {
-      lex->errno = BAD_NUMBER;
-      return LEXER_ERROR;
-    }
-  }
-  for (; ch >= '0' && ch <= '9'; ch = fgetc(lex->stream)) 
-    acc = acc*10 + ch - '0';
-  acc *= sign;
-  if (ch == '.') {
-    return handle_float_token(lex, tok, acc);
-  } else {
-    *tok = TOKEN_INT;
-    lex->int_tok = acc;
-    lex->previous = ch;
-  }
-  return LEXER_OK;
-}
-
-static LexerStatus handle_float_token(Lexer *lex, Token *tok, 
-                                           long before_decimal)
-{
-  int ch;
-  double acc = before_decimal, divisor = 1.0;
-  for (ch = fgetc(lex->stream); ch >= '0' && ch <= '9'; ch = fgetc(lex->stream))
-    acc += (double)(ch - '0') / (divisor *= 10.0);
-  *tok = TOKEN_FLOAT;
-  lex->float_tok = acc;
   lex->previous = ch;
   return LEXER_OK;
 }
