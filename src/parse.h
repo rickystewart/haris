@@ -9,12 +9,13 @@
 #include "lex.h"
 #include "hash.h"
 
-#define TYPEHASH_SIZE 43
+#define PARSER_MAX_STACK 100
 
 typedef enum {
   PARSE_MEM_ERROR, PARSE_LEX_ERROR, PARSE_UNEXPECTED_TOKEN, 
   PARSE_UNEXPECTED_EOF, PARSE_REDUNDANT_SYMBOL, PARSE_UNDEF_SYMBOL,
-  PARSE_INVALID_QUALIFIER, PARSE_INVALID_TYPE, PARSE_IO_ERROR
+  PARSE_INVALID_QUALIFIER, PARSE_INVALID_TYPE, PARSE_IO_ERROR,
+  PARSE_STACK_OVERFLOW
 } ParserError;
 
 /* If we call the "parse" function and it succeeds, then the "schema"
@@ -49,6 +50,7 @@ typedef struct {
   TypeHash *hash;
   ParserError errno;
   char *errbuf;
+  int stack;
 } Parser;
 
 Parser *create_parser(FILE *, char *);

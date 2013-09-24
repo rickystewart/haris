@@ -69,6 +69,8 @@ void destroy_parser(Parser *p)
    may occur along the way. */
 int parse(Parser *p)
 {
+  if (p->stack >= PARSER_MAX_STACK) 
+    return trigger_parse_error(p, PARSE_STACK_OVERFLOW, NULL);
   return toplevel_parse(p);
 }
 
@@ -89,6 +91,7 @@ static Parser *create_parser_from_schema_hash(FILE *stream, char *filename,
   ret->schema = schema;
   ret->hash = hash;
   ret->errbuf = NULL;
+  ret->stack = 0;
   return ret;
 }
 
@@ -565,6 +568,7 @@ static int include_file(Parser *p, char *filename)
   included = create_parser_from_schema_hash(stream, filename, p->schema, 
                                             p->hash);
   if (!included) return trigger_parse_error(p, PARSE_MEM_ERROR, NULL);
+  included->stack = p->stack + 1;
   ret = parse(included);
   if (!ret) {
     (void)trigger_parse_error(p, included->errno, included->errbuf);
