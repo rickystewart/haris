@@ -1,0 +1,19 @@
+Statement := Enum | Struct | Include | Forward | Extension
+
+Forward := "@" "enum" NAME | "@" "struct" NAME
+
+Include := "include" "(" StringList ")"
+
+Enum := "enum" NAME "(" SymbolList ")"
+
+Struct := "struct" NAME "(" ElemList ")"
+
+Extension := "extend" Struct | "extend" Enum
+
+StringList := StringList "," STRING | STRING
+
+SymbolList := SymbolList "," NAME | NAME
+
+ElemList := ElemList "," Type NAME | Type NAME
+
+Type := NAME | NAME ? | NAME [] | NAME [] ?

@@ -1,0 +1,130 @@
+TYPES:
+
+Int8, Uint8, Bool
+Int16, Uint16
+Int32, Uint32
+Int64, Uint64
+Text
+
+All of these (besides Text) are scalar datatypes. Text is a built-in list
+datatype. For any existing non-list non-nullable datatype T, `T []` is a 
+valid type representing a list of T. Further, for any non-scalar non-nullable 
+datatype T, `T ?` is also a valid type, representing a nullable T. Lists can be
+nullable (`T [] ?` is valid as long as T is not itself nullable or a list), but
+list elements cannot be nullable (`T ? []` is never valid and is in fact a
+syntax error). Structures can always be nullable regardless of the contents of 
+the structure.
+
+ATOMIC DATATYPE ENCODING:
+
+- Booleans: Booleans are encoded in one byte. An encoding of 0 represents
+"False", and an encoding of 1 represents "True".
+- Integers: Integers are encoded in big-endian byte order. To encode a negative
+number, 1) set the msb and 2) encode one less than the absolute value of
+the integer in the remaining bits.
+- Floats: Floats are encoded in their corresponding IEEE 754 formats in
+big-endian byte order.
+- Enums: Enums are stored in a single byte (that is, as Uint8's).
+
+STRUCTURES:
+
+All structures have a 1- or 2-byte header. The first bit of a structure 
+header is always 0; the next bit determines whether the structure is null.
+If the bit is 0, the structure is null, and if it's 1, the structure is not.
+Null structures have a 1-byte header (and no other information), so a null
+structure can be captured in 1 byte.
+
+00XX XXXX
+
+If the structure is not null, we need to encode the size of the structure.
+Non-null structures are divided into two parts: the structure body and and 
+children. The body is the fixed-length section of the structure where the
+scalar fields are stored; the children are the sub-structures of the structure,
+and are stored after the structure sequentially. The header of a non-null
+structure must keep its body size in the header as well as the number of
+children. The number of children is stored as a 6-bit unsigned integer
+in the lower 6 bits of the first byte of the 2-byte structure header, and
+the number of bytes in the structure body (not including the header or children)
+is stored as a 1-byte unsigned integer in the second byte of the header.
+
+01CC CCCC    BBBB BBBB
+
+C = number of children
+B = size of structure body in bytes
+
+The body immediately follows the header, and the children immediately follow
+the body. There is no padding between the three sections. The smallest
+possible non-null structure is "0100 0000    0000 0000" which has a 0-byte
+body and 0 children.
+
+< 2-byte header >< .... body .... >< .... children .... >
+
+SCALAR LISTS
+
+Every list has a header as well. We tell a list from a structure by a "1" in
+the msb of the first byte of the header. As above, the second most significant
+bit of the header tells us whether the list is null. A null list has "0" in
+the 2nd msb:
+
+10XX XXXX
+
+We further subdivide lists in this manner: a non-null list can either be a
+"scalar" list or a "structure" list. (List elements cannot themselves be
+lists, in order to simplify the mapping between the encoding and the target
+language.) Scalar lists have a "0" in the 3rd msb of the first byte of the 
+header. The next 2 bits give the length of a single array element:
+
+00 - 1 byte
+01 - 2 bytes
+10 - 4 bytes
+11 - 8 bytes
+
+The final 3 bits in the first byte of the header give the number of bytes
+remaining in the header as a 3-bit unsigned integer. Let that number be N;
+then, the header is 1+N bytes long, and the N bytes following the first byte
+of the header are an N-byte unsigned integer giving the number of elements
+in the array. 
+
+110S SHHH    < H-byte integer >
+
+S = size of element (as given above)
+H = number of bytes remaining in header (not counting this one)
+
+Let N be the number of elements in the array (that is, the integer given by
+parsing the H bytes remaining in the header). Then the number of bytes remaining
+in the list (not counting the header) can be calculated as 
+   N * (size of element) + 1
+The "+1" at the end accounts for the "list footer". All scalar lists have a 
+zero-byte appended to the end of them. The footer byte MUST be a zero byte
+(if the byte is not 0, the message is not well-formed). In practice, this
+byte does not serve a purpose, but it DOES allow us to represent strings
+more efficiently in certain cases. The smallest possible scalar list
+is a list with zero elements, or "110X X000    0000 0000". Here, H is 0,
+which tells us there are 0 bytes remaining in the header (and that the length
+of the list is captured by a 0-byte integer, and is therefore 0). The second
+byte is the mandatory 0 list footer. (The X's mean that the size of the elements
+is irrelevant since there are 0 elements.)
+
+< 1 + H-byte header >< .... elements .... >< 0 byte >
+
+We capture structure lists by encoding "111" in the first 3 bits of the first
+byte of the header. As above, the 3 least significant bits of the first
+byte of the header give the number of bytes needed to capture the number
+of items in the list (though the header is not just 1 + H bytes this time).
+Instead, the next 2 bytes of the header contain structural information for
+the list's elements.
+
+Because each element of a list must have the same schema, all list elements
+must have the same structural makeup (that is, body size and number of
+children). This means that the headers for each structure contain
+largely redundant information and could theoretically be entirely
+omitted. We include the 2-byte structure header after the first byte of the
+header, and then the H-byte integer giving the number of list elements.
+
+111X XHHH    < 2-byte structure header >    < H-byte integer N >
+
+H = number of bytes needed to capture length of list
+
+Of course, the list elements follow the header serially.
+
+< 3 + H byte header >< .... elements .... >
