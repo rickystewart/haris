@@ -1,72 +1,72 @@
 #include "util.h"
 
-uint_fast8_t read_uint8(unsigned char *b)
+haris_uint8_t read_uint8(unsigned char *b)
 {
   return *b;
 }
 
-int_fast8_t read_int8(unsigned char *b)
+haris_int8_t read_int8(unsigned char *b)
 {
   if (*b & 0x80) 
-    return -(int_fast8_t)(*b & 0x7F) - 1;
+    return -(haris_int8_t)(*b & 0x7F) - 1;
   else
-    return (int_fast8_t)read_uint8(b);
+    return (haris_int8_t)read_uint8(b);
 }
 
-uint_fast16_t read_uint16(unsigned char *b)
+haris_uint16_t read_uint16(unsigned char *b)
 {
-  return (uint_fast16_t)*b << 8 | *(b+1);
+  return (haris_uint16_t)*b << 8 | *(b+1);
 }
 
-int_fast16_t read_int16(unsigned char *b)
+haris_int16_t read_int16(unsigned char *b)
 {
   if (*b & 0x80)
-    return -((int_fast16_t)(*b & 0x7F) << 8 | (int_fast16_t)*(b+1)) - 1;
+    return -((haris_int16_t)(*b & 0x7F) << 8 | (haris_int16_t)*(b+1)) - 1;
   else
-    return (int_fast16_t)read_uint16(b);
+    return (haris_int16_t)read_uint16(b);
 }
 
-uint_fast32_t read_uint32(unsigned char *b)
+haris_uint32_t read_uint32(unsigned char *b)
 {
-  return (uint_fast32_t)*b << 24 | (uint_fast32_t)*(b+1) << 16 |
-    (uint_fast32_t)*(b+2) << 8 | *(b+3);
+  return (haris_uint32_t)*b << 24 | (haris_uint32_t)*(b+1) << 16 |
+    (haris_uint32_t)*(b+2) << 8 | *(b+3);
 }
 
-int_fast32_t read_int32(unsigned char *b)
+haris_int32_t read_int32(unsigned char *b)
 {
   if (*b & 0x80)
-    return -((int_fast32_t)(*b & 0x7F) << 24 | (int_fast32_t)*(b+1) << 16 |
-             (int_fast32_t)(*b+2) << 8 | (int_fast32_t)(*b+3)) - 1;
+    return -((haris_int32_t)(*b & 0x7F) << 24 | (haris_int32_t)*(b+1) << 16 |
+             (haris_int32_t)(*b+2) << 8 | (haris_int32_t)(*b+3)) - 1;
   else
-    return (int_fast32_t)read_uint32(b);
+    return (haris_int32_t)read_uint32(b);
 }
 
-uint_fast64_t read_uint64(unsigned char *b)
+haris_uint64_t read_uint64(unsigned char *b)
 {
-  return (uint_fast64_t)*b << 56 | (uint_fast64_t)*(b+1) << 48 |
-    (uint_fast64_t)*(b+2) << 40 | (uint_fast64_t)*(b+3) << 32 |
-    (uint_fast64_t)*(b+4) << 24 | (uint_fast64_t)*(b+5) << 16 |
-    (uint_fast64_t)*(b+6) << 8 | *(b+7);
+  return (haris_uint64_t)*b << 56 | (haris_uint64_t)*(b+1) << 48 |
+    (haris_uint64_t)*(b+2) << 40 | (haris_uint64_t)*(b+3) << 32 |
+    (haris_uint64_t)*(b+4) << 24 | (haris_uint64_t)*(b+5) << 16 |
+    (haris_uint64_t)*(b+6) << 8 | *(b+7);
 }
 
-int_fast64_t read_int64(unsigned char *b)
+haris_int64_t read_int64(unsigned char *b)
 {
   if (*b & 0x80)
-    return -((int_fast64_t)(*b & 0x7F) << 56 | (int_fast64_t)*(b+1) << 48 |
-             (int_fast64_t)*(b+2) << 40 | (int_fast64_t)*(b+3) << 32 |
-             (int_fast64_t)*(b+4) << 24 | (int_fast64_t)*(b+5) << 16 |
-             (int_fast64_t)*(b+6) << 8 | (int_fast64_t)*(b+7)) - 1;
+    return -((haris_int64_t)(*b & 0x7F) << 56 | (haris_int64_t)*(b+1) << 48 |
+             (haris_int64_t)*(b+2) << 40 | (haris_int64_t)*(b+3) << 32 |
+             (haris_int64_t)*(b+4) << 24 | (haris_int64_t)*(b+5) << 16 |
+             (haris_int64_t)*(b+6) << 8 | (haris_int64_t)*(b+7)) - 1;
   else
-    return (int_fast64_t)read_uint64(b);
+    return (haris_int64_t)read_uint64(b);
 }
 
-void write_uint8(unsigned char *b, uint_fast8_t i)
+void write_uint8(unsigned char *b, haris_uint8_t i)
 {
   *b = i;
   return;
 }
 
-void write_int8(unsigned char *b, int_fast8_t i)
+void write_int8(unsigned char *b, haris_int8_t i)
 {
   if (i >= 0)
     *b = (unsigned char)i;
@@ -77,25 +77,25 @@ void write_int8(unsigned char *b, int_fast8_t i)
   return;
 }
 
-void write_uint16(unsigned char *b, uint_fast16_t i)
+void write_uint16(unsigned char *b, haris_uint16_t i)
 {
   *b = i >> 8;
   *(b+1) = i;
   return;
 }
 
-void write_int16(unsigned char *b, int_fast16_t i)
+void write_int16(unsigned char *b, haris_int16_t i)
 {
   if (i >= 0)
-    write_uint16(b, (uint_fast16_t)i);
+    write_uint16(b, (haris_uint16_t)i);
   else {
-    write_uint16(b, (uint_fast16_t)(-i - 1));
+    write_uint16(b, (haris_uint16_t)(-i - 1));
     *b |= 0x80;
   }
   return;
 }
 
-void write_uint32(unsigned char *b, uint_fast32_t i)
+void write_uint32(unsigned char *b, haris_uint32_t i)
 {
   *b = i >> 24;
   *(b+1) = i >> 16;
@@ -104,18 +104,18 @@ void write_uint32(unsigned char *b, uint_fast32_t i)
   return;
 }
 
-void write_int32(unsigned char *b, int_fast32_t i)
+void write_int32(unsigned char *b, haris_int32_t i)
 {
   if (i >= 0)
-    write_uint32(b, (uint_fast32_t)i);
+    write_uint32(b, (haris_uint32_t)i);
   else {
-    write_uint32(b, (uint_fast32_t)(-i - 1));
+    write_uint32(b, (haris_uint32_t)(-i - 1));
     *b |= 0x80;
   }
   return;
 }
 
-void write_uint64(unsigned char *b, uint_fast64_t i)
+void write_uint64(unsigned char *b, haris_uint64_t i)
 {
   *b = i >> 56;
   *(b+1) = i >> 48;
@@ -128,12 +128,12 @@ void write_uint64(unsigned char *b, uint_fast64_t i)
   return;
 }
 
-void write_int64(unsigned char *b, int_fast64_t i)
+void write_int64(unsigned char *b, haris_int64_t i)
 {
   if (i >= 0)
-    write_uint64(b, (uint_fast64_t)i);
+    write_uint64(b, (haris_uint64_t)i);
   else {
-    write_uint64(b, (uint_fast64_t)(-i - 1));
+    write_uint64(b, (haris_uint64_t)(-i - 1));
     *b |= 0x80;
   }
   return;
@@ -142,8 +142,8 @@ void write_int64(unsigned char *b, int_fast64_t i)
 float read_float32(unsigned char *b)
 {
   double result;
-  int_fast64_t shift;
-  uint_fast32_t i = read_uint32(b);
+  haris_int64_t shift;
+  haris_uint32_t i = read_uint32(b);
   
   if (i == 0) return 0.0;
   
@@ -163,8 +163,8 @@ float read_float32(unsigned char *b)
 double read_float64(unsigned char *b)
 {
   double result;
-  int_fast64_t shift;
-  uint_fast64_t i = read_uint64(b);
+  haris_int64_t shift;
+  haris_uint64_t i = read_uint64(b);
   
   if (i == 0) return 0.0;
   
@@ -186,7 +186,7 @@ void write_float32(unsigned char *b, float f)
   double fnorm;
   int shift;
   long sign, exp, significand;
-  uint_fast32_t result;
+  haris_uint32_t result;
 
   if (f == 0.0) {
     write_uint32(b, 0);
@@ -220,7 +220,7 @@ void write_float64(unsigned char *b, double f)
   double fnorm;
   int shift;
   long sign, exp, significand;
-  uint_fast64_t result;
+  haris_uint64_t result;
 
   if (f == 0.0) {
     write_uint64(b, 0);
