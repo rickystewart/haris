@@ -142,7 +142,7 @@ void write_int64(unsigned char *b, int_fast64_t i)
 float read_float32(unsigned char *b)
 {
   double result;
-  long long shift;
+  int_fast64_t shift;
   uint_fast32_t i = read_uint32(b);
   
   if (i == 0) return 0.0;
@@ -155,7 +155,7 @@ float read_float32(unsigned char *b)
   while (shift > 0) { result *= 2.0; shift--; }
   while (shift < 0) { result /= 2.0; shift++; }
 
-  result *= (i>>31)&1 ? -1.0: 1.0;
+  result *= (i >> 31) & 1 ? -1.0: 1.0;
 
   return (float)result;
 }
@@ -163,7 +163,7 @@ float read_float32(unsigned char *b)
 double read_float64(unsigned char *b)
 {
   double result;
-  long long shift;
+  int_fast64_t shift;
   uint_fast64_t i = read_uint64(b);
   
   if (i == 0) return 0.0;
@@ -176,7 +176,7 @@ double read_float64(unsigned char *b)
   while (shift > 0) { result *= 2.0; shift--; }
   while (shift < 0) { result /= 2.0; shift++; }
 
-  result *= (i>>63)&1 ? -1.0: 1.0;
+  result *= (i >> 63) & 1 ? -1.0: 1.0;
 
   return result;
 }
