@@ -22,7 +22,7 @@ static CJobStatus write_file_prototypes(CJob *, FILE *);
 
 static const char *scalar_type_name(ScalarTag);
 
-static FILE *open_source_file(char *prefix, char *suffix);
+static FILE *open_source_file(const char *prefix, const char *suffix);
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -216,13 +216,13 @@ static CJobStatus write_header_structures(CJob *job, FILE *out)
     if (fprintf(out, "struct %s%s {\n", 
                 job->prefix, job->schema->structs[i].name) < 0)
       return CJOB_IO_ERROR;
-    for (j=0; j < job->schema->structs[i].num_scalars) {
+    for (j=0; j < job->schema->structs[i].num_scalars; j++) {
       if (fprintf(out, "  %s %s;\n",
                   scalar_type_name(job->schema->structs[i].scalars[j].type.tag),
                   job->schema->structs[i].scalars[j].name) < 0)
         return CJOB_IO_ERROR;
     }
-    for (j=0; j < job->schema->structs[i].num_children) {
+    for (j=0; j < job->schema->structs[i].num_children; j++) {
       if ((result = write_child_field(job, out, 
                                       job->schema->structs[i].children + j)) !=
           CJOB_SUCCESS) return result;
@@ -382,7 +382,7 @@ static const char *scalar_type_name(ScalarTag type)
   }
 }
 
-static FILE *open_source_file(char *prefix, char *suffix)
+static FILE *open_source_file(const char *prefix, const char *suffix)
 {
   char *filename = (char*)malloc(strlen(prefix) + strlen(suffix) + 1); 
   FILE *out;

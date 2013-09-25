@@ -75,7 +75,7 @@ int rebind_parser(Parser *p, FILE *stream, char *filename)
 {
   Lexer *lex = create_lexer(stream, filename);
   if (!lex) return 0;
-  ret->lex = lex;
+  p->lex = lex;
   return 1;
 }
 
