@@ -82,9 +82,6 @@ For every field F in S, F is a field in the C structure as well. Additionally:
 
 - For every list field F in S, _len_F is a uint64 field that contains the
 number of elements in F. 
-- EVERY structure that has at least one scalar element has a _body field,
-whose type is haris_uint8_t[N] where N is the number of bytes in the body.
-This field is used for scratch work when decoding or encoding a message.
 
 For every structure S, the following functions are defined globally:
 
@@ -139,7 +136,6 @@ struct Phone {
   PhoneType type;
   haris_uint64_t _len_number;
   char *number;
-  haris_uint8_t body[1];
 };
 
 struct Person {
@@ -186,4 +182,5 @@ if the argument is "-o hello", the output files will be hello.h and hello.c.
 may select more than one. Possible protocols, at this point in time, include
 "buffer" (which includes functions for writing/reading messages to/from 
 unsigned character buffers) and "file" (which includes functions for 
-writing/reading messages to/from files).
+writing/reading messages to/from files). "fd" (for "file descriptor") is
+likely to be added as a future protocol.
