@@ -2,7 +2,12 @@
 #define __CGEN_UTILS_H
 
 /* This file contains the contents of the util.h and util.c files, encoded
-   as constant C strings. */
+   as arrays of constant C strings. (I have encoded them as arrays of small
+   strings rather than as large strings because ANSI C89 only guarantees
+   that compilers be able to support strings that are 509 characters long.
+   To write the whole file to disk, loop through the elements of the 
+   array and write each string to disk (without any space in between them).
+*/
 
 const char *cgen_util_c_contents[] = { "#include \"util.h\"\n\
 \n\
