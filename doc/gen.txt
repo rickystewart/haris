@@ -1,0 +1,189 @@
+The Haris tool is split into two distinct sections:
+
+1) The parser, which processes a Haris message from an input file and
+constructs an in-memory schema; and
+2) the code generator, which processes an in-memory schema and writes code
+in the target language to one or more output files.
+
+The parser is completely self-contained and the in-memory schema it produces
+does not contain information relevant to any one target language. The output
+of the parser is passed to the code generator. This architecture should make
+it very easy to add support for more languages in the future, as doing so
+requires only a familiarity with the structure of the in-memory schema.
+Knowledge of the inner workings of the parser (which is itself very simple)
+is not necessary in the majority of cases.
+
+THE C COMPILER
+
+The C compiler is the primary Haris code generator, and it is the proof-of-
+concept of the Haris tool. These are the primary goals of the C compiler:
+
+- The generated code shall be as simple and lightweight as possible. Ideally,
+the generated code should be straightforward enough that it can be edited
+by hand, but this may be an unrealistic goal as we move forward.
+- The generated code shall have NO dependencies and should be 100% portable
+and standard-conforming.
+- The output of the code generator should be a few source files that should
+be easily integrable into any project.
+- The code should adhere to the C99 standard. The end-user should be able to
+easily compile the code as C89 if he supplies his own typedef's for the exact-
+precision integer types (that is, the only reason the generated code should need
+C99 rather than C89 is stdint.h).
+- The code should compile cleanly as C++ (though this is a secondary goal).
+Obviously, a separate code generator for C++ would be preferable, though
+compiling as C should still be an option if the user desires it.
+
+C is a simple language, and data serialization (particularly in this language)
+is a simple process, so complicated compiled C code doesn't help anyone. 
+Here, we'll describe the process of C compilation at a high-level. Compilation
+can be done in a few quick passes through the in-memory schema.
+
+The output of the compiler for a given schema S.haris is the following 4 files:
+
+- util.h
+- util.c
+- S.h
+- S.c
+
+Notably, the utility files never change. No matter what the contents of the
+schema file are, util.h and util.c are always the same. S.h contains the
+structure definitions, enumeration definitions, and function prototypes for
+the given schema. S.c contains the function definitions. The utility library
+namespaces its functions and macros by prepending every name with "haris_".
+You can specify a prefix for all public names in the S.h and S.c files on
+the command line.
+
+The generated code is specified in this way:
+
+For every enum E in the schema, an enumeration is generated in the C code
+like so:
+
+typedef enum { 
+  ...
+} E;
+
+For every value V in E, E_V is a value in the C enumeration. For instance,
+if we have the enumeration
+  enum Foo ( BAR )
+then the C code that is generated is
+
+typedef enum { Foo_BAR } Foo;
+
+For every structure S in the schema, a structure is generated in the C code
+like so:
+
+typedef struct S S;
+
+struct S {
+  ...
+};
+
+For every field F in S, F is a field in the C structure as well. Additionally:
+
+- For every list field F in S, _len_F is a uint64 field that contains the
+number of elements in F. 
+- EVERY structure that has at least one scalar element has a _body field,
+whose type is haris_uint8_t[N] where N is the number of bytes in the body.
+This field is used for scratch work when decoding or encoding a message.
+
+For every structure S, the following functions are defined globally:
+
+- S *S_create(void), which constructs a new S and initializes all of its
+elements to the appropriate 0 type.
+- void S_destroy(S *), which frees the memory associated with the given S.
+This function recursively frees all non-NULL child structures. If you do NOT
+wish to recursively free all non-NULL child structures, then just call free()
+on the pointer.
+- Further, for every list element F in S, int S_init_F(S *, haris_uint64_t) is 
+included as a utility function. The second argument is the number of elements.
+This function allocates an appropriately-sized array to hold the elements
+and sets the _len_F field.
+- Then, there are the functions for encoding and decoding. These are created
+depending on the protocol you choose. Initially, two protocols will be
+implemented: "buffer" and "file". You can choose your protocol from the 
+command-line.
+
+That's it! All structure elements (except those beginning with an underscore)
+can be directly manipulated by the user, and the encoding and decoding 
+function will handle the rest.
+
+Let's construct an example. We'll stub out the structure definitions and
+function declarations for a simple schema.
+
+enum PhoneType (
+  MOBILE, HOME, WORK
+)
+
+struct Phone (
+  Phonetype type,
+  Text number
+)
+
+struct Person (
+  Text name,
+  Text email,
+  Uint8 age,
+  Phone [] phones
+)
+
+This will generate for us the following structure definitions:
+
+enum PhoneType { 
+  MOBILE, HOME, WORK 
+};
+
+typedef struct Phone Phone;
+typedef struct Person Person;
+
+struct Phone {
+  PhoneType type;
+  haris_uint64_t _len_number;
+  char *number;
+  haris_uint8_t body[1];
+};
+
+struct Person {
+  haris_uint64_t _len_name;
+  char *name;
+  haris_uint64_t _len_email;
+  char *email;
+  haris_uint8_t age;
+  haris_uint64_t _len_phones;
+  Phone **phones;
+};
+
+And the following function declarations:
+
+Phone *Phone_create(void);
+void Phone_destroy(Phone *);
+int Phone_init_number(Phone *, haris_uint64_t);
+
+Person *Person_create(void);
+void Person_destroy(Person *);
+int Person_init_name(Person *, haris_uint64_t);
+int Person_init_email(Person *, haris_uint64_t);
+int Person_init_phones(Person *, haris_uint64_t);
+
+The only thing left is the protocol functions, which vary based on the protocol
+you select.
+
+COMMAND LINE OPTIONS
+
+The core command line option is "-l", which selects the target language for
+the compiler. No other command line options will be recognized until you
+provide the target language.
+
+To run the C compiler, provide "-l c" as the first command-line options. The
+other command line options are as follows:
+
+-h : Ignore all other command line options and instead summarize the possible
+command line options. 
+-n : Prefix all global names (outside of the utility library) with the following
+string.
+-o : Write the output to a file whose name begins with this string. For example,
+if the argument is "-o hello", the output files will be hello.h and hello.c.
+-p : Protocol selection. You must select at least one protocol, though you
+may select more than one. Possible protocols, at this point in time, include
+"buffer" (which includes functions for writing/reading messages to/from 
+unsigned character buffers) and "file" (which includes functions for 
+writing/reading messages to/from files).
