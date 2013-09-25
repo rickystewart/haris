@@ -55,19 +55,13 @@ the command line.
 
 The generated code is specified in this way:
 
-For every enum E in the schema, an enumeration is generated in the C code
-like so:
-
-typedef enum { 
-  ...
-} E;
-
-For every value V in E, E_V is a value in the C enumeration. For instance,
-if we have the enumeration
+For every enum in the schema, all the values are added to the header file
+as macros. In particular, for every field F in every enum E, E_F is defined
+to be a numeric value. For instance, if we have the enumeration
   enum Foo ( BAR )
 then the C code that is generated is
 
-typedef enum { Foo_BAR } Foo;
+#define Foo_BAR 0
 
 For every structure S in the schema, a structure is generated in the C code
 like so:
