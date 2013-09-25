@@ -56,6 +56,8 @@ typedef struct {
 Parser *create_parser(FILE *, char *);
 void destroy_parser(Parser *);
 
+int rebind_parser(Parser *, FILE *, char *);
+
 int parse(Parser *);
 
 #endif

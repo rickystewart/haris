@@ -65,6 +65,20 @@ void destroy_parser(Parser *p)
   return;
 }
 
+/* Rebinds the given parser to a new stream. This function is useful primarily
+   for retaining the schema information of a previous parse and adding new
+   data onto the previous schema definition. If you do not wish to retain
+   the schema information from a previous parse, destroy the previous parser
+   and create a new one rather than rebinding an existing one. 
+*/
+int rebind_parser(Parser *p, FILE *stream, char *filename)
+{
+  Lexer *lex = create_lexer(stream, filename);
+  if (!lex) return 0;
+  ret->lex = lex;
+  return 1;
+}
+
 /* parse: Run the given parser to completion, handling any errors that
    may occur along the way. */
 int parse(Parser *p)
