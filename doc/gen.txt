@@ -72,7 +72,9 @@ struct S {
   ...
 };
 
-For every field F in S, F is a field in the C structure as well. Additionally:
+For every field F in S, F is a field in the C structure as well with the
+appropriate type. (Structure types are represented by pointers; list types
+by double-pointers; and enumerations by uint8_t's.) Additionally:
 
 - For every list field F in S, _len_F is a uint64 field that contains the
 number of elements in F. 

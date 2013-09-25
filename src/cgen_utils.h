@@ -1,6 +1,9 @@
 #ifndef __CGEN_UTILS_H
 #define __CGEN_UTILS_H
 
+/* This file contains the contents of the util.h and util.c files, encoded
+   as constant C strings. */
+
 const char *cgen_util_c_contents = "#include \"util.h\"\n\
 \n\
 haris_uint8_t haris_read_uint8(unsigned char *b)\n\
