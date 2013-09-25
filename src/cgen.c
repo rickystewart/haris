@@ -114,14 +114,19 @@ static CJobStatus begin_compilation(CJob *job)
 */
 static CJobStatus write_utility_library(CJob *job)
 {
+  int i;
   FILE *util_c = fopen("util.c", "w"), *util_h;
   if (!util_c) return CJOB_IO_ERROR;
-  if (fprintf(util_c, "%s\n", cgen_util_c_contents) < 0) return CJOB_IO_ERROR;
+  for (i=0; cgen_util_c_contents[i]; i++) 
+    if (fprintf(util_c, "%s", cgen_util_c_contents[i]) < 0) 
+      return CJOB_IO_ERROR;
   fclose(util_c);
 
   util_h = fopen("util.h", "w");
   if (!util_h) return CJOB_IO_ERROR;
-  if (fprintf(util_h, "%s\n", cgen_util_h_contents) < 0) return CJOB_IO_ERROR;
+  for (i=0; cgen_util_h_contents[i]; i++)
+    if (fprintf(util_h, "%s", cgen_util_h_contents[i]) < 0) 
+      return CJOB_IO_ERROR;
   fclose(util_h);
 
   return CJOB_SUCCESS;
@@ -142,6 +147,7 @@ static CJobStatus write_header_file(CJob *job)
     return result;
   if ((result = write_header_footer(job, out)) != CJOB_SUCCESS)
     return result;
+  return CJOB_SUCCESS;
 }
 
 static CJobStatus write_source_file(CJob *job);
@@ -160,7 +166,8 @@ static CJobStatus write_header_boilerplate(CJob *job, FILE *out)
   for (i=0; capital[i]; i++)
     capital[i] = toupper(capital[i]);
   if (fprintf(out, "#ifndef __HARIS_%s_H\n"
-              "#define __HARIS_%s_H\n\n", capital) < 0) return CJOB_IO_ERROR;
+              "#define __HARIS_%s_H\n\n", capital, capital) < 0) 
+    return CJOB_IO_ERROR;
   free(capital);
   if (fprintf(out, "%s\n", 
               "#include <stdio.h>\n"
