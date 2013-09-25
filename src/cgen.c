@@ -116,6 +116,7 @@ static CJobStatus write_utility_library(CJob *job)
 {
   int i;
   FILE *util_c = fopen("util.c", "w"), *util_h;
+  (void)job;
   if (!util_c) return CJOB_IO_ERROR;
   for (i=0; cgen_util_c_contents[i]; i++) 
     if (fprintf(util_c, "%s", cgen_util_c_contents[i]) < 0) 
@@ -256,6 +257,7 @@ static CJobStatus write_header_prototypes(CJob *job, FILE *out)
 
 static CJobStatus write_header_footer(CJob *job, FILE *out)
 {
+  (void)job;
   if (fprintf(out, "#endif\n\n") < 0) return CJOB_IO_ERROR;
   return CJOB_SUCCESS;
 }

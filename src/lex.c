@@ -2,7 +2,7 @@
 
 static LexerStatus handle_symbol_token(Lexer *, Token *);
 static LexerStatus handle_string_token(Lexer *, Token *);
-static void handle_comment(Lexer *, Token *);
+static void handle_comment(Lexer *);
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -98,7 +98,7 @@ LexerStatus next_token(Lexer *lex, Token *tok)
     } else if (next_char == '"') 
       return handle_string_token(lex, tok);
     else if (next_char == '#') {
-      handle_comment(lex, tok);
+      handle_comment(lex);
       continue;
     } else if (next_char == '@') {
       *tok = TOKEN_FORWARD;
@@ -159,7 +159,7 @@ static LexerStatus handle_string_token(Lexer *lex, Token *tok)
   return LEXER_OK;
 }
 
-static void handle_comment(Lexer *lex, Token *tok)
+static void handle_comment(Lexer *lex)
 {
   int ch = lex->previous;
   while (ch != '\n')

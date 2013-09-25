@@ -311,7 +311,7 @@ static int parse_forward(Parser *p)
 */
 static ParsedStruct *new_hashed_struct(Parser *p, char *name)
 {
-  ParsedStruct *strct = new_struct(p->schema, p->lex->buffer);
+  ParsedStruct *strct = new_struct(p->schema, name);
   if (!strct) {
     (void)trigger_parse_error(p, PARSE_MEM_ERROR, NULL);
     return NULL;
@@ -329,7 +329,7 @@ static ParsedStruct *new_hashed_struct(Parser *p, char *name)
 */
 static ParsedEnum *new_hashed_enum(Parser *p, char *name)
 {
-  ParsedEnum *enm = new_enum(p->schema, p->lex->buffer);
+  ParsedEnum *enm = new_enum(p->schema, name);
   if (!enm) {
     (void)trigger_parse_error(p, PARSE_MEM_ERROR, NULL);
     return NULL;
