@@ -268,7 +268,8 @@ void haris_write_float64(unsigned char *b, double f)\n\
   haris_write_uint64(b, result);\n\
   return;\n\
 }\n", 
-NULL };
+NULL 
+};
 
 const char *cgen_util_h_contents[] = { "#ifndef __UTIL_H\n\
 #define __UTIL_H\n\
@@ -342,7 +343,8 @@ void haris_write_float32(unsigned char *, float);\n\
 void haris_write_float64(unsigned char *, double);\n\
 \n\
 #endif\n",
-NULL };
+NULL 
+};
 
 #endif
 
