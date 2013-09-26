@@ -322,7 +322,7 @@ static CJobStatus write_core_prototypes(CJob *job, FILE *out)
 
 /* The buffer prototypes for every structure S are
    HarisStatus S_from_buffer(unsigned char *, S **, unsigned char **);
-   HarisStatus S_to_buffer(S *, unsigned char **, haris_uint64_t *);
+   HarisStatus S_to_buffer(S *, unsigned char **, haris_uint32_t *);
 */
 static CJobStatus write_buffer_prototypes(CJob *job, FILE *out)
 {
