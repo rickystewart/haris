@@ -121,9 +121,10 @@ struct Person (
 
 This will generate for us the following structure definitions:
 
-enum PhoneType { 
-  MOBILE, HOME, WORK 
-};
+/* enum PhoneType */
+#define PhoneType_MOBILE 0
+#define PhoneType_HOME 1
+#define PhoneType_WORK 2
 
 typedef struct Phone Phone;
 typedef struct Person Person;
