@@ -9,7 +9,7 @@
 #include "cgen_utils.h"
 
 typedef enum {
-  CJOB_SUCCESS, CJOB_SCHEMA_ERROR, CJOB_JOB_ERROR, CJOB_IO_ERROR
+  CJOB_SUCCESS, CJOB_SCHEMA_ERROR, CJOB_SZ_ERROR, CJOB_JOB_ERROR, CJOB_IO_ERROR
 } CJobStatus;
 
 typedef struct {
