@@ -78,6 +78,9 @@ static CJobStatus check_job(CJob *job)
     if (job->schema->structs[i].num_scalars == 0 &&
         job->schema->structs[i].num_children == 0)
       return CJOB_SCHEMA_ERROR;
+    if (job->schema->structs[i].offset > 256 ||
+        job->schema->structs[i].num_children > 63)
+      return CJOB_SCHEMA_ERROR;
   }
   for (i = 0; i < job->schema->num_enums; i++) {
     if (job->schema->enums[i].num_values == 0)
@@ -318,8 +321,8 @@ static CJobStatus write_core_prototypes(CJob *job, FILE *out)
 }
 
 /* The buffer prototypes for every structure S are
-   S *S_from_buffer(unsigned char *, unsigned char **);
-   unsigned char *S_to_buffer(S *, haris_uint64_t *);
+   HarisStatus S_from_buffer(unsigned char *, S **, unsigned char **);
+   HarisStatus S_to_buffer(S *, unsigned char **, haris_uint64_t *);
 */
 static CJobStatus write_buffer_prototypes(CJob *job, FILE *out)
 {
