@@ -80,7 +80,7 @@ static CJobStatus check_job(CJob *job)
       return CJOB_SCHEMA_ERROR;
     if (job->schema->structs[i].offset > 256 ||
         job->schema->structs[i].num_children > 63)
-      return CJOB_SCHEMA_ERROR;
+      return CJOB_SZ_ERROR;
   }
   for (i = 0; i < job->schema->num_enums; i++) {
     if (job->schema->enums[i].num_values == 0)
