@@ -310,7 +310,7 @@ static CJobStatus write_core_prototypes(CJob *job, FILE *out)
       return CJOB_IO_ERROR;
     for (j=0; j < job->schema->structs[i].num_children; j++) {
       if (job->schema->structs[i].children[j].tag != CHILD_STRUCT)
-        if (fprintf(out, "int %s%s_init_%s(%s%s *, haris_uint64_t);\n", 
+        if (fprintf(out, "int %s%s_init_%s(%s%s *, haris_uint32_t);\n", 
                     job->prefix, job->schema->structs[i].name,
                     job->schema->structs[i].children[j].name,
                     job->prefix, job->schema->structs[i].name) < 0)
