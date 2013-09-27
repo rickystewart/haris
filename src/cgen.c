@@ -384,9 +384,9 @@ static const char *scalar_type_name(ScalarTag type)
   case SCALAR_INT64:
     return "haris_int64_t";
   case SCALAR_FLOAT32:
-    return "float";
+    return "haris_float32";
   case SCALAR_FLOAT64:
-    return "double";
+    return "haris_float64";
   case SCALAR_BOOL:
     return "char";
   default:
