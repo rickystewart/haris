@@ -321,15 +321,15 @@ static CJobStatus write_core_prototypes(CJob *job, FILE *out)
 }
 
 /* The buffer prototypes for every structure S are
-   HarisStatus S_from_buffer(unsigned char *, S **, unsigned char **);
+   HarisStatus S_from_buffer(S *, unsigned char *, unsigned char **);
    HarisStatus S_to_buffer(S *, unsigned char **, haris_uint32_t *);
 */
 static CJobStatus write_buffer_prototypes(CJob *job, FILE *out)
 {
   int i;
   for (i=0; i < job->schema->num_structs; i++) {
-    if (fprintf(out, "HarisStatus %s%s_from_buffer(unsigned char *, \
-%s%s **, unsigned char **);\n", 
+    if (fprintf(out, "HarisStatus %s%s_from_buffer(%s%s *, \
+unsigned char *, unsigned char **);\n", 
                 job->prefix, job->schema->structs[i].name,
                 job->prefix, job->schema->structs[i].name) < 0)
       return CJOB_IO_ERROR;
@@ -344,14 +344,14 @@ unsigned char **, haris_uint32_t *);\n",
 }
 
 /* The file prototypes for every structure S are 
-   HarisStatus S_from_file(FILE *, S**);
+   HarisStatus S_from_file(S *, FILE *);
    HarisStatus S_to_file(S *, FILE *);
 */
 static CJobStatus write_file_prototypes(CJob *job, FILE *out)
 {
   int i;
   for (i=0; i < job->schema->num_structs; i++) {
-    if (fprintf(out, "HarisStatus %s%s_from_file(FILE *, %s%s **);\n", 
+    if (fprintf(out, "HarisStatus %s%s_from_file(%s%s *, FILE *);\n", 
                 job->prefix, job->schema->structs[i].name,
                 job->prefix, job->schema->structs[i].name) < 0)
       return CJOB_IO_ERROR;
