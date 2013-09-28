@@ -6,6 +6,14 @@ static CJobStatus write_source_public_funcs(CJob *job, FILE *out);
 static CJobStatus write_source_core_funcs(CJob *job, FILE *out);
 static CJobStatus write_source_protocol_funcs(CJob *job, FILE *out);
 
+static CJobStatus write_core_prototypes(CJob *job, FILE *out);
+static CJobStatus write_buffer_static_prototypes(CJob *job, FILE *out);
+static CJobStatus write_file_static_prototypes(CJob *job, FILE *out);
+
+static CJobStatus write_public_constructor(CJob *, ParsedStruct *, FILE *);
+static CJobStatus write_public_destructor(CJob *, ParsedStruct *, FILE *);
+static CJobStatus write_public_initializers(CJob *, ParsedStruct *, FILE *);
+
 /* =============================PUBLIC INTERFACE============================= */
 
 CJobStatus write_source_file(CJob *job)
@@ -56,7 +64,31 @@ static CJobStatus write_source_prototypes(CJob *job, FILE *out)
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_source_public_funcs(CJob *job, FILE *out);
+/* As the header file says, the public functions are 
+   S *S_create(void);
+   void S_destroy(S *);
+   HarisStatus S_init_F(S *, haris_uint32_t);
+     ... for every list field F in S and
+   HarisStatus S_init_F(S *);
+     ... for every structure field F in S.
+*/
+static CJobStatus write_source_public_funcs(CJob *job, FILE *out)
+{
+  CJobStatus result;
+  int i;
+  for (i=0; i < job->schema->num_structs; i++) {
+    if ((result = write_public_constructor(job, &job->schema->structs[i], out))
+        != CJOB_SUCCESS)
+      return result;
+    if ((result = write_public_destructor(job, &job->schema->structs[i], out))
+        != CJOB_SUCCESS)
+      return result;
+    if ((result = write_public_initializers(job, &job->schema->structs[i], out))
+        != CJOB_SUCCESS)
+      return result;
+  }
+}
+
 static CJobStatus write_source_core_funcs(CJob *job, FILE *out);
 static CJobStatus write_source_protocol_funcs(CJob *job, FILE *out);
 
@@ -144,4 +176,63 @@ static HarisStatus _%s%s_to_file(%s%s *, FILE *);\n\n",
   if (fprintf(out, "static int handle_child_buffer(FILE *, int);\n\n") < 0) 
     return CJOB_IO_ERROR;
   return CJOB_SUCCESS;
+}
+
+/* To write the constructor, we need to call "malloc" with the size of the
+   structure. We return NULL if the allocation fails, and do the necessary
+   initializations: set _null = 0, F = NULL for every child field F, and
+   _alloc_F = 0 for every list field F.
+*/
+static CJobStatus write_public_constructor(CJob *job, ParsedStruct *strct, 
+                                           FILE *out)
+{
+  int i;
+  if (fprintf(out, "%s%s *%s%s_create(void)\n\
+{\n\
+  %s%s *strct = (%s%s)malloc(sizeof *strct);\n\
+  if (!strct) return NULL;\n\
+  strct->_null = 0;\n", 
+              job->prefix, strct->name, job->prefix, strct->name,
+              job->prefix, strct->name, job->prefix, strct->name) < 0)
+    return CJOB_IO_ERROR;
+  for (i=0; i < strct->num_children; i++) {
+    switch (strct->children[i].tag) {
+    case CHILD_TEXT:
+    case CHILD_SCLAR_LIST:
+    case CHILD_STRUCT_LIST:
+      if (fprintf(out, "  strct->_alloc_%s = 0;\n", 
+                  strct->children[i].name) < 0) return CJOB_IO_ERROR;
+      /* There is no break here on purpose */
+    case CHILD_STRUCT:
+      if (fprintf(out, "  strct->%s = NULL;\n",
+                  strct->children[i].name) < 0) return CJOB_IO_ERROR;
+    }
+  }
+  if (fprintf(out, "  return strct;\n}\n\n") < 0) return CJOB_IO_ERROR;
+  return CJOB_SUCCESS;
+}
+
+/* To write the destructor, we need to loop through all the child elements
+   of the structure. If any structures are non-NULL, we need to recursively
+   call their destructors as well. For scalar lists, we need to check if the
+   _alloc count is greater than 0, and free the pointer if so. For structure
+   lists, we need to check if _alloc is greater than 0, and recursively call
+   the structure destructors up until that number before freeing the pointer.
+*/
+static CJobStatus write_public_destructor(CJob *job, ParsedStruct *strct, 
+                                          FILE *out)
+{
+  int i;
+  if (fprintf(out, "void %s%s_destroy(%s%s *strct)\n{\n",
+              job->prefix, strct->name, job->prefix, strct->name) < 0)
+    return CJOB_IO_ERROR;
+  for (i=0; i < strct->num_children; i++) {
+    switch (strct->children[i].tag) {
+    }
+  }
+}
+
+static CJobStatus write_public_initializers(CJob *job, ParsedStruct *strct, 
+                                            FILE *out)
+{
 }

@@ -32,6 +32,6 @@ CJobStatus run_cjob(CJob *);
 void destroy_cjob(CJob *);
 
 const char *scalar_type_name(ScalarTag);
-FILE *open_source_file(const char *, const char *)
+FILE *open_source_file(const char *, const char *);
 
 #endif
