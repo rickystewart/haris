@@ -162,19 +162,26 @@ static CJobStatus write_child_field(CJob *job, FILE *out, ChildField *child)
 {
   switch (child->tag) {
   case CHILD_TEXT:
-    if (fprintf(out, "  char *%s;\n", child->name) < 0) return CJOB_IO_ERROR;
+    if (fprintf(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
+  char _null_%s;\n  char *%s;\n", 
+                child->name, child->name, child->name, child->name) < 0) 
+      return CJOB_IO_ERROR;
     break;
   case CHILD_STRUCT:
     if (fprintf(out, "  %s%s *%s;\n", job->prefix, child->type.strct->name,
                 child->name) < 0) return CJOB_IO_ERROR;
     break;
   case CHILD_SCALAR_LIST:
-    if (fprintf(out, "  %s *%s;\n", 
+    if (fprintf(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
+  char _null_%s;\n  %s *%s;\n", 
+                child->name, child->name, child->name,
                 scalar_type_name(child->type.scalar_list.tag),
                 child->name) < 0) return CJOB_IO_ERROR;
     break;
   case CHILD_STRUCT_LIST:
-    if (fprintf(out, "  %s%s **%s;\n", job->prefix, 
+    if (fprintf(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
+  char _null_%s;\n  %s%s **%s;\n", 
+                child->name, child->name, child->name, job->prefix, 
                 child->type.struct_list->name, child->name) < 0) 
       return CJOB_IO_ERROR;
     break;
