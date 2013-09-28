@@ -189,10 +189,10 @@ static CJobStatus write_public_constructor(CJob *job, ParsedStruct *strct,
 {
   int i;
   if (fprintf(out, "%s%s *%s%s_create(void)\n\
-{\n  \
-%s%s *strct = (%s%s)malloc(sizeof *strct);\n  \
-if (!strct) return NULL;\n  \
-strct->_null = 0;\n", 
+{\n\
+  %s%s *strct = (%s%s)malloc(sizeof *strct);\n\
+  if (!strct) return NULL;\n\
+  strct->_null = 0;\n", 
               job->prefix, strct->name, job->prefix, strct->name,
               job->prefix, strct->name, job->prefix, strct->name) < 0)
     return CJOB_IO_ERROR;
@@ -231,16 +231,83 @@ static CJobStatus write_public_destructor(CJob *job, ParsedStruct *strct,
     switch (strct->children[i].tag) {
     case CHILD_TEXT:
     case CHILD_SCALAR_LIST:
+      if (fprintf(out, "  if (strct->_alloc_%s > 0) free(strct->%s);\n",
+                  strct->children[i].name, strct->children[i].name) < 0)
+        return CJOB_IO_ERROR;
       break;
     case CHILD_STRUCT:
+      if (fprintf(out, "  if (strct->%s) free(strct->%s);\n", 
+                  strct->children[i].name, strct->children[i].name) < 0)
+        return CJOB_IO_ERROR;
       break;
     case CHILD_STRUCT_LIST:
+      if (fprintf(out, "  if (strct->_alloc_%s > 0) {\n\
+    haris_uint32_t i;\n\
+    for (i=0; i < strct->_alloc_%s; i++)\n\
+      free(strct->%s[i]);\n\
+    free(strct->%s);\n\
+  }\n",
+                  strct->children[i].name, strct->children[i].name,
+                  strct->children[i].name, strct->children[i].name) < 0)
+        return CJOB_IO_ERROR;
       break;
     }
   }
+  if (fprintf(out, "free(strct);\n}\n\n") < 0)
+    return CJOB_IO_ERROR;
+  return CJOB_SUCCESS;
 }
 
 static CJobStatus write_public_initializers(CJob *job, ParsedStruct *strct, 
                                             FILE *out)
 {
+  int i;
+  CJobStatus result;
+  for (i=0; i < strct->num_children; i++) {
+    switch (strct->children[i].tag) {
+      case CHILD_TEXT:
+      case CHILD_SCALAR_LIST:
+      case CHILD_STRUCT_LIST:
+        if ((result = write_init_list(job, strct, i, out)) != 
+             CJOB_SUCCESS) return result;
+      case CHILD_STRUCT:
+        if (fprintf(out, "HarisStatus %s%s_init_%s(%s%s *strct)\n{\n\
+  %s *alloced;\n",
+                    job->prefix, strct->name,
+                    strct->children[i].name,
+                    job->prefix, strct->name, 
+                    strct->children[i].type.strct.name) < 0)
+          return CJOB_IO_ERROR;
+
+        break;
+    }
+  }
+}
+
+static CJobStatus write_init_list(CJob *job, ParsedStruct *strct, 
+                                  int i, FILE *out)
+{
+  if (fprintf(out, "HarisStatus %s%s_init_%s(%s%s *strct, \
+haris_uint32_t sz)\n{\n", job->prefix, strct->name,
+              strct->children[i].name, 
+              job->prefix, strct->name) < 0) 
+    return CJOB_IO_ERROR;
+  switch (strct->children[i].tag) {
+  case CHILD_STRUCT_LIST:
+    if (fprintf(out, "  haris_uint32_i i;\n  %s **alloced;\n",
+                strct->children[i].type.struct_list.name) < 0) 
+      return CJOB_IO_ERROR;
+    break;
+  default:
+    if (fprintf(out, "  %s *alloced;\n", 
+                scalar_type_name(strct->children[i].tag)) < 0) 
+      return CJOB_IO_ERROR;
+    break;
+  }
+}
+
+static CJobStatus write_init_struct(CJob *job, ParsedStruct *strct,
+                                    int i, FILE *out)
+{
+
 }
