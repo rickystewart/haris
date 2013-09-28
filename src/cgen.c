@@ -7,7 +7,6 @@ static CJobStatus check_job(CJob *);
 static CJobStatus begin_compilation(CJob *);
 
 static CJobStatus write_utility_library(CJob *);
-static CJobStatus write_source_file(CJob *);
 
 static FILE *open_source_file(const char *prefix, const char *suffix);
 
@@ -49,6 +48,37 @@ CJobStatus run_cjob(CJob *job)
   CJobStatus result;
   if ((result = check_job(job)) != CJOB_SUCCESS) return result;
   return begin_compilation(job);
+}
+
+const char *scalar_type_name(ScalarTag type)
+{
+  switch (type) {
+  case SCALAR_UINT8:
+  case SCALAR_ENUM:
+    return "haris_uint8_t";
+  case SCALAR_INT8:
+    return "haris_int8_t";
+  case SCALAR_UINT16:
+    return "haris_uint16_t";
+  case SCALAR_INT16:
+    return "haris_int16_t";
+  case SCALAR_UINT32:
+    return "haris_uint32_t";
+  case SCALAR_INT32:
+    return "haris_int32_t";
+  case SCALAR_UINT64:
+    return "haris_uint64_t";
+  case SCALAR_INT64:
+    return "haris_int64_t";
+  case SCALAR_FLOAT32:
+    return "haris_float32";
+  case SCALAR_FLOAT64:
+    return "haris_float64";
+  case SCALAR_BOOL:
+    return "char";
+  default:
+    return NULL;
+  }
 }
 
 /* =============================STATIC FUNCTIONS============================= */
@@ -121,37 +151,6 @@ static CJobStatus write_utility_library(CJob *job)
   fclose(util_h);
 
   return CJOB_SUCCESS;
-}
-
-const char *scalar_type_name(ScalarTag type)
-{
-  switch (type) {
-  case SCALAR_UINT8:
-  case SCALAR_ENUM:
-    return "haris_uint8_t";
-  case SCALAR_INT8:
-    return "haris_int8_t";
-  case SCALAR_UINT16:
-    return "haris_uint16_t";
-  case SCALAR_INT16:
-    return "haris_int16_t";
-  case SCALAR_UINT32:
-    return "haris_uint32_t";
-  case SCALAR_INT32:
-    return "haris_int32_t";
-  case SCALAR_UINT64:
-    return "haris_uint64_t";
-  case SCALAR_INT64:
-    return "haris_int64_t";
-  case SCALAR_FLOAT32:
-    return "haris_float32";
-  case SCALAR_FLOAT64:
-    return "haris_float64";
-  case SCALAR_BOOL:
-    return "char";
-  default:
-    return NULL;
-  }
 }
 
 static FILE *open_source_file(const char *prefix, const char *suffix)

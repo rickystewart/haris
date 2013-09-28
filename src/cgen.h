@@ -8,6 +8,11 @@
 #include "schema.h"
 #include "cgen_utils.h"
 
+/* This file contains structures and procedures pertinent to constructing
+   and running C compilation jobs. The functions for writing header files
+   are in cgenh.c, and the functions for writing source files are in cgenc.c.
+*/
+
 typedef enum {
   CJOB_SUCCESS, CJOB_SCHEMA_ERROR, CJOB_SZ_ERROR, CJOB_JOB_ERROR, CJOB_IO_ERROR
 } CJobStatus;
