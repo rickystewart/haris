@@ -8,8 +8,6 @@ static CJobStatus begin_compilation(CJob *);
 
 static CJobStatus write_utility_library(CJob *);
 
-static FILE *open_source_file(const char *prefix, const char *suffix);
-
 /* =============================PUBLIC INTERFACE============================= */
 
 CJob *new_cjob(void)
@@ -79,6 +77,20 @@ const char *scalar_type_name(ScalarTag type)
   default:
     return NULL;
   }
+}
+
+FILE *open_source_file(const char *prefix, const char *suffix)
+{
+  char *filename = (char*)malloc(strlen(prefix) + strlen(suffix) + 1); 
+  FILE *out;
+  if (!filename) return NULL;
+
+  *filename = '\0';
+  (void)strcat(filename, prefix);
+  (void)strcat(filename, suffix);
+  out = fopen(filename, "w");
+  free(filename);
+  return out;
 }
 
 /* =============================STATIC FUNCTIONS============================= */
@@ -151,18 +163,4 @@ static CJobStatus write_utility_library(CJob *job)
   fclose(util_h);
 
   return CJOB_SUCCESS;
-}
-
-static FILE *open_source_file(const char *prefix, const char *suffix)
-{
-  char *filename = (char*)malloc(strlen(prefix) + strlen(suffix) + 1); 
-  FILE *out;
-  if (!filename) return NULL;
-
-  *filename = '\0';
-  (void)strcat(filename, prefix);
-  (void)strcat(filename, suffix);
-  out = fopen(filename, "w");
-  free(filename);
-  return out;
 }
