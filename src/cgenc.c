@@ -87,6 +87,7 @@ static CJobStatus write_source_public_funcs(CJob *job, FILE *out)
         != CJOB_SUCCESS)
       return result;
   }
+  return CJOB_SUCCESS;
 }
 
 static CJobStatus write_source_core_funcs(CJob *job, FILE *out);
@@ -188,17 +189,17 @@ static CJobStatus write_public_constructor(CJob *job, ParsedStruct *strct,
 {
   int i;
   if (fprintf(out, "%s%s *%s%s_create(void)\n\
-{\n\
-  %s%s *strct = (%s%s)malloc(sizeof *strct);\n\
-  if (!strct) return NULL;\n\
-  strct->_null = 0;\n", 
+{\n  \
+%s%s *strct = (%s%s)malloc(sizeof *strct);\n  \
+if (!strct) return NULL;\n  \
+strct->_null = 0;\n", 
               job->prefix, strct->name, job->prefix, strct->name,
               job->prefix, strct->name, job->prefix, strct->name) < 0)
     return CJOB_IO_ERROR;
   for (i=0; i < strct->num_children; i++) {
     switch (strct->children[i].tag) {
     case CHILD_TEXT:
-    case CHILD_SCLAR_LIST:
+    case CHILD_SCALAR_LIST:
     case CHILD_STRUCT_LIST:
       if (fprintf(out, "  strct->_alloc_%s = 0;\n", 
                   strct->children[i].name) < 0) return CJOB_IO_ERROR;
@@ -228,6 +229,13 @@ static CJobStatus write_public_destructor(CJob *job, ParsedStruct *strct,
     return CJOB_IO_ERROR;
   for (i=0; i < strct->num_children; i++) {
     switch (strct->children[i].tag) {
+    case CHILD_TEXT:
+    case CHILD_SCALAR_LIST:
+      break;
+    case CHILD_STRUCT:
+      break;
+    case CHILD_STRUCT_LIST:
+      break;
     }
   }
 }
