@@ -7,7 +7,7 @@ static CJobStatus write_header_structures(CJob *job, FILE *out);
 static CJobStatus write_header_prototypes(CJob *job, FILE *out);
 static CJobStatus write_header_footer(CJob *job, FILE *out);
 static CJobStatus write_child_field(CJob *job, FILE *out, ChildField *child);
-static CJobStatus write_core_prototypes(CJob *job, FILE *out);
+static CJobStatus write_public_prototypes(CJob *job, FILE *out);
 static CJobStatus write_buffer_prototypes(CJob *job, FILE *out);
 static CJobStatus write_file_prototypes(CJob *job, FILE *out);
 
@@ -140,7 +140,7 @@ static CJobStatus write_header_structures(CJob *job, FILE *out)
 static CJobStatus write_header_prototypes(CJob *job, FILE *out)
 {
   CJobStatus result;
-  if ((result = write_core_prototypes(job, out)) != CJOB_SUCCESS)
+  if ((result = write_public_prototypes(job, out)) != CJOB_SUCCESS)
     return result;
   if (job->buffer_protocol)
     if ((result = write_buffer_prototypes(job, out)) != CJOB_SUCCESS)
@@ -182,7 +182,7 @@ static CJobStatus write_child_field(CJob *job, FILE *out, ChildField *child)
   return CJOB_SUCCESS;
 }
 
-/* The core prototypes for every structure S are
+/* The public prototypes for every structure S are
    S *S_create(void);
    void S_destroy(S *);
    HarisStatus S_init_F(S *, haris_uint64_t);
@@ -190,7 +190,7 @@ static CJobStatus write_child_field(CJob *job, FILE *out, ChildField *child)
    HarisStatus S_init_F(S *);
      ... for every structure field F in S.
 */
-static CJobStatus write_core_prototypes(CJob *job, FILE *out)
+static CJobStatus write_public_prototypes(CJob *job, FILE *out)
 {
   int i, j;
   for (i=0; i < job->schema->num_structs; i++) {
