@@ -26,4 +26,6 @@ CJob *new_cjob(void);
 CJobStatus run_cjob(CJob *);
 void destroy_cjob(CJob *);
 
+const char *scalar_type_name(ScalarTag);
+
 #endif
