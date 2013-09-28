@@ -11,6 +11,8 @@ static CJobStatus write_core_prototypes(CJob *job, FILE *out);
 static CJobStatus write_buffer_prototypes(CJob *job, FILE *out);
 static CJobStatus write_file_prototypes(CJob *job, FILE *out);
 
+/* =============================PUBLIC INTERFACE============================= */
+
 CJobStatus write_header_file(CJob *job)
 {
   CJobStatus result;
@@ -28,6 +30,8 @@ CJobStatus write_header_file(CJob *job)
     return result;
   return CJOB_SUCCESS;
 }
+
+/* =============================STATIC FUNCTIONS============================= */
 
 /* For now, the "boilerplate" section of the header will just contain
    the "includes" that the source file is going to require. As we add more
@@ -53,11 +57,18 @@ static CJobStatus write_header_boilerplate(CJob *job, FILE *out)
   return CJOB_SUCCESS;
 }
 
-/* The only "macros" we need to define are the enumerated values. For an
-   enumeration E with a value V (and assuming a prefix P), the generated
-   enumerated name is
+/* We need to define macros for every structure and enumeration in the
+   schema. For an enumeration E with a value V (and assuming a prefix P), the 
+   generated enumerated name is
    PE_V
-   All enumerated values are unsigned.
+
+   For every structure in C, we define macros to give us 1) the number of
+   bytes in the body and 2) the number of children we expect to have
+   in each of these structures. The number of bytes in the body is defined
+   for a structure S as
+   S_LIB_BODY_SZ
+   and the number of children is defined as
+   S_LIB_NUM_CHILDREN
 */
 static CJobStatus write_header_macros(CJob *job, FILE *out)
 {
@@ -66,12 +77,21 @@ static CJobStatus write_header_macros(CJob *job, FILE *out)
     if (fprintf(out, "/* enum %s */\n", job->schema->enums[i].name) < 0)
       return CJOB_IO_ERROR;
     for (j=0; j < job->schema->enums[i].num_values; j++) {
-      if (fprintf(out, "#define %s%s_%s %dU\n", job->prefix, 
+      if (fprintf(out, "#define %s%s_%s %d\n", job->prefix, 
                   job->schema->enums[i].name, 
                   job->schema->enums[i].values[j], j) < 0)
         return CJOB_IO_ERROR;
     }
     if (fprintf(out, "\n") < 0) return CJOB_IO_ERROR;
+  }
+  for (i=0; i < job->schema->num_structs; i++) {
+    if (fprintf(out, "#define %s%s_LIB_BODY_SZ %d\n\
+#define %s%s_LIB_NUM_CHILDREN %d\n\n",
+                job->prefix, job->schema->structs[i].name,
+                job->schema->structs[i].offset,
+                job->prefix, job->schema->structs[i].name, 
+                job->schema->structs[i].num_children) < 0)
+      return CJOB_IO_ERROR;
   }
   return CJOB_SUCCESS;
 }
