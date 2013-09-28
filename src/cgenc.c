@@ -15,7 +15,11 @@ static CJobStatus write_public_destructor(CJob *, ParsedStruct *, FILE *);
 static CJobStatus write_public_initializers(CJob *, ParsedStruct *, FILE *);
 
 static CJobStatus write_init_list(CJob *, ParsedStruct *, int, FILE *);
-static CJobStatus write_init_struct(CJob *, ParsedStruct *, int, FILE *)
+static CJobStatus write_init_struct(CJob *, ParsedStruct *, int, FILE *);
+
+static CJobStatus write_core_wfuncs(CJob *, ParsedStruct *, FILE *);
+static CJobStatus write_core_rfuncs(CJob *, ParsedStruct *, FILE *);
+static CJobStatus write_core_size(CJob *, ParsedStruct *, FILE *);
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -93,7 +97,21 @@ static CJobStatus write_source_public_funcs(CJob *job, FILE *out)
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_source_core_funcs(CJob *job, FILE *out);
+static CJobStatus write_source_core_funcs(CJob *job, FILE *out)
+{
+  CJobStatus result;
+  int i;
+  for (i=0; i < job->schema->num_structs; i++) {
+    if ((result = write_core_wfuncs(job, job->schema->structs[i], out))
+        != CJOB_SUCCESS) return result;
+    if ((result = write_core_rfuncs(job, job->schema->structs[i], out))
+        != CJOB_SUCCESS) return result;
+    if ((result = write_core_size(job, job->schema->structs[i], out))
+        != CJOB_SUCCESS) return result;
+  }
+  return CJOB_SUCCESS;
+}
+
 static CJobStatus write_source_protocol_funcs(CJob *job, FILE *out);
 
 /* The following core functions exist for every structure S:
@@ -107,24 +125,22 @@ static CJobStatus write_source_protocol_funcs(CJob *job, FILE *out);
 static CJobStatus write_core_prototypes(CJob *job, FILE *out)
 {
   int i;
+  char *prefix, *field;
   for (i=0; i < job->schema->num_structs; i++) {
+    prefix = job->prefix;
+    field = job->schema->structs[i].name;
     if (fprintf(out, "static unsigned char *%s%s_lib_write_nonnull_header(unsigned char *);\n\
 static unsigned char *%s%s_lib_write_header(%s%s *, unsigned char *);\n\
 static unsigned char *%s%s_lib_write_body(%s%s *, unsigned char *);\n\
 static unsigned char *%s%s_lib_write_hb(%s%s *, unsigned char *);\n\
 static void %s%s_lib_read_body(%s%s *, unsigned char *);\n\
 static haris_uint32_t %s%s_lib_size(%s%s *, int, HarisStatus *);\n\n",
-                job->prefix, job->schema->structs[i].name,
-                job->prefix, job->schema->structs[i].name,
-                job->prefix, job->schema->structs[i].name,
-                job->prefix, job->schema->structs[i].name,
-                job->prefix, job->schema->structs[i].name,
-                job->prefix, job->schema->structs[i].name,
-                job->prefix, job->schema->structs[i].name,
-                job->prefix, job->schema->structs[i].name,
-                job->prefix, job->schema->structs[i].name,
-                job->prefix, job->schema->structs[i].name,
-                job->prefix, job->schema->structs[i].name) < 0) 
+                prefix, field, prefix, field,
+                prefix, field, prefix, field,
+                prefix, field, prefix, field,
+                prefix, field, prefix, field,
+                prefix, field, prefix, field,
+                prefix, field) < 0) 
       return CJOB_IO_ERROR;
   }
   return CJOB_SUCCESS;
@@ -355,4 +371,116 @@ static CJobStatus write_init_struct(CJob *job, ParsedStruct *strct,
               strct->children[i].type.strct.name) < 0)
     return CJOB_IO_ERROR;
   return CJOB_SUCCESS;
+}
+
+static CJobStatus write_core_wfuncs(CJob *job, ParsedStruct *strct, FILE *out)
+{
+  int i;
+  char *prefix = job->prefix, *name = strct->name;
+  if (fprintf(out, "static unsigned char *%s%s_lib_write_nonnull_header(\
+unsigned char *buf)\n{\n  buf[0] = (unsigned char)%d;\n  buf[1] = \
+(unsigned char)%d;\n  return buf + 2;\n}\n\n",
+              prefix, name, strct->num_children, strct->offset) < 0)
+    return CJOB_IO_ERROR;
+  if (fprintf(out, "static unsigned char *%s%s_lib_write_header(%s%s *strct, \
+unsigned char *buf)\n{\n  if (strct->_null) {\n    *buf = (unsigned char)64;\n\
+    return buf + 1;\n  } else {\n\
+    return %s%s_lib_write_nonnull_header(buf);\n  }\n}\n\n",
+              prefix, name, prefix, name, prefix, name) < 0)
+    return CJOB_IO_ERROR;
+  if (fprintf(out, "static unsigned char *%s%s_lib_write_body(%s%s *strct, \
+unsigned char *buf)\n{\n  if (strct->_null) return buf;\n",
+              prefix, name, prefix, name) < 0)
+    return CJOB_IO_ERROR;
+  for (i=0; i < strct->num_scalars; i++) {
+    if (fprintf(out, "  haris_write_%s(buf + %d, strct->%s);\n", 
+                scalar_type_suffix(strct->scalars[i].tag),
+                strct->scalars[i].offset, strct->scalars[i].name) < 0)
+      return CJOB_IO_ERROR;
+  }
+  if (fprintf(out, "  return buf + %d;\n}\n\n", strct->offset) < 0)
+    return CJOB_IO_ERROR;
+  if (fprintf(out, "static unsigned char *%s%s_lib_write_hb(%s%s *strct, \
+unsigned char *buf)\n{\n  return %s%s_lib_write_body(strct, %s%s_lib_write_\
+header(strct, buf));\n}\n\n", 
+              prefix, name, prefix, name, prefix, name, prefix, name) < 0)
+    return CJOB_IO_ERROR;
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_core_rfuncs(CJob *job, ParsedStruct *strct, FILE *out)
+{
+  int i;
+  if (fprintf(out, "static void %s%s_lib_read_body(%s%s *strct, unsigned char *\
+buf)\n{\n", prefix, name, prefix, name) < 0) return CJOB_IO_ERROR;
+  for (i=0; i < strct->num_scalars; i++) {
+    if (fprintf(out, "  strct->%s = haris_read_%s(buf + %d);\n", 
+                strct->scalars[i].name, 
+                scalar_type_suffix(strct->scalars[i].tag),
+                strct->scalars[i].offset) < 0)
+      return CJOB_IO_ERROR;
+  }
+  if (fprintf(out, "  return;\n}\n\n") < 0) return CJOB_IO_ERROR;
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_core_size(CJob *job, ParsedStruct *strct, FILE *out)
+{
+  int i;
+  if (fprintf(out, "haris_uint32_t %s%s_lib_size(%s%s *strct, int depth, \
+HarisStatus *out)\n{\n", prefix, name, prefix, name) < 0)
+    return CJOB_IO_ERROR;
+  if (strct->num_children == 0) {
+    if (fprintf(out, "  if (strct->_null) return 1;\n\
+  else return 2 + %s%s_LIB_BODY_SZ;\n}\n\n", prefix, name) < 0)
+      return CJOB_IO_ERROR;
+  } else {
+    if (fprintf(out, "  if (strct->_null) return 1;\n\
+  else if (depth > HARIS_MAXIMUM_DEPTH) {\n\
+    *out = HARIS_DEPTH_ERROR;\n\
+    return 0;\n\
+  } else {\n\
+    haris_uint32_t accum = 2 + %s%s_LIB_BODY_SZ, buf;\n") < 0)
+      return CJOB_IO_ERROR;
+    for (i=0; i < strct->num_children; i++) {
+      switch (strct->children[i].tag) {
+      case CHILD_TEXT:
+      case CHILD_SCALAR_LIST:
+      case CHILD_STRUCT:
+      case CHILD_STRUCT_LIST:
+      }
+    }
+  }
+  return CJOB_SUCCESS;
+}
+
+static const char *scalar_type_suffix(ScalarTag type)
+{
+  switch (type) {
+  case SCALAR_UINT8:
+  case SCALAR_ENUM:
+    return "uint8";
+  case SCALAR_INT8:
+    return "int8";
+  case SCALAR_UINT16:
+    return "uint16";
+  case SCALAR_INT16:
+    return "int16";
+  case SCALAR_UINT32:
+    return "uint32";
+  case SCALAR_INT32:
+    return "int32";
+  case SCALAR_UINT64:
+    return "uint64";
+  case SCALAR_INT64:
+    return "int64";
+  case SCALAR_FLOAT32:
+    return "float32";
+  case SCALAR_FLOAT64:
+    return "float64";
+  case SCALAR_BOOL:
+    return "uint8";
+  default:
+    return NULL;
+  }
 }
