@@ -373,6 +373,7 @@ static CJobStatus write_init_struct(CJob *job, ParsedStruct *strct,
   return CJOB_SUCCESS;
 }
 
+/* Writes the core structure-writing functions to the source file. */
 static CJobStatus write_core_wfuncs(CJob *job, ParsedStruct *strct, FILE *out)
 {
   int i;
@@ -408,6 +409,9 @@ header(strct, buf));\n}\n\n",
   return CJOB_SUCCESS;
 }
 
+/* Writes the core structure-reading function (S_lib_read_body) to the
+   source file.
+*/
 static CJobStatus write_core_rfuncs(CJob *job, ParsedStruct *strct, FILE *out)
 {
   int i;
@@ -424,6 +428,7 @@ buf)\n{\n", prefix, name, prefix, name) < 0) return CJOB_IO_ERROR;
   return CJOB_SUCCESS;
 }
 
+/* Writes the core structure size-measurement function to the source file. */
 static CJobStatus write_core_size(CJob *job, ParsedStruct *strct, FILE *out)
 {
   int i;
@@ -446,11 +451,53 @@ HarisStatus *out)\n{\n", prefix, name, prefix, name) < 0)
       switch (strct->children[i].tag) {
       case CHILD_TEXT:
       case CHILD_SCALAR_LIST:
+        if (fprintf(out, "  if (strct->_null_%s) %s\n\
+  else {\n\
+    accum += 4 + strct->_len_%s * (sizeof %s);\n\
+    if (accum > HARIS_MESSAGE_SIZE_LIMIT) \
+{ *out = HARIS_SIZE_ERROR; return 0; }\n\
+  }\n", strct->children[i].name, 
+                    (strct->children[i].nullable ? "return 1;" : 
+                     "{ *out = HARIS_STRUCTURE_ERROR; return 0; }"),
+                    strct->children[i].name, 
+                    (strct->children[i].tag == CHILD_TEXT ? "char" :
+                     scalar_type_name(strct->children[i].type.scalar_list.tag)))
+            < 0) return CJOB_IO_ERROR;
+        break;
       case CHILD_STRUCT:
+        if (fprintf(out, "  if (strct->%s->_null) %s\n\
+  else {\n\
+    if ((buf = %s%s_lib_size(strct->%s, depth + 1, out)) == 0) return 0;\n\
+    else if ((accum += buf) > HARIS_MESSAGE_SIZE_LIMIT) \
+{ *out = HARIS_SIZE_ERROR; return 0; }\n\
+  }\n", strct->children[i].name, 
+                    (strct->children[i].nullable ? "return 1;" : 
+                     "{ *out = HARIS_STRUCTURE_ERROR; return 0; }"),
+                    job->prefix, strct->children[i].type.strct.name,
+                    strct->children[i].name) < 0)
+          return CJOB_IO_ERROR;
+        break;
       case CHILD_STRUCT_LIST:
+        if (fprintf(out, "  if (strct->_null_%s) %s\n\
+  else {\n\
+    haris_uint32_t i;\n\
+    accum += 6;\n\
+    for (i = 0; i < strct->_len_%s; i++) {\n\
+      if ((buf = %s%s_lib_size(strct->%s[i], depth + 1, out)) == 0) return 0;\n\
+      else if (buf == 1) { *out = HARIS_STRUCTURE_ERROR; return 0; }\n\
+      else if ((accum += buf) > HARIS_MESSAGE_SIZE_LIMIT) \
+{ *out = HARIS_SIZE_ERROR; return 0; }\n\
+    }\n\
+  }\n", strct->children[i].name, 
+                    (strct->children[i].nullable ? "return 1;" :
+                     "{ *out = HARIS_STRUCTURE_ERROR; return 0; }"),
+                    job->prefix, strct->children[i].type.struct_list.name,
+                    strct->children[i].name) < 0)
+          return CJOB_IO_ERROR;
       }
     }
   }
+  if (fprintf(out, "}\n\n") < 0) return CJOB_IO_ERROR;
   return CJOB_SUCCESS;
 }
 
