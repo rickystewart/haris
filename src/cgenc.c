@@ -496,8 +496,8 @@ HarisStatus *out)\n{\n", prefix, name, prefix, name) < 0)
           return CJOB_IO_ERROR;
       }
     }
+    if (fprintf(out, "  return accum;\n}\n\n") < 0) return CJOB_IO_ERROR;
   }
-  if (fprintf(out, "}\n\n") < 0) return CJOB_IO_ERROR;
   return CJOB_SUCCESS;
 }
 
