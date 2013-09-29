@@ -61,10 +61,11 @@ body and 0 children.
 
 SCALAR LISTS
 
-Every list has a header as well. We tell a list from a structure by a "1" in
-the msb of the first byte of the header. As above, the second most significant
-bit of the header tells us whether the list is null. A null list has "0" in
-the 2nd msb:
+Every list has a header as well. Unlike structures, which can have headers
+that are either 1 or 2 bytes in size, a list header is either 1, 4, or 6 bytes 
+in size. We tell a list from a structure by a "1" in the msb of the first byte 
+of the header. As above, the second most significant bit of the header tells us 
+whether the list is null. A null list has "0" in the 2nd msb:
 
 10XX XXXX
 
@@ -72,47 +73,28 @@ We further subdivide lists in this manner: a non-null list can either be a
 "scalar" list or a "structure" list. (List elements cannot themselves be
 lists, in order to simplify the mapping between the encoding and the target
 language.) Scalar lists have a "0" in the 3rd msb of the first byte of the 
-header. The next 2 bits give the length of a single array element:
+header. The 2 least significant bits give the size of one array element:
 
 00 - 1 byte
 01 - 2 bytes
 10 - 4 bytes
 11 - 8 bytes
 
-The final 3 bits in the first byte of the header give the number of bytes
-remaining in the header as a 3-bit unsigned integer. Let that number be N;
-then, the header is 1+N bytes long, and the N bytes following the first byte
-of the header are an N-byte unsigned integer giving the number of elements
-in the array. 
+The 3 bytes following this first byte are a 3-byte unsigned integer giving
+us the number of elements in the list.
 
-110S SHHH    < H-byte integer >
+110X XXSS    < 3-byte integer >
 
 S = size of element (as given above)
-H = number of bytes remaining in header (not counting this one)
 
-Let N be the number of elements in the array (that is, the integer given by
-parsing the H bytes remaining in the header). Then the number of bytes remaining
+Let N be the number of elements in the array. Then the number of bytes remaining
 in the list (not counting the header) can be calculated as 
-   N * (size of element) + 1
-The "+1" at the end accounts for the "list footer". All scalar lists have a 
-zero-byte appended to the end of them. The footer byte MUST be a zero byte
-(if the byte is not 0, the message is not well-formed). In practice, this
-byte does not serve a purpose, but it DOES allow us to represent strings
-more efficiently in certain cases. The smallest possible scalar list
-is a list with zero elements, or "110X X000    0000 0000". Here, H is 0,
-which tells us there are 0 bytes remaining in the header (and that the length
-of the list is captured by a 0-byte integer, and is therefore 0). The second
-byte is the mandatory 0 list footer. (The X's mean that the size of the elements
-is irrelevant since there are 0 elements.)
-
-< 1 + H-byte header >< .... elements .... >< 0 byte >
+   N * (size of element) 
 
 We capture structure lists by encoding "111" in the first 3 bits of the first
-byte of the header. As above, the 3 least significant bits of the first
-byte of the header give the number of bytes needed to capture the number
-of items in the list (though the header is not just 1 + H bytes this time).
-Instead, the next 2 bytes of the header contain structural information for
-the list's elements.
+byte of the header. As above, there is a 3-byte integer giving us the number
+of elements in the list directly following the first byte of the header. 
+However, the header does contain some extra information as well.
 
 Because each element of a list must have the same schema, all list elements
 must have the same structural makeup (that is, body size and number of
@@ -121,10 +103,59 @@ largely redundant information and could theoretically be entirely
 omitted. We include the 2-byte structure header after the first byte of the
 header, and then the H-byte integer giving the number of list elements.
 
-111X XHHH    < 2-byte structure header >    < H-byte integer N >
-
-H = number of bytes needed to capture length of list
+111X XXXX    < 3-byte integer >    < 2-byte structure header >
 
 Of course, the list elements follow the header serially.
 
-< 3 + H byte header >< .... elements .... >
+< 6-byte header >< .... elements .... >
+
+LIMITS
+
+Haris is not a great format for dealing with extremely large messages. Because
+of the way the encoding works, a message must generally be encoded and decoded
+all at once (and so the message encoding must fit entirely in memory). 
+For this reason, the generated code does rigorous type-checking over message
+sizes to make sure messages don't get too large. We cap the maximum message
+size at 1 billion bytes (about 0.93 GB). This is not an entirely arbitrary
+choice: in practice, this is large enough to fit an entire encoded message as
+well as its decoded in-memory representation memory at once on a system with
+32 bits of addressable space. This is useful because it allows us to capture
+the encoded size of a structure in a 32-bit integer. If you wish to be more
+stringent about message sizes, you can decrease the number of bytes that your
+own Haris client will process at once by modifying your own source code.
+
+However, I do not think that Haris will end up being a bad choice to
+serialize larger datasets. In fact, I have a suspicion that it will end up
+being an appropriate serialization technique for large object streams. This
+is because the structural information of a Haris message is self-descriptive,
+so it is tailor-made for streaming. As a simple example, imagine you write
+a Haris message into a file, and then you write another random blob of data
+(say, the text of War and Peace). When you read the message from the file later,
+the file cursor will be waiting at the beginning of War and Peace, ready
+for you to read. You can append any arbitrary data to the end of a Haris
+message, and the data will be waiting in the stream once you parse the message.
+Of course, the data can be another Haris message, which means that if you
+write 10 Haris messages to a stream, you can read them all back in sequence.
+With other binary data serialization protocols, this is generally not the case.
+With Protocol Buffers, you have to manually "frame" the message by encoding
+the message length, pulling EXACTLY that many bytes from the stream, and then
+parsing the in-memory buffer. With Haris, you can just parse the file's
+messages in sequence, but it gets better: if all of the messages are of
+the same type, then you can even go so far as to re-use allocated C structures
+when parsing the messages in sequence.
+
+The encoding also enforces other limits. The body of a structure can be a 
+maximum of 255 bytes, and a structure can only have a maximum of 63 children.
+These limits are fairly high for practical use, but they are low enough that
+you can hit the limits if you're not careful. It is good practice to keep tabs
+on structure sizes as your protocol evolves, and "refactor" your structure
+definitions when any structure begins to approach the limit. Further,
+list sizes are capped at 2^24 - 1 elements. Finally, in order to prevent
+stack overflows from malicious or poorly-formed messages, we enforce a
+maximum recursion depth on message sizes. The "tree" structure of a message
+cannot by default be more than 64 layers deep (that is, processing the
+structure cannot take more than 64 recursive calls). The body-size and
+child-size elements can be detected at compile time, but the list-length
+requirement, tree-depth requirement, and message-size requirement cannot 
+generally be detected at compile time and so must be accounted for as runtime 
+errors.
