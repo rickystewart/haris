@@ -1,0 +1,8 @@
+This folder is called "doc", and indeed, it contains something close to 
+"documentation". In reality, these are just the notes I keep to assist in the
+planning of the development of the protocol. They may not be entirely 
+comprehensible to you, as an outsider. Eventually, I will flesh out these
+documents into something more user-friendly. (In any case, it is not a good 
+idea to document something before it's been fully completed, and so the 
+current documentation does not strive to be complete or current. As always,
+the source code trumps whatever the documentation might say.)
