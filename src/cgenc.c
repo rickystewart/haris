@@ -21,6 +21,11 @@ static CJobStatus write_core_wfuncs(CJob *, ParsedStruct *, FILE *);
 static CJobStatus write_core_rfuncs(CJob *, ParsedStruct *, FILE *);
 static CJobStatus write_core_size(CJob *, ParsedStruct *, FILE *);
 
+static CJobStatus write_buffer_protocol_funcs(CJob *, FILE *);
+static CJobStatus write_file_protocol_funcs(CJob *, FILE *);
+
+static const char *scalar_type_suffix(ScalarTag);
+
 /* =============================PUBLIC INTERFACE============================= */
 
 CJobStatus write_source_file(CJob *job)
@@ -112,7 +117,17 @@ static CJobStatus write_source_core_funcs(CJob *job, FILE *out)
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_source_protocol_funcs(CJob *job, FILE *out);
+static CJobStatus write_source_protocol_funcs(CJob *job, FILE *out)
+{
+  CJobStatus result;
+  if (job->buffer_protocol)
+    if ((result = write_buffer_protocol_funcs(job, out)) != CJOB_SUCCESS)
+      return result;
+  if (job->file_protocol)
+    if ((result = write_file_protocol_funcs(job, out)) != CJOB_SUCCESS)
+      return result;
+  return CJOB_SUCCESS;
+}
 
 /* The following core functions exist for every structure S:
    static unsigned char *S_lib_write_nonnull_header(unsigned char *);
@@ -146,8 +161,10 @@ static haris_uint32_t %s%s_lib_size(%s%s *, int, HarisStatus *);\n\n",
   return CJOB_SUCCESS;
 }
 
-/* The following buffer functions exist for every structure S:
-   static HarisStatus _S_from_buffer(S *, unsigned char *, unsigned char **, int);
+/* The following static buffer functions exist for every structure S:
+   static HarisStatus _S_from_buffer(S *, unsigned char *, haris_uint32_t ind,
+                                     haris_uint32_t sz,
+                                     unsigned char **, int depth);
    static HarisStatus _S_to_buffer(S *, unsigned char *, unsigned char **);
 
    Finally, we have the following recursive function:
@@ -158,7 +175,7 @@ static CJobStatus write_buffer_static_prototypes(CJob *job, FILE *out)
   int i;
   for (i=0; i < job->schema->num_structs; i++) {
     if (fprintf(out, "static HarisStatus _%s%s_from_buffer(%s%s *, unsigned \
-char *, unsigned char **, int);\n\
+char *, haris_uint32_t, haris_uint32_t, unsigned char **, int);\n\
 static HarisStatus _%s%s_to_buffer(%s%s *, unsigned char *, unsigned char **);\
 \n\n", 
                 job->prefix, job->schema->structs[i].name,
@@ -174,7 +191,7 @@ int);\n\n") < 0)
 }
 
 /* The following file functions exist for every structure S:
-   static HarisStatus _S_from_file(S *, FILE *, int);
+   static HarisStatus _S_from_file(S *, FILE *, haris_uint32_t *, int);
    static HarisStatus _S_to_file(S *, FILE *);
    
    Finally, we have the following recursive function:
@@ -184,7 +201,8 @@ static CJobStatus write_file_static_prototypes(CJob *job, FILE *out)
 {
   int i;
   for (i=0; i < job->schema->num_structs; i++) {
-    if (fprintf(out, "static HarisStatus _%s%s_from_file(%s%s *, FILE *, int);\
+    if (fprintf(out, "static HarisStatus _%s%s_from_file(%s%s *, FILE *, \
+haris_uint32_t *, int);\
 \n\
 static HarisStatus _%s%s_to_file(%s%s *, FILE *);\n\n", 
                 job->prefix, job->schema->structs[i].name,
@@ -500,6 +518,27 @@ HarisStatus *out)\n{\n", prefix, name, prefix, name) < 0)
   }
   return CJOB_SUCCESS;
 }
+
+/* Writes the buffer protocol functions to the output source stream. They are
+   HarisStatus S_from_buffer(S *, unsigned char *, haris_uint32_t,
+                             unsigned char **);
+   HarisStatus S_to_buffer(S *, unsigned char **, haris_uint32_t *);
+   static HarisStatus _S_from_buffer(S *, unsigned char *, 
+                                     haris_uint32_t, haris_uint32_t, 
+                                     unsigned char **, int);
+   static HarisStatus _S_to_buffer(S *, unsigned char *, unsigned char **);
+   static unsigned char *handle_child_buffer(unsigned char *, int);
+*/
+static CJobStatus write_buffer_protocol_funcs(CJob *job, FILE *out);
+
+/* Writes the file protocol functions to the output source stream. They are
+   HarisStatus S_from_file(S *, FILE *);
+   HarisStatus S_to_file(S *, FILE *);
+   static HarisStatus _S_from_file(S *, FILE *, haris_uint32_t *, int);
+   static HarisStatus _S_to_file(S *, FILE *);
+   static int handle_child_file(FILE *, int);
+*/
+static CJobStatus write_file_protocol_funcs(CJob *job, FILE *out);
 
 static const char *scalar_type_suffix(ScalarTag type)
 {

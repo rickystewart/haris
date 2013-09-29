@@ -229,7 +229,8 @@ static CJobStatus write_public_prototypes(CJob *job, FILE *out)
 }
 
 /* The buffer prototypes for every structure S are
-   HarisStatus S_from_buffer(S *, unsigned char *, unsigned char **);
+   HarisStatus S_from_buffer(S *, unsigned char *, haris_uint32_t, 
+                             unsigned char **);
    HarisStatus S_to_buffer(S *, unsigned char **, haris_uint32_t *);
 */
 static CJobStatus write_buffer_prototypes(CJob *job, FILE *out)
@@ -237,7 +238,7 @@ static CJobStatus write_buffer_prototypes(CJob *job, FILE *out)
   int i;
   for (i=0; i < job->schema->num_structs; i++) {
     if (fprintf(out, "HarisStatus %s%s_from_buffer(%s%s *, \
-unsigned char *, unsigned char **);\n", 
+unsigned char *, haris_uint32_t, unsigned char **);\n", 
                 job->prefix, job->schema->structs[i].name,
                 job->prefix, job->schema->structs[i].name) < 0)
       return CJOB_IO_ERROR;
