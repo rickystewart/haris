@@ -107,11 +107,11 @@ static CJobStatus write_source_core_funcs(CJob *job, FILE *out)
   CJobStatus result;
   int i;
   for (i=0; i < job->schema->num_structs; i++) {
-    if ((result = write_core_wfuncs(job, job->schema->structs[i], out))
+    if ((result = write_core_wfuncs(job, &job->schema->structs[i], out))
         != CJOB_SUCCESS) return result;
-    if ((result = write_core_rfuncs(job, job->schema->structs[i], out))
+    if ((result = write_core_rfuncs(job, &job->schema->structs[i], out))
         != CJOB_SUCCESS) return result;
-    if ((result = write_core_size(job, job->schema->structs[i], out))
+    if ((result = write_core_size(job, &job->schema->structs[i], out))
         != CJOB_SUCCESS) return result;
   }
   return CJOB_SUCCESS;
@@ -140,7 +140,7 @@ static CJobStatus write_source_protocol_funcs(CJob *job, FILE *out)
 static CJobStatus write_core_prototypes(CJob *job, FILE *out)
 {
   int i;
-  char *prefix, *field;
+  const char *prefix, *field;
   for (i=0; i < job->schema->num_structs; i++) {
     prefix = job->prefix;
     field = job->schema->structs[i].name;
@@ -199,7 +199,7 @@ int);\n\n") < 0)
 */
 static CJobStatus write_file_static_prototypes(CJob *job, FILE *out)
 {
-  char *prefix = job->prefix, *name;
+  const char *prefix = job->prefix, *name;
   int i;
   for (i=0; i < job->schema->num_structs; i++) {
     name = job->schema->structs[i].name;
@@ -312,7 +312,7 @@ static CJobStatus write_public_initializers(CJob *job, ParsedStruct *strct,
                     job->prefix, strct->name,
                     strct->children[i].name,
                     job->prefix, strct->name, 
-                    strct->children[i].type.strct.name) < 0)
+                    strct->children[i].type.strct->name) < 0)
           return CJOB_IO_ERROR;
 
         break;
@@ -332,7 +332,7 @@ haris_uint32_t sz)\n{\n", job->prefix, strct->name,
   switch (strct->children[i].tag) {
   case CHILD_STRUCT_LIST:
     if (fprintf(out, "  haris_uint32_i i;\n  %s **alloced;\n",
-                (type_name = strct->children[i].type.struct_list.name)) < 0) 
+                (type_name = strct->children[i].type.struct_list->name)) < 0) 
       return CJOB_IO_ERROR;
     break;
   default:
@@ -357,7 +357,7 @@ haris_uint32_t sz)\n{\n", job->prefix, strct->name,
     if (!alloced[i]) return HARIS_MEM_ERROR;\n\
     strct->_alloc_%s ++;\n  }\n",
                 strct->children[i].name, 
-                strct->children[i].type.struct_list.name,
+                strct->children[i].type.struct_list->name,
                 strct->children[i].name) < 0) return CJOB_IO_ERROR;
     break;
   default:
@@ -368,7 +368,7 @@ haris_uint32_t sz)\n{\n", job->prefix, strct->name,
   if (fprintf(out, " Success:\n\
   strct->_len_%s = sz;\n\
   return HARIS_SUCCESS;\n}\n\n", strct->children[i].name) < 0)
-    return CJO_IO_ERROR;
+    return CJOB_IO_ERROR;
   return CJOB_SUCCESS;
 }
 
@@ -385,7 +385,7 @@ static CJobStatus write_init_struct(CJob *job, ParsedStruct *strct,
               job->prefix, strct->name,
               strct->children[i].name,
               strct->children[i].name, 
-              strct->children[i].type.strct.name) < 0)
+              strct->children[i].type.strct->name) < 0)
     return CJOB_IO_ERROR;
   return CJOB_SUCCESS;
 }
@@ -394,7 +394,7 @@ static CJobStatus write_init_struct(CJob *job, ParsedStruct *strct,
 static CJobStatus write_core_wfuncs(CJob *job, ParsedStruct *strct, FILE *out)
 {
   int i;
-  char *prefix = job->prefix, *name = strct->name;
+  const char *prefix = job->prefix, *name = strct->name;
   if (fprintf(out, "static unsigned char *%s%s_lib_write_nonnull_header(\
 unsigned char *buf)\n{\n  buf[0] = (unsigned char)%d;\n  buf[1] = \
 (unsigned char)%d;\n  return buf + 2;\n}\n\n",
@@ -412,7 +412,7 @@ unsigned char *buf)\n{\n  if (strct->_null) return buf;\n",
     return CJOB_IO_ERROR;
   for (i=0; i < strct->num_scalars; i++) {
     if (fprintf(out, "  haris_write_%s(buf + %d, strct->%s);\n", 
-                scalar_type_suffix(strct->scalars[i].tag),
+                scalar_type_suffix(strct->scalars[i].type.tag),
                 strct->scalars[i].offset, strct->scalars[i].name) < 0)
       return CJOB_IO_ERROR;
   }
@@ -432,12 +432,13 @@ header(strct, buf));\n}\n\n",
 static CJobStatus write_core_rfuncs(CJob *job, ParsedStruct *strct, FILE *out)
 {
   int i;
+  const char *prefix = job->prefix, *name = strct->name;
   if (fprintf(out, "static void %s%s_lib_read_body(%s%s *strct, unsigned char *\
 buf)\n{\n", prefix, name, prefix, name) < 0) return CJOB_IO_ERROR;
   for (i=0; i < strct->num_scalars; i++) {
     if (fprintf(out, "  strct->%s = haris_read_%s(buf + %d);\n", 
                 strct->scalars[i].name, 
-                scalar_type_suffix(strct->scalars[i].tag),
+                scalar_type_suffix(strct->scalars[i].type.tag),
                 strct->scalars[i].offset) < 0)
       return CJOB_IO_ERROR;
   }
@@ -449,6 +450,7 @@ buf)\n{\n", prefix, name, prefix, name) < 0) return CJOB_IO_ERROR;
 static CJobStatus write_core_size(CJob *job, ParsedStruct *strct, FILE *out)
 {
   int i;
+  const char *prefix = job->prefix, *name = strct->name;
   if (fprintf(out, "haris_uint32_t %s%s_lib_size(%s%s *strct, int depth, \
 HarisStatus *out)\n{\n", prefix, name, prefix, name) < 0)
     return CJOB_IO_ERROR;
@@ -490,7 +492,7 @@ HarisStatus *out)\n{\n", prefix, name, prefix, name) < 0)
   }\n", strct->children[i].name, 
                     (strct->children[i].nullable ? "return 1;" : 
                      "{ *out = HARIS_STRUCTURE_ERROR; return 0; }"),
-                    job->prefix, strct->children[i].type.strct.name,
+                    job->prefix, strct->children[i].type.strct->name,
                     strct->children[i].name) < 0)
           return CJOB_IO_ERROR;
         break;
@@ -508,7 +510,7 @@ HarisStatus *out)\n{\n", prefix, name, prefix, name) < 0)
   }\n", strct->children[i].name, 
                     (strct->children[i].nullable ? "return 1;" :
                      "{ *out = HARIS_STRUCTURE_ERROR; return 0; }"),
-                    job->prefix, strct->children[i].type.struct_list.name,
+                    job->prefix, strct->children[i].type.struct_list->name,
                     strct->children[i].name) < 0)
           return CJOB_IO_ERROR;
       }
