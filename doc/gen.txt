@@ -283,7 +283,7 @@ to the buffer.
 
 Private functions:
 - HarisStatus _S_from_buffer(S *, unsigned char *, haris_uint32_t ind, 
-                             haris_uint32_t sz, unsigned char **, int);
+                             haris_uint32_t sz, haris_uint32_t *, int);
 -- This function reads the structure header information and reads the body
 into an array on the stack, and then copies the information from the buffer
 into the structure. It then loops through all the child elements, copying them

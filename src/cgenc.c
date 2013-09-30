@@ -187,7 +187,7 @@ static CJobStatus write_buffer_static_prototypes(CJob *job, FILE *out)
   for (i=0; i < job->schema->num_structs; i++) {
     name = job->schema->structs[i].name;
     if (fprintf(out, "static HarisStatus _%s%s_from_buffer(%s%s *, unsigned \
-char *, haris_uint32_t, haris_uint32_t, unsigned char **, int);\n\
+char *, haris_uint32_t, haris_uint32_t, haris_uint32_t *, int);\n\
 static HarisStatus _%s%s_to_buffer(%s%s *, unsigned char *, unsigned char **);\
 \n\n", 
                 prefix, name, prefix, name, prefix, name, prefix, name) < 0)
@@ -586,17 +586,105 @@ static CJobStatus write_file_protocol_funcs(CJob *job, FILE *out)
   return CJOB_SUCCESS;
 }
 
+/* This function handles the _from_buffer and _to_buffer public functions.
+   These functions both primarily call their nonstatic helper functions, though
+   they do some error checking to ensure that the structure produces a 
+   valid message.
+*/
+   
 static CJobStatus write_public_buffer_funcs(CJob *job, ParsedStruct *strct,
-                                            FILE *out);
+                                            FILE *out)
+{
+  const char *prefix = job->prefix, *name = strct->name;
+  if (fprintf(out, "HarisStatus %s%s_from_buffer(%s%s *strct, \
+unsigned char *buf, haris_uint32_t sz, unsigned char **out_addr)\n\
+{\n\
+  HarisStatus result;\n\
+  if ((result = _%s%s_from_buffer(strct, buf, 0, sz, out_addr, 0)) != \n\
+      HARIS_SUCCESS) return result;\n\
+  if (strct->_null) return HARIS_STRUCTURE_ERROR;\n\
+  return HARIS_SUCCESS;\n}\n\n", 
+              prefix, name, prefix, name, prefix, name) < 0) 
+    return CJOB_IO_ERROR;
+  if (fprintf(out, "HarisStatus %s%s_to_buffer(%s%s *strct, \
+unsigned char **out_buf, haris_uint32_t *out_sz)\n\
+{\n\
+  unsigned char *unused;\n\
+  HarisStatus result;\n\
+  if (strct->_null) return HARIS_STRUCTURE_ERROR;\n\
+  *out_sz = %s%s_lib_size(strct, 0, &result);\n\
+  if (*out_sz == 0) return result;\n\
+  *out_buf = (unsigned char *)malloc(sz);\n\
+  if (!*out_buf) return HARIS_MEM_ERROR;\n\
+  return _%s%s_to_buffer(strct, buf, &unused);\n}\n\n",
+              prefix, name, prefix, name, prefix, name, prefix, name) < 0)
+    return CJOB_IO_ERROR;
+  return CJOB_SUCCESS;
+}
+
 static CJobStatus write_static_buffer_funcs(CJob *job, ParsedStruct *strct,
-                                            FILE *out);
-static CJobStatus write_child_buffer_handler(CJob *job, FILE *out);
+                                            FILE *out)
+{
+  int i;
+  const char *prefix = job->prefix, *name = strct->name;
+  if (fprintf(out, "HarisStatus _%s%s_from_buffer(%s%s *strct, \
+unsigned char *buf, haris_uint32_t ind, haris_uint32_t sz, haris_uint32_t *\
+out_ind, int depth)\n{\n\
+  HarisStatus result;\n\
+  unsigned char c;\n\
+  int num_children, body_size, i;\n\
+  unsigned char *msg = buf + ind;\n\
+  if (depth > HARIS_DEPTH_LIMIT) return HARIS_DEPTH_ERROR;\n\
+  if (ind >= sz || ind > HARIS_MESSAGE_SIZE_LIMIT)\n\
+    return HARIS_INPUT_ERROR;\n\
+  c = msg[0];\n\
+  if (c & 0x80) return HARIS_STRUCTURE_ERROR;\n\
+  if (c & 0x40) { strct->_null = 1; *out_buf = buf + 1; \
+return HARIS_SUCCESS; }\n\
+  if (ind + 1 >= sz || ind + 1 >= HARIS_MESSAGE_SIZE_LIMIT)\n\
+    return HARIS_INPUT_ERROR;\n\
+  body_size = msg[1];\n\
+  num_children = msg[0] & 0x7F;\n\
+  if (body_size < %s%s_LIB_BODY_SZ || \n\
+      num_children < %s%s_LIB_NUM_CHILDREN) return HARIS_STRUCTURE_ERROR;\n\
+  if (ind + body_size >= sz || \n\
+      ind + body_size >= HARIS_MESSAGE_SIZE_LIMIT)\n\
+    return HARIS_INPUT_ERROR;\n\
+  %s%s_lib_read_body(strct, msg + 2);\n",
+              prefix, name, prefix, name, prefix, name, prefix, name, 
+              prefix, name) < 0) return CJOB_IO_ERROR;
+  for (i = 0; i < strct->num_children; i++) {
+    switch (strct->children[i].tag) {
+      case CHILD_TEXT:
+      case CHILD_STRUCT:
+      case CHILD_SCALAR_LIST:
+      case CHILD_STRUCT_LIST:
+    }
+  }
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_child_buffer_handler(CJob *job, FILE *out)
+{
+  return CJOB_SUCCESS;
+}
 
 static CJobStatus write_public_file_funcs(CJob *job, ParsedStruct *strct,
-                                          FILE *out);
+                                          FILE *out)
+{
+  return CJOB_SUCCESS;
+}
+
 static CJobStatus write_static_file_funcs(CJob *job, ParsedStruct *strct,
-                                          FILE *out);
-static CJobStatus write_child_file_handler(CJob *job, FILE *out);
+                                          FILE *out)
+{
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_child_file_handler(CJob *job, FILE *out)
+{
+  return CJOB_SUCCESS;
+}
 
 static const char *scalar_type_suffix(ScalarTag type)
 {
