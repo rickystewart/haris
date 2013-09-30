@@ -1,12 +1,7 @@
 #include "cgen.h"
-#include "cgen_utils.h"
-#include "cgenh.h"
-#include "cgenc.h"
 
 static CJobStatus check_job(CJob *);
 static CJobStatus begin_compilation(CJob *);
-
-static CJobStatus write_utility_library(CJob *);
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -141,26 +136,3 @@ static CJobStatus begin_compilation(CJob *job)
   return CJOB_SUCCESS;
 }
 
-/* The utility library is an unchanging pair of source files stored in a
-   pair of normal C strings over in cgen_utils.h.
-*/
-static CJobStatus write_utility_library(CJob *job)
-{
-  int i;
-  FILE *util_c = fopen("util.c", "w"), *util_h;
-  (void)job;
-  if (!util_c) return CJOB_IO_ERROR;
-  for (i=0; cgen_util_c_contents[i]; i++) 
-    if (fprintf(util_c, "%s", cgen_util_c_contents[i]) < 0) 
-      return CJOB_IO_ERROR;
-  fclose(util_c);
-
-  util_h = fopen("util.h", "w");
-  if (!util_h) return CJOB_IO_ERROR;
-  for (i=0; cgen_util_h_contents[i]; i++)
-    if (fprintf(util_h, "%s", cgen_util_h_contents[i]) < 0) 
-      return CJOB_IO_ERROR;
-  fclose(util_h);
-
-  return CJOB_SUCCESS;
-}

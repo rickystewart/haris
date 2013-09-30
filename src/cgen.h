@@ -6,7 +6,9 @@
 #include <stdio.h>
 #include <ctype.h>
 #include "schema.h"
-#include "cgen_utils.h"
+#include "cgenh.h"
+#include "cgenc.h"
+#include "cgenu.h"
 
 /* This file contains structures and procedures pertinent to constructing
    and running C compilation jobs. The functions for writing header files
