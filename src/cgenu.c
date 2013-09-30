@@ -366,7 +366,7 @@ void haris_write_float64(unsigned char *b, haris_float64 f)\n\
 /* The utility library is an unchanging pair of source files stored in a
    pair of normal C strings over in cgen_utils.h.
 */
-static CJobStatus write_utility_library(CJob *job)
+CJobStatus write_utility_library(CJob *job)
 {
   int i;
   FILE *util_c = fopen("util.c", "w"), *util_h;

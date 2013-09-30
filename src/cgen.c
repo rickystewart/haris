@@ -1,4 +1,7 @@
 #include "cgen.h"
+#include "cgenh.h"
+#include "cgenc.h"
+#include "cgenu.h"
 
 static CJobStatus check_job(CJob *);
 static CJobStatus begin_compilation(CJob *);
