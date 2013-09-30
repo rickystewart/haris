@@ -256,7 +256,7 @@ will produce a structurally sound message. If the check succeeds, then we call
 _S_to_file to write the message.
 
 Private functions:
-- HarisStatus _S_from_file(S *, FILE *, int);
+- HarisStatus _S_from_file(S *, FILE *, haris_uint32_t *, int);
 -- This function reads the structure header information and reads the body
 into an array on the stack, and then copies the information from the buffer
 into the structure. It then loops through all the child elements, copying them
@@ -270,10 +270,11 @@ functions).
 BUFFER PROTOCOL
 
 Public-facing functions:
-- HarisStatus S_from_buffer(S *, unsigned char *, unsigned char **);
+- HarisStatus S_from_buffer(S *, unsigned char *, haris_uint32_t sz,
+                             unsigned char **);
 -- This function immediately calls _S_from_buffer. If the resultant structure
 is null, we return an error; otherwise, we return a success code.
-- HarisStatus S_to_buffer(S *, unsigned char **, int *);
+- HarisStatus S_to_buffer(S *, unsigned char **, haris_uint32_t *);
 -- This function first checks whether its argument is NULL and returns if that
 is the case. It then finds the length of the message (with S_lib_size) and
 allocates the appropriately sized buffer (returning if there is a structural
@@ -281,7 +282,8 @@ error). It then calls _S_to_buffer on the structure to write the structure
 to the buffer.
 
 Private functions:
-- HarisStatus _S_from_buffer(S *, unsigned char *, unsigned char **, int);
+- HarisStatus _S_from_buffer(S *, unsigned char *, haris_uint32_t ind, 
+                             haris_uint32_t sz, unsigned char **, int);
 -- This function reads the structure header information and reads the body
 into an array on the stack, and then copies the information from the buffer
 into the structure. It then loops through all the child elements, copying them
