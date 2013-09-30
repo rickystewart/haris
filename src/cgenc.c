@@ -327,6 +327,7 @@ static CJobStatus write_public_initializers(CJob *job, ParsedStruct *strct,
         break;
     }
   }
+  return CJOB_SUCCESS;
 }
 
 static CJobStatus write_init_list(CJob *job, ParsedStruct *strct, 
@@ -344,9 +345,14 @@ haris_uint32_t sz)\n{\n", job->prefix, strct->name,
                 (type_name = strct->children[i].type.struct_list->name)) < 0) 
       return CJOB_IO_ERROR;
     break;
-  default:
+  case CHILD_TEXT:
+    if (fprintf(out, "  char *alloced;\n") < 0) return CJOB_IO_ERROR;
+    break;
+  case CHILD_SCALAR_LIST:
     if (fprintf(out, "  %s *alloced;\n", 
-                (type_name = scalar_type_name(strct->children[i].tag))) < 0) 
+                (type_name = 
+                  scalar_type_name(strct->children[i].type.scalar_list.tag))) 
+         < 0) 
       return CJOB_IO_ERROR;
     break;
   }
@@ -473,7 +479,8 @@ HarisStatus *out)\n{\n", prefix, name, prefix, name) < 0)
     *out = HARIS_DEPTH_ERROR;\n\
     return 0;\n\
   } else {\n\
-    haris_uint32_t accum = 2 + %s%s_LIB_BODY_SZ, buf;\n") < 0)
+    haris_uint32_t accum = 2 + %s%s_LIB_BODY_SZ, buf;\n",
+               prefix, name) < 0)
       return CJOB_IO_ERROR;
     for (i = 0; i < strct->num_children; i++) {
       switch (strct->children[i].tag) {
@@ -519,6 +526,7 @@ HarisStatus *out)\n{\n", prefix, name, prefix, name) < 0)
   }\n", strct->children[i].name, 
                     (strct->children[i].nullable ? "return 1;" :
                      "{ *out = HARIS_STRUCTURE_ERROR; return 0; }"),
+                    strct->children[i].name, 
                     job->prefix, strct->children[i].type.struct_list->name,
                     strct->children[i].name) < 0)
           return CJOB_IO_ERROR;
@@ -582,7 +590,7 @@ static CJobStatus write_public_buffer_funcs(CJob *job, ParsedStruct *strct,
                                             FILE *out);
 static CJobStatus write_static_buffer_funcs(CJob *job, ParsedStruct *strct,
                                             FILE *out);
-static CJobStatus write_child_buffer_handler(CJob *job, FILE *out;
+static CJobStatus write_child_buffer_handler(CJob *job, FILE *out);
 
 static CJobStatus write_public_file_funcs(CJob *job, ParsedStruct *strct,
                                           FILE *out);
