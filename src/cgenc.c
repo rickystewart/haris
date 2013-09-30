@@ -639,7 +639,7 @@ out_ind, int depth)\n{\n\
     return HARIS_INPUT_ERROR;\n\
   c = msg[0];\n\
   if (c & 0x80) return HARIS_STRUCTURE_ERROR;\n\
-  if (c & 0x40) { strct->_null = 1; *out_buf = buf + 1; \
+  if (c & 0x40) { strct->_null = 1; *out_ind = ind + 1; \
 return HARIS_SUCCESS; }\n\
   if (ind + 1 >= sz || ind + 1 >= HARIS_MESSAGE_SIZE_LIMIT)\n\
     return HARIS_INPUT_ERROR;\n\
