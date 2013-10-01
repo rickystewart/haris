@@ -51,6 +51,7 @@ const char *scalar_type_name(ScalarTag type)
   switch (type) {
   case SCALAR_UINT8:
   case SCALAR_ENUM:
+  case SCALAR_BOOL:
     return "haris_uint8_t";
   case SCALAR_INT8:
     return "haris_int8_t";
@@ -70,8 +71,6 @@ const char *scalar_type_name(ScalarTag type)
     return "haris_float32";
   case SCALAR_FLOAT64:
     return "haris_float64";
-  case SCALAR_BOOL:
-    return "char";
   default:
     return NULL;
   }

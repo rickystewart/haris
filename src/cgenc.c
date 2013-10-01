@@ -40,7 +40,8 @@ static CJobStatus write_static_to_buffer_function(CJob *, ParsedStruct *,
                                                   FILE *);
 
 static const char *scalar_type_suffix(ScalarTag);
-static scalar_bit_pattern(ScalarTag type);
+static int scalar_bit_pattern(ScalarTag type);
+static int sizeof_scalar(ScalarTag type);
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -194,13 +195,12 @@ static CJobStatus write_buffer_static_prototypes(CJob *job, FILE *out)
     name = job->schema->structs[i].name;
     if (fprintf(out, "static HarisStatus _%s%s_from_buffer(%s%s *, unsigned \
 char *, haris_uint32_t, haris_uint32_t, haris_uint32_t *, int);\n\
-static HarisStatus _%s%s_to_buffer(%s%s *, unsigned char *, unsigned char **);\
-\n\n", 
+static void _%s%s_to_buffer(%s%s *, unsigned char *, unsigned char **);\n\n",
                 prefix, name, prefix, name, prefix, name, prefix, name) < 0)
       return CJOB_IO_ERROR;
   }
-  if (fprintf(out, "static unsigned char *handle_child_buffer(unsigned char *, \
-int);\n\n") < 0) 
+  if (fprintf(out, "static HarisStatus handle_child_buffer(unsigned char *, \
+haris_uint32_t, haris_uint32_t, haris_uint32_t *, int);\n\n") < 0) 
     return CJOB_IO_ERROR;
   return CJOB_SUCCESS;
 }
@@ -494,15 +494,15 @@ HarisStatus *out)\n{\n", prefix, name, prefix, name) < 0)
       case CHILD_SCALAR_LIST:
         if (fprintf(out, "  if (strct->_null_%s) %s\n\
   else {\n\
-    accum += 4 + strct->_len_%s * (sizeof %s);\n\
+    accum += 4 + strct->_len_%s * %d;\n\
     if (accum > HARIS_MESSAGE_SIZE_LIMIT) \
 { *out = HARIS_SIZE_ERROR; return 0; }\n\
   }\n", strct->children[i].name, 
                     (strct->children[i].nullable ? "return 1;" : 
                      "{ *out = HARIS_STRUCTURE_ERROR; return 0; }"),
                     strct->children[i].name, 
-                    (strct->children[i].tag == CHILD_TEXT ? "char" :
-                     scalar_type_name(strct->children[i].type.scalar_list.tag)))
+                    (strct->children[i].tag == CHILD_TEXT ? 1 :
+                     sizeof_scalar(strct->children[i].type.scalar_list.tag)))
             < 0) return CJOB_IO_ERROR;
         break;
       case CHILD_STRUCT:
@@ -551,7 +551,8 @@ HarisStatus *out)\n{\n", prefix, name, prefix, name) < 0)
                                      haris_uint32_t, haris_uint32_t, 
                                      unsigned char **, int);
    static HarisStatus _S_to_buffer(S *, unsigned char *, unsigned char **);
-   static unsigned char *handle_child_buffer(unsigned char *, int);
+   static HarisStatus handle_child_buffer(unsigned char *, haris_uint32_t,
+                                          haris_uint32_t, haris_uint32_t *);
 */
 static CJobStatus write_buffer_protocol_funcs(CJob *job, FILE *out)
 {
@@ -667,7 +668,7 @@ static CJobStatus write_static_from_buffer_function(CJob *job,
 {
   int i;
   const char *prefix = job->prefix, *name = strct->name;
-  if (fprintf(out, "HarisStatus _%s%s_from_buffer(%s%s *strct, \
+  if (fprintf(out, "static HarisStatus _%s%s_from_buffer(%s%s *strct, \
 unsigned char *buf, haris_uint32_t ind, haris_uint32_t sz, haris_uint32_t *\
 out_ind, int depth)\n{\n\
   HarisStatus result;\n\
@@ -708,8 +709,7 @@ depth+1)) != \n\
 *out_ind + 4 >= HARIS_MESSAGE_SIZE_LIMIT)\n\
     return HARIS_SIZE_ERROR;\n\
   if (buf[*out_ind] != 0xC0) return HARIS_STRUCTURE_ERROR;\n\
-  i = (haris_uint32_t)buf[*out_ind + 1] << 16 | \
-(haris_uint32_t)buf[*out_ind + 2] << 8 | buf[*out_ind + 3];\n\
+  i = haris_read_uint24(*out_ind + 1);\n\
   if (*out_ind + 4 + i >= sz || \
 *out_ind + 4 + i >= HARIS_MESSAGE_SIZE_LIMIT)\n\
     return HARIS_SIZE_ERROR;\n\
@@ -722,31 +722,32 @@ depth+1)) != \n\
       if (fprintf(out, "  if (*out_ind + 4 >= sz || \
 *out_ind + 4 >= HARIS_MESSAGE_SIZE_LIMIT)\n\
   if (buf[*out_ind] != 0x%X) return HARIS_STRUCTURE_ERROR;\n\
-  i = (haris_uint32_t)buf[*out_ind + 1] << 16 | \
-(haris_uint32_t)buf[*out_ind + 2] << 8 | buf[*out_ind + 3];\n\
+  i = haris_read_uint24(*out_ind + 1);\n\
   if ((result = %s%s_init_%s(strct, i)) != HARIS_SUCCESS) return result;\n\
-  if (*out_ind + 4 + i * sizeof *strct->%s >= sz || \
-*out_ind + 4 + i * sizeof *strct->%s >= HARIS_MESSAGE_SIZE_LIMIT)\n\
+  if (*out_ind + 4 + i * %d >= sz || \
+*out_ind + 4 + i * %d >= HARIS_MESSAGE_SIZE_LIMIT)\n\
     return HARIS_SIZE_ERROR;\n\
   *out_ind += 4;\n\
   {\n\
     haris_uint32_t x;\n\
     for (x = 0; x < i; x++)\n\
-      strct->%s[x] = haris_read_%s(buf + *out_ind + x * sizeof *strct->%s;\n\
+      strct->%s[x] = haris_read_%s(buf + *out_ind + x * %d);\n\
   }\n\
   *out_ind += x * sizeof *strct->%s;\n", 0xC0 | 
               scalar_bit_pattern(strct->children[i].type.scalar_list.tag),
-              prefix, name, strct->children[i].name, strct->children[i].name,
-              strct->children[i].name, strct->children[i].name,
+              prefix, name, strct->children[i].name, 
+              sizeof_scalar(strct->children[i].type.scalar_list.tag),
+              sizeof_scalar(strct->children[i].type.scalar_list.tag),
+              strct->children[i].name,
               scalar_type_suffix(strct->children[i].type.scalar_list.tag),
+              sizeof_scalar(strct->children[i].type.scalar_list.tag),
               strct->children[i].name) < 0) return CJOB_IO_ERROR;
       break;
     case CHILD_STRUCT_LIST:
       if (fprintf(out, "  if (*out_ind + 6 >= sz || \
 *out_ind + 6 >= HARIS_MESSAGE_SIZE_LIMIT)\n\
   if (buf[*out_ind] != 0xE0) return HARIS_STRUCTURE_ERROR;\n\
-  i = (haris_uint32_t)buf[*out_ind + 1] << 16 | \
-(haris_uint32_t)buf[*out_ind + 2] << 8 | buf[*out_ind + 3];\n\
+  i = haris_read_uint24(*out_ind + 1);\n\
   if ((result = %s%s_init_%s(strct, i)) != HARIS_SUCCESS) return result;\n\
   *out_ind += 6;\n\
   {\n\
@@ -762,7 +763,10 @@ depth+1)) != \n\
     }
   }
   if (fprintf(out, "  for (i = 0; i < num_children - %s%s_LIB_NUM_CHILDREN; \
-i++)\nreturn HARIS_SUCCESS;\n}\n\n") < 0)
+i++)\n\
+    if ((result = handle_child_buffer(buf, *out_ind, sz, out_ind, depth + 1)) \
+        != HARIS_SUCCESS)\n\
+      return result;\n  return HARIS_SUCCESS;\n}\n\n") < 0)
     return CJOB_IO_ERROR;
   return CJOB_SUCCESS;
 }
@@ -771,7 +775,87 @@ static CJobStatus write_static_to_buffer_function(CJob *job,
                                                   ParsedStruct *strct, 
                                                   FILE *out)
 {
-
+  int i;
+  const char *prefix = job->prefix, *name = strct->name, *fname;
+  if (fprintf(out, "static void _%s%s_to_buffer(%s%s *strct, \
+unsigned char *msg, unsigned char **out_addr)\n{\n\
+  HarisStatus result;
+  *out_addr = %s%s_lib_write_hb(strct, buf);\n\
+  if (strct->_null) return;\n", 
+              prefix, name, prefix, name, prefix, name) < 0)
+    return CJOB_IO_ERROR;
+  for (i = 0; i < strct->num_children; i++) {
+    fname = strct->children[i].name;
+    switch (strct->children[i].tag) {
+    case CHILD_STRUCT:
+      if (fprintf(out, "  _%s%s_to_buffer(strct->%s, *out_addr, out_addr);\n",
+                  prefix, strct->children[i].type.strct->name, 
+                  strct->children[i].name) < 0)
+        return CJOB_IO_ERROR;
+      break;
+    case CHILD_TEXT:
+      if (strct->children[i].nullable) {
+        if (fprintf(out, "  if (strct->_null_%s) *out_addr++ = 0x80;\n\
+  else {\n\
+    *out_addr = 0xC0;\n\
+    haris_write_uint24(*out_addr + 1, strct->_len_%s);\n\
+    (void)memcpy(*out_addr + 4, strct->%s, strct->_len_%s);\n\
+    *out_addr += 4 + strct->_len_%s;\n}\n", 
+                    fname, fname, fname, fname, fname) < 0)
+          return CJOB_IO_ERROR;
+      } else {
+        if (fprintf(out, "  *out_addr = 0xC0;\n\
+  haris_write_uint24(*out_addr + 1, strct->_len_%s);\n\
+  (void)memcpy(*out_addr + 4, strct->%s, strct->_len_%s);\n
+  *out_addr += 4 + strct->_len_%s;\n}\n", 
+                    fname, fname, fname, fname))
+          return CJOB_IO_ERROR;
+      }
+      break;
+    case CHILD_SCALAR_LIST:
+      if (strct->children[i].nullable) {
+        if (fprintf(out, "  if (strct->_null_%s) *out_addr++ = 0x80;\n\
+  else", fname) < 0)
+          return CJOB_IO_ERROR;
+      } 
+      if (fprintf(out, "  {\n\
+    haris_uint32_t x;\n\
+    *out_addr = 0x%X;\n\
+    haris_write_uint24(*out_addr + 1, strct->_len_%s);\n\
+    *out_addr += 4;\n\
+    for (x = 0; x < strct->_len_%s; x++) {\n\
+      haris_write_%s(*out_addr, strct->%s[x]);\n\
+      *out_addr += %d;\n\
+    }\n  }\n", 0xC0 | 
+                scalar_bit_pattern(strct->children[i].type.scalar_list.tag),
+                fname, fname, 
+                scalar_type_suffix(strct->children[i].type.scalar_list.tag),
+                fname, 
+                sizeof_scalar(strct->children[i].type.scalar_list.tag)) < 0)
+        return CJOB_IO_ERROR;
+      break;
+    case CHILD_STRUCT_LIST:
+      if (strct->children[i].nullable) {
+        if (fprintf(out, "  if (strct->_null_%s) *out_addr++ = 0x80;\n\
+  else", fname) < 0)
+          return CJOB_IO_ERROR;
+      }
+      /* WIP */
+      if (fprintf(out, "  {\n\
+    haris_uint32_t x;\n\
+    *out_addr = 0xE0;\n\
+    haris_write_uint24(*out_addr + 1, strct->_len_%s);\n\
+    *out_addr = %s%s_lib_write_nonnull_header(*out_addr + 4);\n\
+    for (x = 0; x < strct->_len_%s; x++)\n\
+      _%s%s_to_buffer(strct->%s[x], *out_addr, out_addr);\n\
+  }\n", fname, prefix,
+                  fname, prefix, ))
+      break;
+    }
+  }
+  if (fprintf(out, "  return HARIS_SUCCESS;\n}\n\n") < 0)
+    return CJOB_IO_ERROR;
+  return CJOB_SUCCESS;
 }
 
 static const char *scalar_type_suffix(ScalarTag type)
@@ -802,7 +886,7 @@ static const char *scalar_type_suffix(ScalarTag type)
   }
 }
 
-static scalar_bit_pattern(ScalarTag type)
+static int scalar_bit_pattern(ScalarTag type)
 {
   switch (type) {
   case SCALAR_UINT8:
@@ -821,5 +905,27 @@ static scalar_bit_pattern(ScalarTag type)
   case SCALAR_INT64:
   case SCALAR_FLOAT64:
     return 3;
+  }
+}
+
+static int sizeof_scalar(ScalarTag type)
+{
+  switch (type) {
+  case SCALAR_UINT8:
+  case SCALAR_ENUM:
+  case SCALAR_BOOL:
+  case SCALAR_INT8:
+    return 1;
+  case SCALAR_UINT16:
+  case SCALAR_INT16:
+    return 2;
+  case SCALAR_UINT32:
+  case SCALAR_INT32:
+  case SCALAR_FLOAT32:
+    return 4;
+  case SCALAR_UINT64:
+  case SCALAR_INT64:
+  case SCALAR_FLOAT64:
+    return 8;
   }
 }
