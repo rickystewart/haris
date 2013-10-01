@@ -607,9 +607,9 @@ static CJobStatus write_public_buffer_funcs(CJob *job, ParsedStruct *strct,
 unsigned char *buf, haris_uint32_t sz, unsigned char **out_addr)\n\
 {\n\
   HarisStatus result;\n\
-  if ((result = _%s%s_from_buffer(strct, buf, 0, sz, out_addr, 0)) != \n\
-      HARIS_SUCCESS) return result;\n\
-  if (strct->_null) return HARIS_STRUCTURE_ERROR;\n\
+  if ((result = _%s%s_from_buffer(strct, buf, 0, sz, out_addr, 0)) \n\
+               != HARIS_SUCCESS) return result;\n\
+  HARIS_ASSERT(!strct->_null, STRUCTURE);\n\
   return HARIS_SUCCESS;\n}\n\n", 
               prefix, name, prefix, name, prefix, name) < 0) 
     return CJOB_IO_ERROR;
@@ -618,11 +618,11 @@ unsigned char **out_buf, haris_uint32_t *out_sz)\n\
 {\n\
   unsigned char *unused;\n\
   HarisStatus result;\n\
-  if (strct->_null) return HARIS_STRUCTURE_ERROR;\n\
+  HARIS_ASSERT(!strct->_null, STRUCTURE);\n\
   *out_sz = %s%s_lib_size(strct, 0, &result);\n\
-  if (*out_sz == 0) return result;\n\
+  if (!*out_sz) return result;
   *out_buf = (unsigned char *)malloc(sz);\n\
-  if (!*out_buf) return HARIS_MEM_ERROR;\n\
+  HARIS_ASSERT(*out_buf, MEM);\n\
   return _%s%s_to_buffer(strct, buf, &unused);\n}\n\n",
               prefix, name, prefix, name, prefix, name, prefix, name) < 0)
     return CJOB_IO_ERROR;
@@ -674,21 +674,20 @@ out_ind, int depth)\n{\n\
   HarisStatus result;\n\
   int num_children, body_size;\n\
   haris_uint32_t i;\n\
-  if (depth > HARIS_DEPTH_LIMIT) return HARIS_DEPTH_ERROR;\n\
-  if (ind >= sz || ind > HARIS_MESSAGE_SIZE_LIMIT)\n\
-    return HARIS_INPUT_ERROR;\n\
-  if (buf[ind] & 0x80) return HARIS_STRUCTURE_ERROR;\n\
+  HARIS_ASSERT(depth <= HARIS_DEPTH_LIMIT, DEPTH);\n\
+  HARIS_ASSERT(ind < sz, INPUT);\n\
+  HARIS_ASSERT(ind <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+  HARIS_ASSERT(!(buf[ind] & 0x80), STRUCTURE);\n\
   if (buf[ind] & 0x40) { strct->_null = 1; *out_ind = ind + 1; \
 return HARIS_SUCCESS; }\n\
-  if (ind + 1 >= sz || ind + 1 >= HARIS_MESSAGE_SIZE_LIMIT)\n\
-    return HARIS_INPUT_ERROR;\n\
+  HARIS_ASSERT((ind + 1 < sz) && (ind + 1 <= HARIS_MESSAGE_SIZE_LIMIT),\n\
+               INPUT);\n\
   body_size = buf[ind + 1];\n\
   num_children = buf[ind] & 0x7F;\n\
-  if (body_size < %s%s_LIB_BODY_SZ || \n\
-      num_children < %s%s_LIB_NUM_CHILDREN) return HARIS_STRUCTURE_ERROR;\n\
-  if (ind + body_size >= sz || \n\
-      ind + body_size >= HARIS_MESSAGE_SIZE_LIMIT)\n\
-    return HARIS_INPUT_ERROR;\n\
+  HARIS_ASSERT(body_size >= %s%s_LIB_BODY_SZ && \n\
+               num_children >= %s%s_LIB_NUM_CHILDREN, STRUCTURE);\n\
+  HARIS_ASSERT(ind + body_size < sz, INPUT);\n\
+  HARIS_ASSERT(ind + body_size < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   %s%s_lib_read_body(strct, buf + ind + 2);\n\
   *out_ind = ind + body_size + 2;\n",
               prefix, name, prefix, name, prefix, name, prefix, name, 
@@ -696,7 +695,8 @@ return HARIS_SUCCESS; }\n\
   for (i = 0; i < strct->num_children; i++) {
     switch (strct->children[i].tag) {
     case CHILD_STRUCT:
-      if (fprintf(out, "  if (!%s%s_init_%s(strct)) return HARIS_MEM_ERROR;\n\
+      if (fprintf(out, "  if ((result = %s%s_init_%s(strct)) != \
+HARIS_SUCCESS) return result;\n\
   if ((result = _%s%s_from_buffer(strct->%s, buf, *out_ind, sz, out_ind, \
 depth+1)) != \n\
       HARIS_SUCCESS) return result;\n", 
@@ -705,14 +705,12 @@ depth+1)) != \n\
           < 0) return CJOB_IO_ERROR;
       break;
     case CHILD_TEXT:
-      if (fprintf(out, "  if (*out_ind + 4 >= sz || \
-*out_ind + 4 >= HARIS_MESSAGE_SIZE_LIMIT)\n\
-    return HARIS_SIZE_ERROR;\n\
-  if (buf[*out_ind] != 0xC0) return HARIS_STRUCTURE_ERROR;\n\
+      if (fprintf(out, "  HARIS_ASSERT(*out_ind + 4 < sz, INPUT);\n\
+  HARIS_ASSERT(*out_ind + 4 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+  HARIS_ASSERT(buf[*out_ind] == 0xC0, STRUCTURE);\n\
   i = haris_read_uint24(*out_ind + 1);\n\
-  if (*out_ind + 4 + i >= sz || \
-*out_ind + 4 + i >= HARIS_MESSAGE_SIZE_LIMIT)\n\
-    return HARIS_SIZE_ERROR;\n\
+  HARIS_ASSERT(*out_ind + 4 + i < sz, INPUT);\n\
+  HARIS_ASSERT(*out_ind + 4 + i < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   if ((result = %s%s_init_%s(strct, i)) != HARIS_SUCCESS) return result;\n\
   (void)memcpy(strct->%s, but + *out_ind + 4, i);\n\
   *out_ind += 4 + i;\n", prefix, name, strct->children[i].name,
@@ -721,12 +719,11 @@ depth+1)) != \n\
     case CHILD_SCALAR_LIST:
       if (fprintf(out, "  if (*out_ind + 4 >= sz || \
 *out_ind + 4 >= HARIS_MESSAGE_SIZE_LIMIT)\n\
-  if (buf[*out_ind] != 0x%X) return HARIS_STRUCTURE_ERROR;\n\
+  HARIS_ASSERT(buf[*out_ind] == 0x%X, STRUCTURE);\n\
   i = haris_read_uint24(*out_ind + 1);\n\
   if ((result = %s%s_init_%s(strct, i)) != HARIS_SUCCESS) return result;\n\
-  if (*out_ind + 4 + i * %d >= sz || \
-*out_ind + 4 + i * %d >= HARIS_MESSAGE_SIZE_LIMIT)\n\
-    return HARIS_SIZE_ERROR;\n\
+  HARIS_ASSERT(*out_ind + 4 + i * %d < sz, INPUT);\n\
+  HARIS_ASSERT(*out_ind + 4 + i * %d < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   *out_ind += 4;\n\
   {\n\
     haris_uint32_t x;\n\
@@ -744,9 +741,9 @@ depth+1)) != \n\
               strct->children[i].name) < 0) return CJOB_IO_ERROR;
       break;
     case CHILD_STRUCT_LIST:
-      if (fprintf(out, "  if (*out_ind + 6 >= sz || \
-*out_ind + 6 >= HARIS_MESSAGE_SIZE_LIMIT)\n\
-  if (buf[*out_ind] != 0xE0) return HARIS_STRUCTURE_ERROR;\n\
+      if (fprintf(out, "  HARIS_ASSERT(*out_ind + 6 < sz, INPUT);\n\
+  HARIS_ASSERT(*out_ind + 6 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+  HARIS_ASSERT(buf[*out_ind] == 0xE0, STRUCTURE);\n\
   i = haris_read_uint24(*out_ind + 1);\n\
   if ((result = %s%s_init_%s(strct, i)) != HARIS_SUCCESS) return result;\n\
   *out_ind += 6;\n\
