@@ -205,9 +205,9 @@ static CJobStatus check_job(CJob *job)
 static CJobStatus begin_compilation(CJob *job)
 {
   CJobStatus result;
-  if ((result = write_utility_library(job)) != CJOB_SUCCESS) return result;
-  if ((result = write_header_file(job)) != CJOB_SUCCESS) return result;
-  if ((result = write_source_file(job)) != CJOB_SUCCESS) return result;
+  if ((result = write_utility_library(job)) != CJOB_SUCCESS ||
+      (result = write_header_file(job)) != CJOB_SUCCESS ||
+      (result = write_source_file(job)) != CJOB_SUCCESS) return result;
   return CJOB_SUCCESS;
 }
 

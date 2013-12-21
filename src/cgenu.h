@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "cgen.h"
 
-CJobStatus write_utility_library(CJob *);
+CJobStatus write_utility_lib_header(CJob *, FILE *);
+CJobStatus write_utility_lib_source(CJob *, FILE *);
 
 #endif
