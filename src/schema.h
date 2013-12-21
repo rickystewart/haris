@@ -31,8 +31,8 @@ typedef enum {
   CHILD_TEXT, CHILD_STRUCT, CHILD_SCALAR_LIST, CHILD_STRUCT_LIST
 } ChildTag;
 
-typedef struct ParsedEnum ParsedEnum;
-typedef struct ParsedStruct ParsedStruct;
+typedef struct _ParsedEnum ParsedEnum;
+typedef struct _ParsedStruct ParsedStruct;
 
 typedef struct {
   ScalarTag tag;
@@ -59,7 +59,7 @@ typedef struct {
   ChildType type;
 } ChildField;
 
-struct ParsedStruct {
+struct _ParsedStruct {
   char *name;
   int offset;
   int num_scalars;
@@ -70,7 +70,7 @@ struct ParsedStruct {
   ChildField *children;
 };
 
-struct ParsedEnum {
+struct _ParsedEnum {
   char *name;
   int num_values;
   int values_alloc;

@@ -91,6 +91,8 @@ Let N be the number of elements in the array. Then the number of bytes remaining
 in the list (not counting the header) can be calculated as 
    N * (size of element) 
 
+STRUCTURE LISTS
+
 We capture structure lists by encoding "111" in the first 3 bits of the first
 byte of the header. As above, there is a 3-byte integer giving us the number
 of elements in the list directly following the first byte of the header. 
@@ -114,7 +116,7 @@ LIMITS
 Haris is not a great format for dealing with extremely large messages. Because
 of the way the encoding works, a message must generally be encoded and decoded
 all at once (and so the message encoding must fit entirely in memory). 
-For this reason, the generated code does rigorous type-checking over message
+For this reason, the generated code does rigorous sanity-checking over message
 sizes to make sure messages don't get too large. We cap the maximum message
 size at 1 billion bytes (about 0.93 GB). This is not an entirely arbitrary
 choice: in practice, this is large enough to fit an entire encoded message as
@@ -142,7 +144,9 @@ the message length, pulling EXACTLY that many bytes from the stream, and then
 parsing the in-memory buffer. With Haris, you can just parse the file's
 messages in sequence, but it gets better: if all of the messages are of
 the same type, then you can even go so far as to re-use allocated C structures
-when parsing the messages in sequence.
+when parsing the messages in sequence. This allows you to minimize reallocation
+when reading an arbitrary number of structures from an input, assuming each
+input structure has the same type.
 
 The encoding also enforces other limits. The body of a structure can be a 
 maximum of 255 bytes, and a structure can only have a maximum of 63 children.

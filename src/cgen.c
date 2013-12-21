@@ -46,6 +46,48 @@ CJobStatus run_cjob(CJob *job)
   return begin_compilation(job);
 }
 
+FILE *open_source_file(const char *prefix, const char *suffix)
+{
+  char *filename = (char*)malloc(strlen(prefix) + strlen(suffix) + 1); 
+  FILE *out;
+  if (!filename) return NULL;
+
+  *filename = '\0';
+  (void)strcat(filename, prefix);
+  (void)strcat(filename, suffix);
+  out = fopen(filename, "w");
+  free(filename);
+  return out;
+}
+
+const char *scalar_type_suffix(ScalarTag type)
+{
+  switch (type) {
+  case SCALAR_UINT8:
+  case SCALAR_ENUM:
+  case SCALAR_BOOL:
+    return "uint8";
+  case SCALAR_INT8:
+    return "int8";
+  case SCALAR_UINT16:
+    return "uint16";
+  case SCALAR_INT16:
+    return "int16";
+  case SCALAR_UINT32:
+    return "uint32";
+  case SCALAR_INT32:
+    return "int32";
+  case SCALAR_UINT64:
+    return "uint64";
+  case SCALAR_INT64:
+    return "int64";
+  case SCALAR_FLOAT32:
+    return "float32";
+  case SCALAR_FLOAT64:
+    return "float64";
+  }
+}
+
 const char *scalar_type_name(ScalarTag type)
 {
   switch (type) {
@@ -76,19 +118,50 @@ const char *scalar_type_name(ScalarTag type)
   }
 }
 
-FILE *open_source_file(const char *prefix, const char *suffix)
+int scalar_bit_pattern(ScalarTag type)
 {
-  char *filename = (char*)malloc(strlen(prefix) + strlen(suffix) + 1); 
-  FILE *out;
-  if (!filename) return NULL;
-
-  *filename = '\0';
-  (void)strcat(filename, prefix);
-  (void)strcat(filename, suffix);
-  out = fopen(filename, "w");
-  free(filename);
-  return out;
+  switch (type) {
+  case SCALAR_UINT8:
+  case SCALAR_ENUM:
+  case SCALAR_BOOL:
+  case SCALAR_INT8:
+    return 0;
+  case SCALAR_UINT16:
+  case SCALAR_INT16:
+    return 1;
+  case SCALAR_UINT32:
+  case SCALAR_INT32:
+  case SCALAR_FLOAT32:
+    return 2;
+  case SCALAR_UINT64:
+  case SCALAR_INT64:
+  case SCALAR_FLOAT64:
+    return 3;
+  }
 }
+
+int sizeof_scalar(ScalarTag type)
+{
+  switch (type) {
+  case SCALAR_UINT8:
+  case SCALAR_ENUM:
+  case SCALAR_BOOL:
+  case SCALAR_INT8:
+    return 1;
+  case SCALAR_UINT16:
+  case SCALAR_INT16:
+    return 2;
+  case SCALAR_UINT32:
+  case SCALAR_INT32:
+  case SCALAR_FLOAT32:
+    return 4;
+  case SCALAR_UINT64:
+  case SCALAR_INT64:
+  case SCALAR_FLOAT64:
+    return 8;
+  }
+}
+
 
 /* =============================STATIC FUNCTIONS============================= */
 

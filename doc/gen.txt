@@ -38,20 +38,15 @@ is a simple process, so complicated compiled C code doesn't help anyone.
 Here, we'll describe the process of C compilation at a high-level. Compilation
 can be done in a few quick passes through the in-memory schema.
 
-The output of the compiler for a given schema S.haris is the following 4 files:
+The output of the compiler for a given schema S.haris is the following 2 files:
 
-- util.h
-- util.c
 - S.h
 - S.c
 
-Notably, the utility files never change. No matter what the contents of the
-schema file are, util.h and util.c are always the same. S.h contains the
-structure definitions, enumeration definitions, and function prototypes for
-the given schema. S.c contains the function definitions. The utility library
-namespaces its functions and macros by prepending every name with "haris_".
+S.h contains the structure definitions, enumeration definitions, and function 
+prototypes for the given schema. S.c contains the function definitions. 
 You can specify a prefix for all public names in the S.h and S.c files on
-the command line.
+the command line. 
 
 The generated code is specified in this way:
 
@@ -66,9 +61,9 @@ then the C code that is generated is
 For every structure S in the schema, a structure is generated in the C code
 like so:
 
-typedef struct S S;
+typedef struct _S S;
 
-struct S {
+struct _S {
   ...
 };
 
@@ -81,8 +76,9 @@ number of elements in F.
 
 For every structure S, the following functions are defined globally:
 
-- S *S_create(void), which constructs a new S and initializes all of its
-elements to the appropriate 0 type.
+- S *S_create(void), which constructs a new S. Its non-pointer contents are
+generally initialized to garbage; its pointer contents are initialized to
+NULL. 
 - void S_destroy(S *), which frees the memory associated with the given S.
 This function recursively frees all non-NULL child structures. If you do NOT
 wish to recursively free all non-NULL child structures, then just call free()
@@ -92,6 +88,11 @@ on the pointer.
 included as a utility function. The second argument is the number of elements.
 This function allocates an appropriately-sized array to hold the elements
 and sets the _len_F field.
+- For every structure element F in S,
+  HarisStatus S_init_F(S *) is included as a utility function. It allocates
+space for that structure element (if space has not been allocated for it
+already). This is a no-op if space has already been allocated for the
+structure.
 - Then, there are the functions for encoding and decoding. These are created
 depending on the protocol you choose. Initially, two protocols will be
 implemented: "buffer" and "file". You can choose your protocol from the 
@@ -127,16 +128,16 @@ This will generate for us the following structure definitions:
 #define PhoneType_HOME 1
 #define PhoneType_WORK 2
 
-typedef struct Phone Phone;
-typedef struct Person Person;
+typedef struct _Phone Phone;
+typedef struct _Person Person;
 
-struct Phone {
+struct _Phone {
   PhoneType type;
   haris_uint64_t _len_number;
   char *number;
 };
 
-struct Person {
+struct _Person {
   haris_uint64_t _len_name;
   char *name;
   haris_uint64_t _len_email;
@@ -233,15 +234,16 @@ There are three general classes of errors that this function can capture:
 than the billion-byte limit we enforce on message sizes)
 - Recursion depth errors (when a structure breaks the 64-level recursion limit
 that we enforce to prevent stack overflows)
-- Null errors (when a structure field is NULL when the type does not allow
+- Null errors (when a structure field is null when the type does not allow
 the field to be nullable)
 
 This function serves a dual purpose for message encoding. In addition to 
 finding the message size (so we can allocate an appropriately sized buffer),
 it finds any possible errors in the structure. If this function succeeds 
 without raising an error, then we can encode the structure without doing
-any error checking. The encoding protocols are rather easy to write once we 
-have these core functions.
+any error checking. This function should be called before beginning to
+serialize any structure to any medium (even one that does not require 
+buffer allocation) for that reason.
 
 FILE PROTOCOL
 

@@ -462,7 +462,7 @@ static int parse_enum_elements(Parser *p, ParsedEnum *enm)
 
 /* This function does the dirty work of parsing a single structure element
 within a structure definition. For example, in the definition
-  struct Foo ( Int32 baz = 100 )
+  struct Foo ( Int32 baz )
 ... this function will be called after the opening parenthesis has been 
 consumed from the stream, but before the structure element. This function 
 parses a single structure element, leaving whatever tokens immediately 
