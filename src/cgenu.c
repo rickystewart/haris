@@ -50,7 +50,7 @@ CJobStatus write_utility_library_source(CJob *job, FILE *out)
    than 500 characters long, in order to honor an obscure part of the C89
    that says that 512 is the maximum length that must be supported by a
    conformant C implementation. I used a script to split up the strings,
-   and so they're generally split across odd boundaries. */
+   and so they're generally split across odd, arbitrary boundaries. */
 
 static CJobStatus write_util_h_top(CJob *job, FILE *out)
 {

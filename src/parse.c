@@ -1,7 +1,18 @@
 #include "parse.h"
 
-static Parser *create_parser_from_schema_hash(FILE *, char *, ParsedSchema *, 
-                                              TypeHash *);
+/* This file contains all the functions that are pertinent to parsing.
+   In particular, the entire recursive descent parser is hard-coded into
+   this file. Each "state" of the parser is represented by a function;
+   parsing functions call other functions depending on which tokens they
+   consume. All of the functions beginning with parse_ are parsing functions;
+   all of them consume a Parser * (among other parameters) and return an
+   int. A return value of 0 represents failure, and any other return value
+   represents success. (These functions are generally not part of the
+   public interface for parsers; programmers should only call the top-level
+   parse() function, which does a top-level parse of the entire input stream.)
+*/
+
+static Parser *create_parser_from_schema_hash(ParsedSchema *, TypeHash *);
 static void destroy_parser_but_not_schema_hash(Parser *);
 
 static int assert_lexer_ok(Parser *, LexerStatus);
@@ -40,13 +51,13 @@ static int unexpected_token_error(Parser *, Token);
 
 /* =============================PUBLIC INTERFACE============================= */
 
-Parser *create_parser(FILE *stream, char *filename)
+Parser *create_parser(void)
 {
   Parser *parser;
   ParsedSchema *schema = create_parsed_schema();
   TypeHash *hash = create_typehash();
   if (!schema || !hash) goto MemoryAllocationError;
-  parser = create_parser_from_schema_hash(stream, filename, schema, hash);
+  parser = create_parser_from_schema_hash(schema, hash);
   if (!parser) goto MemoryAllocationError;
   return parser;
  MemoryAllocationError:
@@ -65,15 +76,17 @@ void destroy_parser(Parser *p)
   return;
 }
 
-/* Rebinds the given parser to a new stream. This function is useful primarily
+/* Binds the given parser to a new stream. This function is useful primarily
    for retaining the schema information of a previous parse and adding new
    data onto the previous schema definition. If you do not wish to retain
-   the schema information from a previous parse, destroy the previous parser
-   and create a new one rather than rebinding an existing one. 
+   the schema information from a previous parse, create a new parser 
+   rather than rebinding an existing one. 
 */
-int rebind_parser(Parser *p, FILE *stream, char *filename)
+int bind_parser(Parser *p, FILE *stream, char *filename)
 {
-  Lexer *lex = create_lexer(stream, filename);
+  Lexer *lex;
+  if (p->lex) destroy_lexer(p->lex);
+  lex = create_lexer(stream, filename);
   if (!lex) return 0;
   p->lex = lex;
   return 1;
@@ -90,20 +103,14 @@ int parse(Parser *p)
 
 /* =============================STATIC FUNCTIONS============================= */
 
-static Parser *create_parser_from_schema_hash(FILE *stream, char *filename,
-                                              ParsedSchema *schema,
+static Parser *create_parser_from_schema_hash(ParsedSchema *schema,
                                               TypeHash *hash)
 {
-  Lexer *lex = create_lexer(stream, filename);
   Parser *ret = (Parser*)malloc(sizeof *ret);
-  if (!lex || !ret) {
-    if (lex) destroy_lexer(lex);
-    free(ret);
-    return NULL;
-  }
-  ret->lex = lex;
+  if (!ret) return NULL;
   ret->schema = schema;
   ret->hash = hash;
+  ret->lex = NULL;
   ret->errbuf = NULL;
   ret->stack = 0;
   return ret;
@@ -115,7 +122,7 @@ static Parser *create_parser_from_schema_hash(FILE *stream, char *filename,
 */
 static void destroy_parser_but_not_schema_hash(Parser *p)
 {
-  destroy_lexer(p->lex);
+  if (p->lex) destroy_lexer(p->lex);
   if (p->errbuf) free(p->errbuf);
   free(p);
   return;
@@ -579,10 +586,11 @@ static int include_file(Parser *p, char *filename)
   int ret;
   FILE *stream = fopen(filename, "r");
   if (!stream) return trigger_parse_error(p, PARSE_IO_ERROR, filename);
-  included = create_parser_from_schema_hash(stream, filename, p->schema, 
-                                            p->hash);
+  included = create_parser_from_schema_hash(p->schema, p->hash);
   if (!included) return trigger_parse_error(p, PARSE_MEM_ERROR, NULL);
   included->stack = p->stack + 1;
+  if (!bind_parser(included, stream, filename))
+    return trigger_parse_error(p, PARSE_IO_ERROR, filename);
   ret = parse(included);
   if (!ret) {
     (void)trigger_parse_error(p, included->errno, included->errbuf);

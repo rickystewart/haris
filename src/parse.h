@@ -18,7 +18,28 @@ typedef enum {
   PARSE_STACK_OVERFLOW
 } ParserError;
 
-/* If we call the "parse" function and it succeeds, then the "schema"
+/* 
+  PARSING MODUS:
+  To use the parser, simply implement the following steps:
+  1) First, create the parser. The create_parser() function takes
+  no arguments.
+  2) Next, bind the parser to an input stream. The bind_parser()
+  function takes as its input a parser, a FILE * (the input stream),
+  and a char * (the name of the file that we are reading). The char *
+  is mainly for the parser's organizational purposes, though you can
+  use NULL as the file name if you don't have an adequate name for
+  the input stream.
+  3) Finally, if both of those operations succeeded, we can call parse()
+  to run the parser and generate output.
+  4) Repeat steps 2-3 as many times as necessary; a single parser can
+  be rebound an arbitrary number of times. If you bind multiple input
+  streams to a parser, the compiled schema will reflect all of the input
+  streams you've parsed.
+  5) Finally, destroy the parser with destroy_parser(). This will destroy
+  all of the parser's resources, including the parsed schema. Do not call
+  this function until you have no more use of your parsed schema.
+
+  If we call the "parse" function and it succeeds, then the "schema"
    attribute of the structure is the output of the parser, and it can
    be extracted and manipulated manually. If the parse fails, then
    the parser will do its best to report the nature of the failure. The
@@ -53,10 +74,10 @@ typedef struct {
   int stack;
 } Parser;
 
-Parser *create_parser(FILE *, char *);
+Parser *create_parser(void);
 void destroy_parser(Parser *);
 
-int rebind_parser(Parser *, FILE *, char *);
+int bind_parser(Parser *, FILE *, char *);
 
 int parse(Parser *);
 

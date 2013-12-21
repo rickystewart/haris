@@ -2,6 +2,11 @@
 #include "cgenh.h"
 #include "cgenc.h"
 #include "cgenu.h"
+#include "parse.h"
+
+static CJob *new_cjob(void);
+static CJobStatus run_cjob(CJob *);
+static void destroy_cjob(CJob *);
 
 static CJobStatus check_job(CJob *);
 static CJobStatus compile(CJob *);
@@ -9,42 +14,78 @@ static FILE *open_source_file(const char *prefix, const char *suffix);
 
 /* =============================PUBLIC INTERFACE============================= */
 
-CJob *new_cjob(void)
-{
-  CJob *ret = (CJob *)malloc(sizeof *ret);
-  if (!ret) return NULL;
-  ret->schema = NULL;
-  ret->prefix = NULL;
-  ret->output = NULL;
-  ret->buffer_protocol = 0;
-  ret->file_protocol = 0;
-  return ret;
-}
 
-void destroy_cjob(CJob *job) 
-{
-  free(job);
-  return;
-}
-
-/* Run the given CJob (which will entail processing the attached schema and
-   writing the resultant generated code to the output files). We enforce
-   the invariant that a CJob MUST have a schema, prefix string, and output
-   string. This function will return with an error code if any of these
-   are missing. Further, at least one protocol must be selected, the schema
-   must have at least one structure, every structure in the schema must
-   have at least one field, and every enumeration in the schema must have at
-   least one value. If the CJob meets all of the requirements, the
-   code will be generated and written by this function.
-
-   If you do not wish to add a prefix to your generated names, make the prefix
-   an empty string.
+/* C COMMAND-LINE ARGUMENTS:
+   -l : Select the language to be generated. For the C compiler, this option
+   must be `-l c`.
+   -o : Select the name of the output file (that is, if you do `-o hello`, output
+   will be written to hello.c and hello.h). If this option is not given, then 
+   `haris` will be selected.
+   -n : Select name prefix. If no option is given, then the empty string will be
+   used as a name prefix.
+   -p : Select protocol. Possible protocols, at this time, are `buffer` and `file`.
+   You must select at least one protocol.
+   -O : Select optimization. Optimizations have not yet been implemented.
 */
-CJobStatus run_cjob(CJob *job)
+CJobStatus cgen_main(int argc, char **argv)
 {
+  int i;
+  CJob *job = new_cjob();
+  Parser *parser = create_parser();
+  FILE *input;
   CJobStatus result;
-  if ((result = check_job(job)) != CJOB_SUCCESS) return result;
-  return compile(job);
+  if (!job || !parser) { result = CJOB_MEM_ERROR; goto Finish; }
+  /* Loop through command-line arguments, adjusting job as necessary */
+  for (i = 1; i < argc; i ++) {
+    if (!strcmp(argv[i], "-l")) {
+      if (strcmp(argv[i+1], "c")) {
+        fprintf(stderr, "Fatal error: C compiler cannot generate code in \
+language %s.\n", argv[i+1]);
+        return CJOB_JOB_ERROR;
+      }
+      i ++;
+    } else if (!strcmp(argv[i], "-o")) {
+      job->output = argv[i+1];
+      i++;
+    } else if (!strcmp(argv[i], "-n")) {
+      job->prefix = argv[i+1];
+      i++;
+    } else if (!strcmp(argv[i], "-p")) {
+      if (!strcmp(argv[i+1], "buffer"))
+        job->buffer_protocol = 1;
+      else if (!strcmp(argv[i+1], "file")) 
+        job->file_protcol = 1;
+      else {
+        fprintf(stderr, "Unrecognized protocol %s.\n", argv[i+1]);
+        return CJOB_JOB_ERROR;
+      }
+      i++;
+    } else if (!strcmp(argv[i], "-O")) {
+      fprintf(stderr, "Optimizations are as of yet unimplemented.\n")
+      return CJOB_JOB_ERROR;
+    } else { /* Strings that aren't command line options are files that we
+                are meant to parse and compile */
+      input = fopen(argv[i], "r");
+      if (!input) { result = CJOB_IO_ERROR; goto Finish; }
+      if (!bind_parser(parser, input, argv[i])) { 
+        result = CJOB_MEM_ERROR; goto Finish; 
+      }
+      if (!parse(parser)) {
+        result = CJOB_PARSE_ERROR; goto Finish;
+      }
+      fclose(input);
+    }
+  }
+  /* Make changes to job to reflect optional arguments */
+  if (!job->ouput) job->output = "haris";
+  if (!job->prefix) job->prefix = "";
+  job->schema = parser->schema;
+  /* Run the job */
+  result = run_cjob(job);
+  Finish:
+  if (parser) destroy_parser(parser);
+  if (job) destroy_cjob(job);
+  return result;
 }
 
 const char *scalar_type_suffix(ScalarTag type)
@@ -151,6 +192,44 @@ int sizeof_scalar(ScalarTag type)
 
 
 /* =============================STATIC FUNCTIONS============================= */
+
+static CJob *new_cjob(void)
+{
+  CJob *ret = (CJob *)malloc(sizeof *ret);
+  if (!ret) return NULL;
+  ret->schema = NULL;
+  ret->prefix = NULL;
+  ret->output = NULL;
+  ret->buffer_protocol = 0;
+  ret->file_protocol = 0;
+  return ret;
+}
+
+static void destroy_cjob(CJob *job) 
+{
+  free(job);
+  return;
+}
+
+/* Run the given CJob (which will entail processing the attached schema and
+   writing the resultant generated code to the output files). We enforce
+   the invariant that a CJob MUST have a schema, prefix string, and output
+   string. This function will return with an error code if any of these
+   are missing. Further, at least one protocol must be selected, the schema
+   must have at least one structure, every structure in the schema must
+   have at least one field, and every enumeration in the schema must have at
+   least one value. If the CJob meets all of the requirements, the
+   code will be generated and written by this function.
+
+   If you do not wish to add a prefix to your generated names, make the prefix
+   an empty string.
+*/
+static CJobStatus run_cjob(CJob *job)
+{
+  CJobStatus result;
+  if ((result = check_job(job)) != CJOB_SUCCESS) return result;
+  return compile(job);
+}
 
 static FILE *open_source_file(const char *prefix, const char *suffix)
 {
