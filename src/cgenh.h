@@ -7,6 +7,6 @@
    compilation job. 
 */
 
-CJobStatus write_header_file(CJob *);
+CJobStatus write_header_file(CJob *, FILE *);
 
 #endif

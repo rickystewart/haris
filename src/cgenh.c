@@ -13,11 +13,9 @@ static CJobStatus write_file_prototypes(CJob *job, FILE *out);
 
 /* =============================PUBLIC INTERFACE============================= */
 
-CJobStatus write_header_file(CJob *job)
+CJobStatus write_header_file(CJob *job, FILE *out)
 {
   CJobStatus result;
-  FILE *out = open_source_file(job->prefix, ".h");
-  if (!out) return CJOB_IO_ERROR;
   if ((result = write_header_boilerplate(job, out)) != CJOB_SUCCESS)
     return result;
   if ((result = write_header_macros(job, out)) != CJOB_SUCCESS)
@@ -28,7 +26,6 @@ CJobStatus write_header_file(CJob *job)
     return result;
   if ((result = write_header_footer(job, out)) != CJOB_SUCCESS)
     return result;
-  fclose(out);
   return CJOB_SUCCESS;
 }
 

@@ -34,6 +34,5 @@ const char *scalar_type_suffix(ScalarTag);
 int scalar_bit_pattern(ScalarTag type);
 int sizeof_scalar(ScalarTag type);
 const char *scalar_type_name(ScalarTag);
-FILE *open_source_file(const char *, const char *);
 
 #endif

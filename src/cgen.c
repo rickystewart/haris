@@ -4,7 +4,8 @@
 #include "cgenu.h"
 
 static CJobStatus check_job(CJob *);
-static CJobStatus begin_compilation(CJob *);
+static CJobStatus compile(CJob *);
+static FILE *open_source_file(const char *prefix, const char *suffix);
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -43,21 +44,7 @@ CJobStatus run_cjob(CJob *job)
 {
   CJobStatus result;
   if ((result = check_job(job)) != CJOB_SUCCESS) return result;
-  return begin_compilation(job);
-}
-
-FILE *open_source_file(const char *prefix, const char *suffix)
-{
-  char *filename = (char*)malloc(strlen(prefix) + strlen(suffix) + 1); 
-  FILE *out;
-  if (!filename) return NULL;
-
-  *filename = '\0';
-  (void)strcat(filename, prefix);
-  (void)strcat(filename, suffix);
-  out = fopen(filename, "w");
-  free(filename);
-  return out;
+  return compile(job);
 }
 
 const char *scalar_type_suffix(ScalarTag type)
@@ -165,6 +152,20 @@ int sizeof_scalar(ScalarTag type)
 
 /* =============================STATIC FUNCTIONS============================= */
 
+static FILE *open_source_file(const char *prefix, const char *suffix)
+{
+  char *filename = (char*)malloc(strlen(prefix) + strlen(suffix) + 1); 
+  FILE *out;
+  if (!filename) return NULL;
+
+  *filename = '\0';
+  (void)strcat(filename, prefix);
+  (void)strcat(filename, suffix);
+  out = fopen(filename, "w");
+  free(filename);
+  return out;
+}
+
 static CJobStatus check_job(CJob *job)
 {
   int i;
@@ -188,26 +189,27 @@ static CJobStatus check_job(CJob *job)
   return CJOB_SUCCESS;
 }
 
-/* Compilation proceeds through these steps:
-   1) Construct the utility library. At this point in time, the utility library
-   is a pair of small literal source code files that do not need to be changed. 
-   In this step, we simply need to copy the utility files to disk.
-   2) Construct the target header file. This job is split into three parts: 
-   the macro (enumeration) definitions, the structure definitions, and the
-   function prototypes. The "core" function prototypes (those that deal 
-   primarily with object allocation and destruction) will need to be
-   implemented anyway, but some of the prototypes will be conditional
-   on the protocol that we've chosen.
-   3) Construct the target source file. This job is split into three parts:
-   the static function prototypes, the "core" function definitions, and the
-   protocol function definitions, which depend on the protocol we've chosen.
-*/
-static CJobStatus begin_compilation(CJob *job)
+static CJobStatus compile(CJob *job)
 {
   CJobStatus result;
-  if ((result = write_utility_library(job)) != CJOB_SUCCESS ||
-      (result = write_header_file(job)) != CJOB_SUCCESS ||
-      (result = write_source_file(job)) != CJOB_SUCCESS) return result;
-  return CJOB_SUCCESS;
+  FILE *header = open_source_file(job->output, ".h"), 
+       *source = open_source_file(job->output, ".c");
+  if (!header || !source) { 
+    result = CJOB_IO_ERROR;
+    goto Cleanup;
+  }
+  if ((result = write_utility_lib_header(job, header))
+      != CJOB_SUCCESS ||
+      (result = write_header_file(job, header)) 
+      != CJOB_SUCCESS ||
+      (result = write_utility_lib_source(job, source))
+      != CJOB_SUCCESS ||
+      (result = write_source_file(job, source))
+      != CJOB_SUCCESS)
+    goto Cleanup;
+  Cleanup:
+  if (header) fclose(header);
+  if (source) fclose(source);
+  return result;
 }
 

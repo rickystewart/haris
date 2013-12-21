@@ -9,11 +9,9 @@ static CJobStatus write_source_protocol_funcs(CJob *job, FILE *out);
 
 /* =============================PUBLIC INTERFACE============================= */
 
-CJobStatus write_source_file(CJob *job)
+CJobStatus write_source_file(CJob *job, FILE *out)
 {
   CJobStatus result;
-  FILE *out = open_source_file(job->prefix, ".c");
-  if (!out) return CJOB_IO_ERROR;
   if ((result = write_source_boilerplate(job, out)) != CJOB_SUCCESS)
     return result;
   if ((result = write_source_prototypes(job, out)) != CJOB_SUCCESS)
@@ -33,7 +31,6 @@ static CJobStatus write_source_boilerplate(CJob *job, FILE *out)
 {
   if (fprintf(out, "#include <stdio.h>\n"
               "#include <stdlib.h\n\n"
-              "#include \"util.h\"\n"
               "#include \"%s.h\"\n\n", job->output) < 0)
     return CJOB_IO_ERROR;
   return CJOB_SUCCESS;

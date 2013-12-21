@@ -7,6 +7,6 @@
    .c file) of a C compilation job.
 */
 
-CJobStatus write_source_file(CJob *);
+CJobStatus write_source_file(CJob *, FILE *);
 
 #endif
