@@ -44,14 +44,13 @@ static CJobStatus write_header_boilerplate(CJob *job, FILE *out)
   if (!capital) return CJOB_IO_ERROR;
   for (i=0; capital[i]; i++)
     capital[i] = toupper(capital[i]);
-  if (fprintf(out, "#ifndef __HARIS_%s_H\n"
-              "#define __HARIS_%s_H\n\n", capital, capital) < 0) 
-    return CJOB_IO_ERROR;
+  CJOB_FPRINTF(out, "#ifndef __HARIS_%s_H\n"
+              "#define __HARIS_%s_H\n\n", capital, capital);
   free(capital);
-  if (fprintf(out, "%s\n", 
+  CJOB_FPRINTF(out, "%s\n", 
               "#include <stdio.h>\n"
               "#include <stdlib.h>\n\n"
-              "#include \"util.h\"\n\n") < 0) return CJOB_IO_ERROR;
+              "#include \"util.h\"\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -72,24 +71,21 @@ static CJobStatus write_header_macros(CJob *job, FILE *out)
 {
   int i, j;
   for (i=0; i < job->schema->num_enums; i++) {
-    if (fprintf(out, "/* enum %s */\n", job->schema->enums[i].name) < 0)
-      return CJOB_IO_ERROR;
+    CJOB_FPRINTF(out, "/* enum %s */\n", job->schema->enums[i].name);
     for (j=0; j < job->schema->enums[i].num_values; j++) {
-      if (fprintf(out, "#define %s%s_%s %d\n", job->prefix, 
+      CJOB_FPRINTF(out, "#define %s%s_%s %d\n", job->prefix, 
                   job->schema->enums[i].name, 
-                  job->schema->enums[i].values[j], j) < 0)
-        return CJOB_IO_ERROR;
+                  job->schema->enums[i].values[j], j);
     }
-    if (fprintf(out, "\n") < 0) return CJOB_IO_ERROR;
+    CJOB_FPRINTF(out, "\n");
   }
   for (i=0; i < job->schema->num_structs; i++) {
-    if (fprintf(out, "#define %s%s_LIB_BODY_SZ %d\n\
+    CJOB_FPRINTF(out, "#define %s%s_LIB_BODY_SZ %d\n\
 #define %s%s_LIB_NUM_CHILDREN %d\n\n",
                 job->prefix, job->schema->structs[i].name,
                 job->schema->structs[i].offset,
                 job->prefix, job->schema->structs[i].name, 
-                job->schema->structs[i].num_children) < 0)
-      return CJOB_IO_ERROR;
+                job->schema->structs[i].num_children);
   }
   return CJOB_SUCCESS;
 }
@@ -107,29 +103,26 @@ static CJobStatus write_header_structures(CJob *job, FILE *out)
   CJobStatus result;
   int i, j;
   for (i=0; i < job->schema->num_structs; i++) {
-    if (fprintf(out, "typedef struct _%s%s %s%s;\n", 
-                job->prefix, job->schema->structs[i].name,
-                job->prefix, job->schema->structs[i].name) < 0)
-      return CJOB_IO_ERROR;
+    CJOB_FPRINTF(out, "typedef struct haris_%s %s%s;\n", 
+                job->schema->structs[i].name,
+                job->prefix, job->schema->structs[i].name);
   }
-  if (fprintf(out, "\n") < 0) return CJOB_IO_ERROR;
+  CJOB_FPRINTF(out, "\n") < 0);
 
   for (i=0; i < job->schema->num_structs; i++) {
-    if (fprintf(out, "struct _%s%s {\n", 
-                job->prefix, job->schema->structs[i].name) < 0)
-      return CJOB_IO_ERROR;
+    CJOB_FPRINTF(out, "struct haris_%s {\n", 
+                job->schema->structs[i].name);
     for (j=0; j < job->schema->structs[i].num_scalars; j++) {
-      if (fprintf(out, "  %s %s;\n",
+      CJOB_FPRINTF(out, "  %s %s;\n",
                   scalar_type_name(job->schema->structs[i].scalars[j].type.tag),
-                  job->schema->structs[i].scalars[j].name) < 0)
-        return CJOB_IO_ERROR;
+                  job->schema->structs[i].scalars[j].name);
     }
     for (j=0; j < job->schema->structs[i].num_children; j++) {
       if ((result = write_child_field(job, out, 
                                       job->schema->structs[i].children + j)) !=
           CJOB_SUCCESS) return result;
     }
-    if (fprintf(out, "};\n\n") < 0) return CJOB_IO_ERROR;
+    CJOB_FPRINTF(out, "};\n\n");
   }
 
   return CJOB_SUCCESS;
@@ -152,7 +145,7 @@ static CJobStatus write_header_prototypes(CJob *job, FILE *out)
 static CJobStatus write_header_footer(CJob *job, FILE *out)
 {
   (void)job;
-  if (fprintf(out, "#endif\n\n") < 0) return CJOB_IO_ERROR;
+  CJOB_FPRINTF(out, "#endif\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -160,28 +153,25 @@ static CJobStatus write_child_field(CJob *job, FILE *out, ChildField *child)
 {
   switch (child->tag) {
   case CHILD_TEXT:
-    if (fprintf(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
+    CJOB_FPRINTF(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
   char _null_%s;\n  char *%s;\n", 
-                child->name, child->name, child->name, child->name) < 0) 
-      return CJOB_IO_ERROR;
+                child->name, child->name, child->name, child->name);
     break;
   case CHILD_STRUCT:
-    if (fprintf(out, "  %s%s *%s;\n", job->prefix, child->type.strct->name,
-                child->name) < 0) return CJOB_IO_ERROR;
-    break;
+    CJOB_FPRINTF(out, "  %s%s *%s;\n", job->prefix, child->type.strct->name,
+                child->name);
   case CHILD_SCALAR_LIST:
-    if (fprintf(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
+    CJOB_FPRINTF(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
   char _null_%s;\n  %s *%s;\n", 
                 child->name, child->name, child->name,
                 scalar_type_name(child->type.scalar_list.tag),
-                child->name) < 0) return CJOB_IO_ERROR;
+                child->name);
     break;
   case CHILD_STRUCT_LIST:
-    if (fprintf(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
+    CJOB_FPRINTF(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
   char _null_%s;\n  %s%s **%s;\n", 
                 child->name, child->name, child->name, job->prefix, 
-                child->type.struct_list->name, child->name) < 0) 
-      return CJOB_IO_ERROR;
+                child->type.struct_list->name, child->name);
     break;
   }
   return CJOB_SUCCESS;
@@ -202,21 +192,18 @@ static CJobStatus write_public_prototypes(CJob *job, FILE *out)
   for (i=0; i < job->schema->num_structs; i++) {
     prefix = job->prefix;
     strct_name = job->schema->structs[i].name;
-    if (fprintf(out, "%s%s *%s%s_create(void);\n\
+    CJOB_FPRINTF(out, "%s%s *%s%s_create(void);\n\
 void %s%s_destroy(%s%s *);\n", 
                 prefix, strct_name, prefix, strct_name,
-                prefix, strct_name, prefix, strct_name) < 0)
-      return CJOB_IO_ERROR;
+                prefix, strct_name, prefix, strct_name);
     for (j=0; j < job->schema->structs[i].num_children; j++) {
       child_name = job->schema->structs[i].children[j].name;
       if (job->schema->structs[i].children[j].tag != CHILD_STRUCT) {
-        if (fprintf(out, "HarisStatus %s%s_init_%s(%s%s *, haris_uint32_t);\n",
-                    prefix, strct_name, child_name, prefix, strct_name) < 0)
-          return CJOB_IO_ERROR;
+        CJOB_FPRINTF(out, "HarisStatus %s%s_init_%s(%s%s *, haris_uint32_t);\n",
+                    prefix, strct_name, child_name, prefix, strct_name);
       } else {
-        if (fprintf(out, "HarisStatus %s%s_init_%s(%s%s *);\n",
-                    prefix, strct_name, child_name, prefix, strct_name) < 0)
-          return CJOB_IO_ERROR;
+        CJOB_FPRINTF(out, "HarisStatus %s%s_init_%s(%s%s *);\n",
+                    prefix, strct_name, child_name, prefix, strct_name);
       }
     }
   }
@@ -235,15 +222,14 @@ static CJobStatus write_buffer_prototypes(CJob *job, FILE *out)
   for (i=0; i < job->schema->num_structs; i++) {
     prefix = job->prefix;
     name = job->Schema->structs[i].name;
-    if (fprintf(out, "HarisStatus %s%s_from_buffer(%s%s *, \
+    CJOB_FPRINTF(out, "HarisStatus %s%s_from_buffer(%s%s *, \
 unsigned char *, haris_uint32_t, unsigned char **);\n\
 HarisStatus *%s%s_to_buffer(%s%s *, unsigned char **, \
 haris_uint32_t *);\n", 
                 prefix, name, prefix, name,
-                prefix, name, prefix, name) < 0)
-      return CJOB_IO_ERROR;
+                prefix, name, prefix, name);
   }
-  if (fprintf(out, "\n") < 0) return CJOB_IO_ERROR;
+  CJOB_FPRINTF(out, "\n");
   return CJOB_SUCCESS;
 }
 
@@ -258,12 +244,11 @@ static CJobStatus write_file_prototypes(CJob *job, FILE *out)
   for (i=0; i < job->schema->num_structs; i++) {
     prefix = job->prefix;
     name = job->schema->structs[i].name;
-    if (fprintf(out, "HarisStatus %s%s_from_file(%s%s *, FILE *);\n\
+    CJOB_FPRINTF(out, "HarisStatus %s%s_from_file(%s%s *, FILE *);\n\
 HarisStatus %s%s_to_file(%s%s *, FILE *);\n"
                 prefix, name, prefix, name,
-                prefix, name, prefix, name) < 0)
-      return CJOB_IO_ERROR;
+                prefix, name, prefix, name);
   }
-  if (fprintf(out, "\n") < 0) return CJOB_IO_ERROR;
+  CJOB_FPRINTF(out, "\n");
   return CJOB_SUCCESS;
 }

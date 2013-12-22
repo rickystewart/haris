@@ -17,15 +17,13 @@ CJobStatus write_file_static_prototypes(CJob *job, FILE *out)
   int i;
   for (i=0; i < job->schema->num_structs; i++) {
     name = job->schema->structs[i].name;
-    if (fprintf(out, "static HarisStatus _%s%s_from_file(%s%s *, FILE *, \
+    CJOB_FPRINTF(out, "static HarisStatus _%s%s_from_file(%s%s *, FILE *, \
 haris_uint32_t *, int);\
 \n\
 static HarisStatus _%s%s_to_file(%s%s *, FILE *);\n\n", 
-                prefix, name, prefix, name, prefix, name, prefix, name) < 0)
-      return CJOB_IO_ERROR;
+                prefix, name, prefix, name, prefix, name, prefix, name);
   }
-  if (fprintf(out, "static int handle_child_file(FILE *, int);\n\n") < 0) 
-    return CJOB_IO_ERROR;
+  CJOB_FPRINTF(out, "static int handle_child_file(FILE *, int);\n\n");
   return CJOB_SUCCESS;
 }
 

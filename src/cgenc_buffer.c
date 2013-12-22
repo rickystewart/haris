@@ -37,15 +37,13 @@ CJobStatus write_buffer_static_prototypes(CJob *job, FILE *out)
   int i;
   for (i=0; i < job->schema->num_structs; i++) {
     name = job->schema->structs[i].name;
-    if (fprintf(out, "static HarisStatus _%s%s_from_buffer(%s%s *, unsigned \
+    CJOB_FPRINTF(out, "static HarisStatus _%s%s_from_buffer(%s%s *, unsigned \
 char *, haris_uint32_t, haris_uint32_t, haris_uint32_t *, int);\n\
 static unsigned char *_%s%s_to_buffer(%s%s *, unsigned char *);\n\n",
-                prefix, name, prefix, name, prefix, name, prefix, name) < 0)
-      return CJOB_IO_ERROR;
+                prefix, name, prefix, name, prefix, name, prefix, name);
   }
-  if (fprintf(out, "static HarisStatus handle_child_buffer(unsigned char *, \
-haris_uint32_t, haris_uint32_t, haris_uint32_t *, int);\n\n") < 0) 
-    return CJOB_IO_ERROR;
+  CJOB_FPRINTF(out, "static HarisStatus handle_child_buffer(unsigned char *, \
+haris_uint32_t, haris_uint32_t, haris_uint32_t *, int);\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -80,7 +78,7 @@ int num_children, int body_size);
 */
 static CJobStatus write_child_buffer_handler(CJob *job, FILE *out)
 {
-  if (fprintf(out, "static HarisStatus handle_child_buffer(unsigned char *buf,\
+  CJOB_FPRINTF(out, "static HarisStatus handle_child_buffer(unsigned char *buf,\
 haris_uint32_t ind, haris_uint32_t sz, haris_uint32_t *out_ind, int depth)\n
 {\n\
   HarisStatus result;\n\
@@ -118,8 +116,8 @@ depth, num_children, body_size);\n\
            out_ind, depth + 1, num_children, body_size)) != HARIS_SUCCESS)\n\
         return result;\n\
     return HARIS_SUCCESS;\n\
-  }\n}\n\n") < 0) return CJOB_IO_ERROR;
-  if (fprintf(out, "static HarisStatus handle_child_buffer_struct_posthead(\
+  }\n}\n\n");
+  CJOB_FPRINTF(out, "static HarisStatus handle_child_buffer_struct_posthead(\
 unsigned char *buf,\nharis_uint32_t ind, haris_uint32_t sz, \
 haris_uint32_t *out_ind, int depth, int num_children, int body_size)\n\
 {\n\
@@ -133,7 +131,7 @@ haris_uint32_t *out_ind, int depth, int num_children, int body_size)\n\
     if ((result = handle_child_buffer(buf, *out_ind, sz, out_ind, \n\
          depth + 1)) != HARIS_SUCCESS)\n\
       return result;\n\
-  return HARIS_SUCCESS;\n}\n\n") < 0) return CJOB_IO_ERROR;
+  return HARIS_SUCCESS;\n}\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -154,7 +152,7 @@ static CJobStatus write_static_from_buffer_function(CJob *job,
 {
   int i, scalar_sz;
   const char *prefix = job->prefix, *name = strct->name, *child_name;
-  if (fprintf(out, "static HarisStatus _%s%s_from_buffer(%s%s *strct, \
+  CJOB_FPRINTF(out, "static HarisStatus _%s%s_from_buffer(%s%s *strct, \
 unsigned char *buf, haris_uint32_t ind, haris_uint32_t sz, haris_uint32_t *\
 out_ind, int depth)\n{\n\
   HarisStatus result;\n\
@@ -177,29 +175,28 @@ return HARIS_SUCCESS; }\n\
   return _%s%s_from_buffer_posthead(strct, buf, ind + 2, sz, out_ind, \
 depth, num_children, body_size);\n}\n\n",
               prefix, name, prefix, name, prefix, name, prefix, name, 
-              prefix, name) < 0) return CJOB_IO_ERROR;
-  if (fprintf(out, "static HarisStatus _%s%s_from_buffer_posthead(\
+              prefix, name);
+  CJOB_FPRINTF(out, "static HarisStatus _%s%s_from_buffer_posthead(\
 %s%s *strct, unsigned char *buf, haris_uint32_t ind, haris_uint32_t sz, \
 haris_uint32_t *out_ind, int depth, int num_children, int body_size)\n{\n\
   HarisStatus result;\n\
   haris_uint32_t i;\n\
   %s%s_lib_read_body(strct, buf + ind);\n\
-  *out_ind = ind + body_size;\n"))
+  *out_ind = ind + body_size;\n", prefix, name, prefix, name, prefix, name);
   for (i = 0; i < strct->num_children; i++) {
   	child_name = strct->children[i].name;
     switch (strct->children[i].tag) {
     case CHILD_STRUCT:
-      if (fprintf(out, "  if ((result = %s%s_init_%s(strct)) != \
+      CJOB_FPRINTF(out, "  if ((result = %s%s_init_%s(strct)) != \
 HARIS_SUCCESS) return result;\n\
   if ((result = _%s%s_from_buffer(strct->%s, buf, *out_ind, sz, out_ind, \
 depth+1)) != \n\
       HARIS_SUCCESS) return result;\n", 
               prefix, name, strct->children[i].name, prefix,
-              strct->children[i].type.strct->name, child_name) 
-          < 0) return CJOB_IO_ERROR;
+              strct->children[i].type.strct->name, child_name);
       break;
     case CHILD_TEXT:
-      if (fprintf(out, "  HARIS_ASSERT(*out_ind + 4 < sz, INPUT);\n\
+      CJOB_FPRINTF(out, "  HARIS_ASSERT(*out_ind + 4 < sz, INPUT);\n\
   HARIS_ASSERT(*out_ind + 4 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   HARIS_ASSERT(buf[*out_ind] == 0xC0, STRUCTURE);\n\
   i = haris_read_uint24(*out_ind + 1);\n\
@@ -207,12 +204,11 @@ depth+1)) != \n\
   HARIS_ASSERT(*out_ind + 4 + i < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   if ((result = %s%s_init_%s(strct, i)) != HARIS_SUCCESS) return result;\n\
   (void)memcpy(strct->%s, but + *out_ind + 4, i);\n\
-  *out_ind += 4 + i;\n", prefix, name, child_name, child_name) < 0) 
-        return CJOB_IO_ERROR;
+  *out_ind += 4 + i;\n", prefix, name, child_name, child_name);
       break;
     case CHILD_SCALAR_LIST:
       scalar_sz = sizeof_scalar(strct->children[i].type.scalar_list.tag);
-      if (fprintf(out, "  HARIS_ASSERT(*out_ind + 4 < sz, INPUT);\n\
+      CJOB_FPRINTF(out, "  HARIS_ASSERT(*out_ind + 4 < sz, INPUT);\n\
   HARIS_ASSERT(*out_ind + 4 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   HARIS_ASSERT(buf[*out_ind] == 0x%X, STRUCTURE);\n\
   i = haris_read_uint24(*out_ind + 1);\n\
@@ -229,10 +225,10 @@ depth+1)) != \n\
               scalar_bit_pattern(strct->children[i].type.scalar_list.tag),
               prefix, name, child_name, scalar_sz, scalar_sz, child_name,
               scalar_type_suffix(strct->children[i].type.scalar_list.tag),
-              scalar_sz, child_name) < 0) return CJOB_IO_ERROR;
+              scalar_sz, child_name);
       break;
     case CHILD_STRUCT_LIST:
-      if (fprintf(out, "  HARIS_ASSERT(*out_ind + 6 < sz, INPUT);\n\
+      CJOB_FPRINTF(out, "  HARIS_ASSERT(*out_ind + 6 < sz, INPUT);\n\
   HARIS_ASSERT(*out_ind + 6 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   HARIS_ASSERT(buf[*out_ind] == 0xE0, STRUCTURE);\n\
   i = haris_read_uint24(*out_ind + 1);\n\
@@ -249,17 +245,15 @@ num_children = buf[*out_ind + 4] & 0x3F;\n\
            != HARIS_SUCCESS)\n\
         return result;\n\
   }\n", prefix, name, child_name, prefix, 
-        strct->children[i].type.struct_list->name, child_name) < 0) 
-          return CJOB_IO_ERROR;
+        strct->children[i].type.struct_list->name, child_name);
         break;
     }
   }
-  if (fprintf(out, "  for (i = 0; i < num_children - %s%s_LIB_NUM_CHILDREN; \
+  CJOB_FPRINTF(out, "  for (i = 0; i < num_children - %s%s_LIB_NUM_CHILDREN; \
 i++)\n\
     if ((result = handle_child_buffer(buf, *out_ind, sz, out_ind, depth + 1)) \
         != HARIS_SUCCESS)\n\
-      return result;\n  return HARIS_SUCCESS;\n}\n\n") < 0)
-    return CJOB_IO_ERROR;
+      return result;\n  return HARIS_SUCCESS;\n}\n\n", prefix, name);
   return CJOB_SUCCESS;
 }
 
@@ -269,7 +263,7 @@ static CJobStatus write_static_to_buffer_function(CJob *job,
 {
   int i;
   const char *prefix = job->prefix, *name = strct->name, *fname;
-  if (fprintf(out, "static unsigned char *_%s%s_to_buffer(%s%s *strct, \
+  CJOB_FPRINTF(out, "static unsigned char *_%s%s_to_buffer(%s%s *strct, \
 unsigned char *addr)\n{\n\
   addr= %s%s_lib_write_header(strct, addr);\n\
   if (strct->_null) return;\n
@@ -277,44 +271,41 @@ unsigned char *addr)\n{\n\
               prefix, name, prefix, name, prefix, name,
               prefix, name) < 0)
     return CJOB_IO_ERROR;
-  if (fprintf(out, "static unsigned char *_%s%s_to_buffer_posthead(\
+  CJOB_FPRINTF(out, "static unsigned char *_%s%s_to_buffer_posthead(\
 %s%s *strct, unsigned char *addr)\n{\n\
-  addr = %s%s_lib_write_body(strct, addr)"))
+  addr = %s%s_lib_write_body(strct, addr)", prefix, name, prefix, name, 
+               prefix, name);
   for (i = 0; i < strct->num_children; i++) {
     fname = strct->children[i].name;
     switch (strct->children[i].tag) {
     case CHILD_STRUCT:
-      if (fprintf(out, "  addr = _%s%s_to_buffer(strct->%s, addr);\n",
+      CJOB_FPRINTF(out, "  addr = _%s%s_to_buffer(strct->%s, addr);\n",
                   prefix, strct->children[i].type.strct->name, 
-                  strct->children[i].name) < 0)
-        return CJOB_IO_ERROR;
+                  strct->children[i].name);
       break;
     case CHILD_TEXT:
       if (strct->children[i].nullable) {
-        if (fprintf(out, "  if (strct->_null_%s) *(addr++) = 0x80;\n\
+        CJOB_FPRINTF(out, "  if (strct->_null_%s) *(addr++) = 0x80;\n\
   else {\n\
     *addr = 0xC0;\n\
     haris_write_uint24(addr + 1, strct->_len_%s);\n\
     (void)memcpy(addr + 4, strct->%s, strct->_len_%s);\n\
     addr += 4 + strct->_len_%s;\n}\n", 
-                    fname, fname, fname, fname, fname) < 0)
-          return CJOB_IO_ERROR;
+                    fname, fname, fname, fname, fname);
       } else {
-        if (fprintf(out, "  *addr = 0xC0;\n\
+        CJOB_FPRINTF(out, "  *addr = 0xC0;\n\
   haris_write_uint24(addr + 1, strct->_len_%s);\n\
   (void)memcpy(addr + 4, strct->%s, strct->_len_%s);\n
   addr += 4 + strct->_len_%s;\n}\n", 
-                    fname, fname, fname, fname))
-          return CJOB_IO_ERROR;
+                    fname, fname, fname, fname);
       }
       break;
     case CHILD_SCALAR_LIST:
       if (strct->children[i].nullable) {
-        if (fprintf(out, "  if (strct->_null_%s) *(addr++) = 0x80;\n\
-  else", fname) < 0)
-          return CJOB_IO_ERROR;
+        CJOB_FPRINTF(out, "  if (strct->_null_%s) *(addr++) = 0x80;\n\
+  else", fname);
       } 
-      if (fprintf(out, "  {\n\
+      CJOB_FPRINTF(out, "  {\n\
     haris_uint32_t x;\n\
     *addr = 0x%x;\n\
     haris_write_uint24(addr + 1, strct->_len_%s);\n\
@@ -324,18 +315,16 @@ unsigned char *addr)\n{\n\
     }\n  }\n", 0xC0 | 
                 scalar_bit_pattern(strct->children[i].type.scalar_list.tag),
                 fname, fname, 
-                sizeof_scalar(strct->children[i].type.scalar_list.tag
+                sizeof_scalar(strct->children[i].type.scalar_list.tag),
                 scalar_type_suffix(strct->children[i].type.scalar_list.tag),
-                fname)) < 0)
-        return CJOB_IO_ERROR;
+                fname);
       break;
     case CHILD_STRUCT_LIST:
       if (strct->children[i].nullable) {
-        if (fprintf(out, "  if (strct->_null_%s) *(addr++) = 0x80;\n\
-  else", fname) < 0)
-          return CJOB_IO_ERROR;
+        CJOB_FPRINTF(out, "  if (strct->_null_%s) *(addr++) = 0x80;\n\
+  else", fname);
       }
-      if (fprintf(out, "  {\n\
+      CJOB_FPRINTF(out, "  {\n\
     haris_uint32_t x;\n\
     *addr = 0xE0;\n\
     haris_write_uint24(addr + 1, strct->_len_%s);\n\
@@ -344,12 +333,11 @@ unsigned char *addr)\n{\n\
       _%s%s_to_buffer_posthead(strct->%s[x], addr);\n  }\n", 
                   fname, prefix, strct->children[i].type.strct->name, 
                   fname, prefix, strct->children[i].type.strct->name,
-                  fname))
+                  fname);
       break;
     }
   }
-  if (fprintf(out, "  return addr;\n}\n\n") < 0)
-    return CJOB_IO_ERROR;
+  CJOB_FPRINTF(out, "  return addr;\n}\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -363,7 +351,7 @@ static CJobStatus write_public_buffer_funcs(CJob *job, ParsedStruct *strct,
                                             FILE *out)
 {
   const char *prefix = job->prefix, *name = strct->name;
-  if (fprintf(out, "HarisStatus %s%s_from_buffer(%s%s *strct, \
+  CJOB_FPRINTF(out, "HarisStatus %s%s_from_buffer(%s%s *strct, \
 unsigned char *buf, haris_uint32_t sz, unsigned char **out_addr)\n\
 {\n\
   HarisStatus result;\n\
@@ -371,9 +359,8 @@ unsigned char *buf, haris_uint32_t sz, unsigned char **out_addr)\n\
                != HARIS_SUCCESS) return result;\n\
   HARIS_ASSERT(!strct->_null, STRUCTURE);\n\
   return HARIS_SUCCESS;\n}\n\n", 
-              prefix, name, prefix, name, prefix, name) < 0) 
-    return CJOB_IO_ERROR;
-  if (fprintf(out, "HarisStatus %s%s_to_buffer(%s%s *strct, \
+              prefix, name, prefix, name, prefix, name);
+  CJOB_FPRINTF(out, "HarisStatus %s%s_to_buffer(%s%s *strct, \
 unsigned char **out_buf, haris_uint32_t *out_sz)\n\
 {\n\
   unsigned char *unused;\n\
@@ -385,7 +372,6 @@ unsigned char **out_buf, haris_uint32_t *out_sz)\n\
   HARIS_ASSERT(*out_buf, MEM);\n\
   (void)_%s%s_to_buffer(strct, *out_buf);\n\
   return HARIS_SUCCESS;\n}\n\n",
-              prefix, name, prefix, name, prefix, name, prefix, name) < 0)
-    return CJOB_IO_ERROR;
+              prefix, name, prefix, name, prefix, name, prefix, name);
   return CJOB_SUCCESS;
 }

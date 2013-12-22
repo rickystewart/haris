@@ -29,10 +29,9 @@ CJobStatus write_source_file(CJob *job, FILE *out)
 
 static CJobStatus write_source_boilerplate(CJob *job, FILE *out)
 {
-  if (fprintf(out, "#include <stdio.h>\n\
+  CJOB_FPRINTF(out, "#include <stdio.h>\n\
 #include <stdlib.h\n\
-#include \"%s.h\"\n\n", job->output) < 0)
-    return CJOB_IO_ERROR;
+#include \"%s.h\"\n\n", job->output);
   return CJOB_SUCCESS;
 }
 

@@ -7,6 +7,8 @@
 #include <ctype.h>
 #include "schema.h"
 
+#define CJOB_FPRINTF(...) if (fprintf(__VA_ARGS__) < 0) return CJOB_IO_ERROR
+
 /* This file contains structures and procedures pertinent to constructing
    and running C compilation jobs. The functions for writing header files
    are in cgenh.c, and the functions for writing source files are in 
