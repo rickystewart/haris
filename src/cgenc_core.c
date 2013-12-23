@@ -230,15 +230,14 @@ haris_uint32_t sz)\n{\n", job->prefix, strct->name,
 static CJobStatus write_init_struct(CJob *job, ParsedStruct *strct,
                                     int i, FILE *out)
 {
-  char *prefix = job->prefix, *name = strct->name;
+  char *prefix = job->prefix, *name = strct->name,
+       *child_name = strct->children[i].name;
   CJOB_FPRINTF(out, "HarisStatus %s%s_init_%s(%s%s *strct)\n{\n\
   if (strct->%s) return HARIS_SUCCESS;\n\
   if ((strct->%s = %s_create()) == NULL)\n\
     return HARIS_MEM_ERROR;\n\
   return HARIS_SUCCESS;\n}\n\n",
-              prefix, name, strct->children[i].name,
-              prefix, name, strct->children[i].name,
-              strct->children[i].name, 
+              prefix, name, child_name, prefix, name, child_name, child_name, 
               strct->children[i].type.strct->name);
   return CJOB_SUCCESS;
 }
@@ -348,8 +347,7 @@ HarisStatus *out)\n{\n", prefix, name, prefix, name);
       else if (buf == 1) { *out = HARIS_STRUCTURE_ERROR; return 0; }\n\
       else if ((accum += buf) > HARIS_MESSAGE_SIZE_LIMIT) \
 { *out = HARIS_SIZE_ERROR; return 0; }\n\
-    }\n\
-  }\n", strct->children[i].name, 
+    }\n  }\n", strct->children[i].name, 
                     (strct->children[i].nullable ? "return 1;" :
                      "{ *out = HARIS_STRUCTURE_ERROR; return 0; }"),
                     strct->children[i].name, 

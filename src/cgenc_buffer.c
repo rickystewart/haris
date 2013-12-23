@@ -20,7 +20,7 @@ static CJobStatus write_static_to_buffer_function(CJob *, ParsedStruct *,
                                               int depth, int body_size, 
                                               int num_children)
    static unsigned char *_S_to_buffer(S *, unsigned char **);
-   static unsgned char *_S_to_buffer_posthead(S *, unsigned char **)
+   static unsigned char *_S_to_buffer_posthead(S *, unsigned char **)
 
    Finally, we have the following recursive function:
    static unsigned char *handle_child_buffer(unsigned char *, haris_uint32_t, 
@@ -265,8 +265,8 @@ static CJobStatus write_static_to_buffer_function(CJob *job,
   const char *prefix = job->prefix, *name = strct->name, *fname;
   CJOB_FPRINTF(out, "static unsigned char *_%s%s_to_buffer(%s%s *strct, \
 unsigned char *addr)\n{\n\
-  addr= %s%s_lib_write_header(strct, addr);\n\
-  if (strct->_null) return;\n
+  addr = %s%s_lib_write_header(strct, addr);\n\
+  if (strct->_null) return addr;\n
   return _%s%s_to_buffer_posthead(strct, addr);\n}\n\n", 
               prefix, name, prefix, name, prefix, name,
               prefix, name) < 0)

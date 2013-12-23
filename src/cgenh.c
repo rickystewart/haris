@@ -4,6 +4,7 @@
 static CJobStatus write_header_boilerplate(CJob *job, FILE *out);
 static CJobStatus write_header_macros(CJob *job, FILE *out);
 static CJobStatus write_header_structures(CJob *job, FILE *out);
+static CJobStatus write_reflective_structures(CJob *job, FILE *out);
 static CJobStatus write_header_prototypes(CJob *job, FILE *out);
 static CJobStatus write_header_footer(CJob *job, FILE *out);
 static CJobStatus write_child_field(CJob *job, FILE *out, ChildField *child);
@@ -90,6 +91,41 @@ static CJobStatus write_header_macros(CJob *job, FILE *out)
   return CJOB_SUCCESS;
 }
 
+static CJobStatus write_reflective_structures(CJob *job, FILE *out)
+{
+  CJOB_FPRINTF(out, "typedef enum {\n\
+  HARIS_SCALAR_UINT8, HARIS_SCALAR_INT8, HARIS_SCALAR_UINT16,\n\
+  HARIS_SCALAR_INT16, HARIS_SCALAR_UINT32, HARIS_SCALAR_INT32,\n\
+  HARIS_SCALAR_UINT64, HARIS_SCALAR_INT64, HARIS_SCALAR_FLOAT32,\n\
+  HARIS_SCALAR_FLOAT64, HARIS_SCALAR_BLANK\n\
+} HarisScalarType;\n\n");
+  CJOB_FPRINTF(out, "typedef enum {\n\
+  HARIS_CHILD_TEXT, HARIS_CHILD_SCALAR_LIST, HARIS_CHILD_STRUCT,\n\
+  HARIS_CHILD_STRUCT_LIST\n\
+} HarisChildType;\n\n");
+  CJOB_FPRINTF(out, "typedef struct {\n\
+  size_t offset;\n\
+  HarisScalarType type;\n\
+} HarisScalar;\n\n");
+  CJOB_FPRINTF(out, "typedef struct {\n\
+  int nullable;\n\
+  size_t info_offset;\n\
+  size_t pointer_offset;\n\
+  HarisScalarType scalar_element;\n\
+  int struct_element;\n\
+  HarisChildType child_type;\n\
+} HarisChild;\n\n");
+  CJOB_FPRINTF(out, "typedef struct {\n\
+  int num_scalars;\n\
+  HarisScalar *scalars;\n\
+  int num_children;\n\
+  HarisChild *children;\n\
+  int body_size;\n\
+  size_t size_of;\n\
+} HarisStructureInfo;\n\n");
+  return CJOB_SUCCESS;
+}
+
 /* We need to make two passes through the structure array to define 
    our structures. First, for every structure S (and assuming a prefix P), 
    we do
@@ -102,6 +138,8 @@ static CJobStatus write_header_structures(CJob *job, FILE *out)
 {
   CJobStatus result;
   int i, j;
+  if ((result = write_reflective_structures(job, out)) != CJOB_SUCCESS)
+    return result;
   for (i=0; i < job->schema->num_structs; i++) {
     CJOB_FPRINTF(out, "typedef struct haris_%s %s%s;\n", 
                 job->schema->structs[i].name,
@@ -110,7 +148,7 @@ static CJobStatus write_header_structures(CJob *job, FILE *out)
   CJOB_FPRINTF(out, "\n") < 0);
 
   for (i=0; i < job->schema->num_structs; i++) {
-    CJOB_FPRINTF(out, "struct haris_%s {\n", 
+    CJOB_FPRINTF(out, "struct haris_%s {\n  char _null;\n", 
                 job->schema->structs[i].name);
     for (j=0; j < job->schema->structs[i].num_scalars; j++) {
       CJOB_FPRINTF(out, "  %s %s;\n",
@@ -154,7 +192,7 @@ static CJobStatus write_child_field(CJob *job, FILE *out, ChildField *child)
   switch (child->tag) {
   case CHILD_TEXT:
     CJOB_FPRINTF(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
-  char _null_%s;\n  char *%s;\n", 
+  char _null\n_%s;\n  char *%s;\n", 
                 child->name, child->name, child->name, child->name);
     break;
   case CHILD_STRUCT:
@@ -162,14 +200,14 @@ static CJobStatus write_child_field(CJob *job, FILE *out, ChildField *child)
                 child->name);
   case CHILD_SCALAR_LIST:
     CJOB_FPRINTF(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
-  char _null_%s;\n  %s *%s;\n", 
+  char _null\n_%s;\n  %s *%s;\n", 
                 child->name, child->name, child->name,
                 scalar_type_name(child->type.scalar_list.tag),
                 child->name);
     break;
   case CHILD_STRUCT_LIST:
     CJOB_FPRINTF(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
-  char _null_%s;\n  %s%s **%s;\n", 
+  char _null\n_%s;\n  %s%s **%s;\n", 
                 child->name, child->name, child->name, job->prefix, 
                 child->type.struct_list->name, child->name);
     break;
