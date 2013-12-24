@@ -100,9 +100,14 @@ static CJobStatus write_reflective_structures(CJob *job, FILE *out)
   HARIS_SCALAR_FLOAT64, HARIS_SCALAR_BLANK\n\
 } HarisScalarType;\n\n");
   CJOB_FPRINTF(out, "typedef enum {\n\
-  HARIS_CHILD_TEXT, HARIS_CHILD_SCALAR_LIST, HARIS_CHILD_STRUCT,\n\
-  HARIS_CHILD_STRUCT_LIST\n\
+  HARIS_CHILD_TEXT, HARIS_CHILD_SCALAR_LIST, HARIS_CHILD_STRUCT_LIST,\n\
+  HARIS_CHILD_STRUCT\n\
 } HarisChildType;\n\n");
+  CJOB_PRINTF(out, "typedef struct {\n\
+  haris_uint32_t len;\n\
+  haris_uint32_t alloc;\n\
+  char           null;\n\
+} HarisListInfo;\n\n")
   CJOB_FPRINTF(out, "typedef struct {\n\
   size_t offset;\n\
   HarisScalarType type;\n\
@@ -189,27 +194,16 @@ static CJobStatus write_header_footer(CJob *job, FILE *out)
 
 static CJobStatus write_child_field(CJob *job, FILE *out, ChildField *child)
 {
+  char *child_name = child->name;
   switch (child->tag) {
   case CHILD_TEXT:
-    CJOB_FPRINTF(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
-  char _null\n_%s;\n  char *%s;\n", 
-                child->name, child->name, child->name, child->name);
+  case CHILD_SCALAR_LIST:
+  case CHILD_STRUCT_LIST:
+    CJOB_FPRINTF(out, "  HarisListInfo _%s_info;\n  void *%s;\n", 
+                child_name, child_name);
     break;
   case CHILD_STRUCT:
-    CJOB_FPRINTF(out, "  %s%s *%s;\n", job->prefix, child->type.strct->name,
-                child->name);
-  case CHILD_SCALAR_LIST:
-    CJOB_FPRINTF(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
-  char _null\n_%s;\n  %s *%s;\n", 
-                child->name, child->name, child->name,
-                scalar_type_name(child->type.scalar_list.tag),
-                child->name);
-    break;
-  case CHILD_STRUCT_LIST:
-    CJOB_FPRINTF(out, "  uint32_t _len_%s;\n  uint32_t _alloc_%s;\n\
-  char _null\n_%s;\n  %s%s **%s;\n", 
-                child->name, child->name, child->name, job->prefix, 
-                child->type.struct_list->name, child->name);
+    CJOB_FPRINTF(out, "  void *%s;\n", child_name);
     break;
   }
   return CJOB_SUCCESS;

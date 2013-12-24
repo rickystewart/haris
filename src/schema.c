@@ -65,6 +65,7 @@ ParsedStruct *new_struct(ParsedSchema *schema, char *name)
     schema->structs = array;
   } 
   ret = schema->structs + schema->num_structs;
+  ret->schema_index = schema->num_structs;
   ret->name = strdup(name);
   ret->num_scalars = ret->num_children = 0;
   ret->offset = 0;

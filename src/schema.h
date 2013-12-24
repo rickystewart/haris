@@ -61,6 +61,7 @@ typedef struct {
 
 struct _ParsedStruct {
   char *name;
+  int schema_index;
   int offset;
   int num_scalars;
   int scalars_alloc;
