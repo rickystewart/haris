@@ -3,10 +3,10 @@ hash.o lex.o parse.o schema.o
 RESULT = haris
 
 CC = gcc
-CCFLAGS = -Wall -pedantic -O3
+CFLAGS = -Wall -Wextra -pedantic -Wconversion -Wsign-conversion -O3
 
 all:	$(OBJS)
-	$(CC) $(CCFLAGS) -o$(RESULT) $(OBJS)
+	$(CC) $(CFLAGS) -o$(RESULT) $(OBJS)
 
 clean:
 	rm $(OBJS) 
