@@ -17,7 +17,7 @@ TypeHash *create_typehash(void)
   int i;
   TypeHash *ret = (TypeHash*)malloc(sizeof *ret);
   if (!ret) return NULL;
-  for (i=0; i<HASH_SIZE; i++)
+  for (i = 0; i<HASH_SIZE; i++)
     ret->buckets[i] = NULL;
   if (add_builtins_to_hash(ret))
     return ret;
@@ -31,7 +31,7 @@ void destroy_typehash(TypeHash *hash)
 {
   int i;
   TypeHashBucket *bucket, *tmp;
-  for (i=0; i<HASH_SIZE; i++) {
+  for (i = 0; i<HASH_SIZE; i++) {
     bucket = hash->buckets[i];
     while (bucket) {
       tmp = bucket->next;
