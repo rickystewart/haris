@@ -79,7 +79,7 @@ int num_children, int body_size);
 static CJobStatus write_child_buffer_handler(CJob *job, FILE *out)
 {
   CJOB_FPRINTF(out, "static HarisStatus handle_child_buffer(unsigned char *buf,\
-haris_uint32_t ind, haris_uint32_t sz, haris_uint32_t *out_ind, int depth)\n
+ haris_uint32_t ind, haris_uint32_t sz, haris_uint32_t *out_ind, int depth)\n\
 {\n\
   HarisStatus result;\n\
   int num_children, body_size, el_size;\n\
@@ -266,11 +266,10 @@ static CJobStatus write_static_to_buffer_function(CJob *job,
   CJOB_FPRINTF(out, "static unsigned char *_%s%s_to_buffer(%s%s *strct, \
 unsigned char *addr)\n{\n\
   addr = %s%s_lib_write_header(strct, addr);\n\
-  if (strct->_null) return addr;\n
+  if (strct->_null) return addr;\n\
   return _%s%s_to_buffer_posthead(strct, addr);\n}\n\n", 
               prefix, name, prefix, name, prefix, name,
-              prefix, name) < 0)
-    return CJOB_IO_ERROR;
+              prefix, name);
   CJOB_FPRINTF(out, "static unsigned char *_%s%s_to_buffer_posthead(\
 %s%s *strct, unsigned char *addr)\n{\n\
   addr = %s%s_lib_write_body(strct, addr)", prefix, name, prefix, name, 
@@ -295,7 +294,7 @@ unsigned char *addr)\n{\n\
       } else {
         CJOB_FPRINTF(out, "  *addr = 0xC0;\n\
   haris_write_uint24(addr + 1, strct->_len_%s);\n\
-  (void)memcpy(addr + 4, strct->%s, strct->_len_%s);\n
+  (void)memcpy(addr + 4, strct->%s, strct->_len_%s);\n\
   addr += 4 + strct->_len_%s;\n}\n", 
                     fname, fname, fname, fname);
       }
@@ -367,7 +366,7 @@ unsigned char **out_buf, haris_uint32_t *out_sz)\n\
   HarisStatus result;\n\
   HARIS_ASSERT(!strct->_null, STRUCTURE);\n\
   *out_sz = %s%s_lib_size(strct, 0, &result);\n\
-  if (!*out_sz) return result;
+  if (!*out_sz) return result;\n\
   *out_buf = (unsigned char *)malloc(sz);\n\
   HARIS_ASSERT(*out_buf, MEM);\n\
   (void)_%s%s_to_buffer(strct, *out_buf);\n\

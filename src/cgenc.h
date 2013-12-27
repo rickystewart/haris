@@ -1,7 +1,7 @@
 #ifndef __CGENC_H
 #define __CGENC_H
 
-"include cgen.h"
+#include "cgen.h"
 
 /* This file contains procedures for writing the source code file (i.e. the
    .c file) of a C compilation job. In fact, this file leverages

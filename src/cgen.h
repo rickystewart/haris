@@ -10,18 +10,26 @@
 #define CJOB_FPRINTF(...) do { if (fprintf(__VA_ARGS__) < 0) \
                                  return CJOB_IO_ERROR; } while (0)
 
-/* This file contains structures and procedures pertinent to constructing
-   and running C compilation jobs. The functions for writing header files
-   are in cgenh.c, and the functions for writing source files are in 
-   the cgenc.* family of files. Further, cgenu.c contains functions for
-   writing the "utility library" (which makes up a portion of both 
-   generated source files).
+/* Main entry point for the C compiler. The main point of interest here is 
+   the cgen_main() function, which accepts as its input the `argv` and `argc` 
+   that were passed to the main() function. This function processes the 
+   command-line arguments, constructs a CJob, and runs the CJob if all the 
+   command-line arguments could be successfully processed and the parsing 
+   succeeded.
 
-   The main point of interest here is the cgen_main() function, which
-   accepts as its input the `argv` and `argc` that were passed to the main()
-   function. This function processes the command-line arguments, constructs
-   a CJob, and runs the CJob if all the command-line arguments could be
-   successfully processed and the parsing succeeded.
+   In sum, a compiled Haris library is made up, roughly, of two parts:
+   1) The core library. This body of code is largely unchanging, and
+   contains functions that can be used to construct in-memory C structures,
+   destroy these same in-memory C structures, and convert between these
+   structures and small in-memory buffers. In short, the library contains
+   the code that's necessary for a Haris runtime to work, no matter what
+   protocol we're generating.
+   2) The protocol library (libraries). This section builds off of the
+   core library, and contains the code that will transmit Haris messages
+   along the chosen protocol. 
+
+   Information about the content and implementation of these libraries can
+   be found in the relevant headers.
 */
 
 typedef enum {

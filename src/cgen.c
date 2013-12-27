@@ -54,14 +54,14 @@ language %s.\n", argv[i+1]);
       if (!strcmp(argv[i+1], "buffer"))
         job->buffer_protocol = 1;
       else if (!strcmp(argv[i+1], "file")) 
-        job->file_protcol = 1;
+        job->file_protocol = 1;
       else {
         fprintf(stderr, "Unrecognized protocol %s.\n", argv[i+1]);
         return CJOB_JOB_ERROR;
       }
       i++;
     } else if (!strcmp(argv[i], "-O")) {
-      fprintf(stderr, "Optimizations are as of yet unimplemented.\n")
+      fprintf(stderr, "Optimizations are as of yet unimplemented.\n");
       return CJOB_JOB_ERROR;
     } else { /* Strings that aren't command line options are files that we
                 are meant to parse and compile */
@@ -77,7 +77,7 @@ language %s.\n", argv[i+1]);
     }
   }
   /* Make changes to job to reflect optional arguments */
-  if (!job->ouput) job->output = "haris";
+  if (!job->output) job->output = "haris";
   if (!job->prefix) job->prefix = "";
   job->schema = parser->schema;
   /* Run the job */

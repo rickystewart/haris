@@ -104,30 +104,31 @@ static CJobStatus write_reflective_structures(CJob *job, FILE *out)
   HARIS_CHILD_STRUCT\n\
 } HarisChildType;\n\n");
   CJOB_PRINTF(out, "typedef struct {\n\
+  void *         ptr;\n\
   haris_uint32_t len;\n\
   haris_uint32_t alloc;\n\
   char           null;\n\
-} HarisListInfo;\n\n")
+} HarisListInfo;\n\n");
+  CJOB_FPRINTF(out, "typedef struct HarisStructureInfo_ HarisStructureInfo;\n");
   CJOB_FPRINTF(out, "typedef struct {\n\
   size_t offset;\n\
   HarisScalarType type;\n\
 } HarisScalar;\n\n");
   CJOB_FPRINTF(out, "typedef struct {\n\
   int nullable;\n\
-  size_t info_offset;\n\
-  size_t pointer_offset;\n\
+  size_t offset;\n\
   HarisScalarType scalar_element;\n\
-  int struct_element;\n\
+  HarisStructureInfo *struct_element;\n\
   HarisChildType child_type;\n\
 } HarisChild;\n\n");
-  CJOB_FPRINTF(out, "typedef struct {\n\
+  CJOB_FPRINTF(out, "struct HarisStructureInfo_ {\n\
   int num_scalars;\n\
   HarisScalar *scalars;\n\
   int num_children;\n\
   HarisChild *children;\n\
   int body_size;\n\
   size_t size_of;\n\
-} HarisStructureInfo;\n\n");
+};\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -150,7 +151,7 @@ static CJobStatus write_header_structures(CJob *job, FILE *out)
                 job->schema->structs[i].name,
                 job->prefix, job->schema->structs[i].name);
   }
-  CJOB_FPRINTF(out, "\n") < 0);
+  CJOB_FPRINTF(out, "\n");
 
   for (i=0; i < job->schema->num_structs; i++) {
     CJOB_FPRINTF(out, "struct haris_%s {\n  char _null;\n", 
@@ -199,7 +200,7 @@ static CJobStatus write_child_field(CJob *job, FILE *out, ChildField *child)
   case CHILD_TEXT:
   case CHILD_SCALAR_LIST:
   case CHILD_STRUCT_LIST:
-    CJOB_FPRINTF(out, "  HarisListInfo _%s_info;\n  void *%s;\n", 
+    CJOB_FPRINTF(out, "  HarisListInfo _%s_info;\n", 
                 child_name, child_name);
     break;
   case CHILD_STRUCT:
@@ -253,7 +254,7 @@ static CJobStatus write_buffer_prototypes(CJob *job, FILE *out)
   const char *prefix, *name;
   for (i=0; i < job->schema->num_structs; i++) {
     prefix = job->prefix;
-    name = job->Schema->structs[i].name;
+    name = job->schema->structs[i].name;
     CJOB_FPRINTF(out, "HarisStatus %s%s_from_buffer(%s%s *, \
 unsigned char *, haris_uint32_t, unsigned char **);\n\
 HarisStatus *%s%s_to_buffer(%s%s *, unsigned char **, \
@@ -277,7 +278,7 @@ static CJobStatus write_file_prototypes(CJob *job, FILE *out)
     prefix = job->prefix;
     name = job->schema->structs[i].name;
     CJOB_FPRINTF(out, "HarisStatus %s%s_from_file(%s%s *, FILE *);\n\
-HarisStatus %s%s_to_file(%s%s *, FILE *);\n"
+HarisStatus %s%s_to_file(%s%s *, FILE *);\n",
                 prefix, name, prefix, name,
                 prefix, name, prefix, name);
   }

@@ -468,7 +468,7 @@ void haris_write_float64(unsigned char *b, haris_float64 f)\n\
     haris_write_uint64(b, 0U);\n\
     return;\n\
   }\n",
-"
+"\
 \n\
   if (f < 0) {\n\
     sign = 1; \n\

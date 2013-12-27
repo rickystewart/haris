@@ -103,6 +103,14 @@ int parse(Parser *p)
 
 /* =============================STATIC FUNCTIONS============================= */
 
+/* Creates a parser from a given ParsedSchema object and TypeHash. 
+   When the new parser is bound and run, it will append its parse information to
+   the schema and TypeHash; for example, if the schema has 3 structures, and
+   the parser is bound to an input file with 5 more structure definitions, then
+   all 8 structures will be captured in the ParsedSchema and TypeHash after
+   the parse has completed. This function is therefore useful to add information
+   to a ParsedSchema without losing another parser's state.
+*/
 static Parser *create_parser_from_schema_hash(ParsedSchema *schema,
                                               TypeHash *hash)
 {
@@ -162,8 +170,7 @@ static int trigger_parse_error(Parser *p, ParserError err, char *msg)
 {
   if (msg) {
     p->errbuf = strdup(msg);
-    if (!p->errbuf) p->errno = PARSE_MEM_ERROR;
-    else p->errno = err;
+    p->errno = p->errbuf ? err : PARSE_MEM_ERROR;
   } else {
     p->errno = err;
     p->errbuf = NULL;
