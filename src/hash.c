@@ -12,6 +12,9 @@ static int add_text_to_hash(TypeHash *hash);
 
 /* =============================PUBLIC INTERFACE============================= */
 
+/* Create a new typehash, and return a pointer to it, or NULL if the allocation
+   fails. The typehash will come pre-loaded with all of the builtin types.
+*/
 TypeHash *create_typehash(void)
 {
   int i;
@@ -27,6 +30,7 @@ TypeHash *create_typehash(void)
   }
 }
 
+/* Destroy a typehash and all of its buckets. */
 void destroy_typehash(TypeHash *hash)
 {
   int i;
@@ -44,6 +48,7 @@ void destroy_typehash(TypeHash *hash)
   return;
 }
 
+/* Add a structure with the given name to the typehash. */
 int add_struct_to_hash(TypeHash *hash, char *name, ParsedStruct *strct)
 {
   int i = hash_string(name);
@@ -55,6 +60,7 @@ int add_struct_to_hash(TypeHash *hash, char *name, ParsedStruct *strct)
   return 1;
 }
 
+/* Add an enumerator with the given name to the typehash. */
 int add_enum_to_hash(TypeHash *hash, char *name, ParsedEnum *enm)
 {
   int i = hash_string(name);
@@ -66,6 +72,9 @@ int add_enum_to_hash(TypeHash *hash, char *name, ParsedEnum *enm)
   return 1;
 }
 
+/* Retrieve a type with the given name from the given hash, or NULL
+   if the type does not exist. 
+*/
 TypeHashBucket *get_type(TypeHash *hash, char *name)
 {
   int i = hash_string(name);
@@ -94,6 +103,7 @@ static int hash_string(char *str)
   return hash % HASH_SIZE;
 }
 
+/* Add all builtin types to the given hash statefully. */
 static int add_builtins_to_hash(TypeHash *hash)
 {
   return add_scalar_to_hash(hash, "Uint8", SCALAR_UINT8) &&
@@ -110,6 +120,9 @@ static int add_builtins_to_hash(TypeHash *hash)
     add_text_to_hash(hash);
 }
 
+/* Create a new bucket with the given name, which must be dynamically
+   allocated. It is then suitable to be added to a TypeHash.
+*/
 static TypeHashBucket *new_bucket(char *name)
 {
   TypeHashBucket *bucket = (TypeHashBucket*)malloc(sizeof *bucket);
@@ -122,6 +135,9 @@ static TypeHashBucket *new_bucket(char *name)
   return bucket;
 }
 
+/* Add the given bucket to the given hash at the given index into the buckets
+   array.
+*/
 static void add_bucket_at_index(TypeHash *hash, TypeHashBucket *bucket, int i)
 {
   bucket->next = hash->buckets[i];
@@ -129,6 +145,9 @@ static void add_bucket_at_index(TypeHash *hash, TypeHashBucket *bucket, int i)
   return;
 }
 
+/* Add a scalar type to the TypeHash. Utility function for use by 
+   add_builtins_to_hash.
+*/
 static int add_scalar_to_hash(TypeHash *hash, char *name, ScalarTag tag)
 {
   int i = hash_string(name);
@@ -140,6 +159,9 @@ static int add_scalar_to_hash(TypeHash *hash, char *name, ScalarTag tag)
   return 1;
 }
 
+/* Add the builtin text type to the TypeHash. Utility function for
+   use by add_builtins_to_hash.
+*/
 static int add_text_to_hash(TypeHash *hash)
 {
   char *name = "Text";

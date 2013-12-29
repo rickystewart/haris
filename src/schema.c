@@ -10,6 +10,7 @@ static int add_list_of_scalars_or_enums_field(ParsedStruct *, char *, int,
 
 /* =============================PUBLIC INTERFACE============================= */
 
+/* Dynamically allocate a parsed schema, returning a pointer to it. */
 ParsedSchema *create_parsed_schema(void)
 {
   const int arr_size = 8;
@@ -28,6 +29,7 @@ ParsedSchema *create_parsed_schema(void)
   return ret;
 }
 
+/* Destroy a parsed schema and all of its data. */
 void destroy_parsed_schema(ParsedSchema *p)
 {
   int i, j;
@@ -53,7 +55,7 @@ void destroy_parsed_schema(ParsedSchema *p)
 /* Creates a new structure in the given schema with the given name, returning
    a pointer to it. Notably, this function DOES NOT perform error-checking, so
    if you do not perform error-checking yourself, you may end up with
-   duplicate structures. */
+   duplicate structure names. */
 ParsedStruct *new_struct(ParsedSchema *schema, char *name)
 {
   const int arr_size = 8;
@@ -273,6 +275,7 @@ static int field_length(ScalarTag field)
   return -1;
 }
 
+/* Doubles the size of the scalar array of the given structure. */
 static int realloc_struct_scalars(ParsedStruct *strct)
 {
   ScalarField *array = realloc(strct->scalars,
@@ -282,6 +285,7 @@ static int realloc_struct_scalars(ParsedStruct *strct)
   return 1;
 }
 
+/* Doubles the size of the child array of the given structure. */
 static int realloc_struct_children(ParsedStruct *strct)
 {
   ChildField *array = realloc(strct->children,

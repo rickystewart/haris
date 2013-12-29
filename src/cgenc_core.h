@@ -21,8 +21,8 @@
    definitions for all of these functions.
 */
 
-CJobStatus write_core_prototypes(CJob *job, FILE *out);
-CJobStatus write_source_public_funcs(CJob *job, FILE *out);
-CJobStatus write_source_core_funcs(CJob *job, FILE *out);
+CJobStatus write_core_prototypes(CJob *job);
+CJobStatus write_source_public_funcs(CJob *job);
+CJobStatus write_source_core_funcs(CJob *job);
 
 #endif

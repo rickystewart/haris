@@ -10,6 +10,6 @@
    in order to write out the code. 
 */
 
-CJobStatus write_source_file(CJob *, FILE *);
+CJobStatus write_source_file(CJob *);
 
 #endif

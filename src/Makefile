@@ -8,5 +8,7 @@ CFLAGS = -Wall -Wextra -pedantic -Wconversion -Wsign-conversion -O3
 all:	$(OBJS)
 	$(CC) $(CFLAGS) -o$(RESULT) $(OBJS)
 
+%.o:	%.h %.c
+
 clean:
 	rm $(OBJS) 

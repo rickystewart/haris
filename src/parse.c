@@ -181,7 +181,8 @@ static int trigger_parse_error(Parser *p, ParserError err, char *msg)
 /* This function handles parsing at the "top level"; that is, the parser
    will be in this function when it's not in the middle of parsing a 
    definition. This function will parse the entire file in order and will
-   return once the end of the input stream has been reached. 
+   return once the end of the input stream has been reached (or the lexer
+   encounters an error). 
 
    Legal incoming tokens:
    - @, which indicates we should move to the forward declaration handler

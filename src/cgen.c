@@ -8,8 +8,12 @@ static CJob *new_cjob(void);
 static CJobStatus run_cjob(CJob *);
 static void destroy_cjob(CJob *);
 
+static int allocate_string_stack(CJobStringStack *, int);
+static int push_string(CJobStringStack *, char *);
+
 static CJobStatus check_job(CJob *);
 static CJobStatus compile(CJob *);
+static CJobStatus output_to_file(CJob *job);
 static FILE *open_source_file(const char *prefix, const char *suffix);
 
 /* =============================PUBLIC INTERFACE============================= */
@@ -86,6 +90,44 @@ language %s.\n", argv[i+1]);
   if (parser) destroy_parser(parser);
   if (job) destroy_cjob(job);
   return result;
+}
+
+CJobStatus add_header_string(CJobStrings *strings, char *s)
+{
+  if (!push_string(&strings->header_strings, s))
+    return CJOB_MEM_ERROR;
+  return CJOB_SUCCESS;
+}
+
+CJobStatus add_source_string(CJobStrings *strings, char *s)
+{
+  if (!push_string(&strings->source_strings, s))
+    return CJOB_MEM_ERROR;
+  return CJOB_SUCCESS;
+}
+
+CJobStatus add_public_function(CJobStrings *strings, char *s)
+{
+  if (!push_string(&strings->public_functions, s))
+    return CJOB_MEM_ERROR;
+  return CJOB_SUCCESS;
+}
+
+CJobStatus add_private_function(CJobStrins *strings, char *s)
+{
+  if (!push_string(&strings->private_functions, s))
+    return CJOB_MEM_ERROR;
+  return CJOB_SUCCESS;
+}
+
+char *strformat(const char *fmt, ...)
+{
+  char *ret;
+  va_list ap;
+  va_start(ap, fmt);
+  if (vasprintf(&ret, fmt, ap) < 0) return NULL;
+  va_end(ap);
+  return ret;
 }
 
 const char *scalar_type_suffix(ScalarTag type)
@@ -193,16 +235,55 @@ int sizeof_scalar(ScalarTag type)
 
 /* =============================STATIC FUNCTIONS============================= */
 
+static int init_string_stack(CJobStringStack *stack)
+{
+  static const int initial_stack_size = 16;
+  stack->num_strings = 0;
+  stack->strings = NULL;
+  return allocate_string_stack(stack, initial_stack_size);
+}
+
+static int allocate_string_stack(CJobStringStack *stack, int sz)
+{
+  int i;
+  char **ret = (char**)realloc(stack->strings, sz * sizeof(char*));
+  if (!ret) return 0;
+  for (i = stack->num_strings; i < sz; i++)
+    ret[i] = NULL;
+  stack->strings_alloc = sz;
+  stack->strings = ret;
+  return 1;
+}
+
+/* Error-checking: CJOB_MEM_ERROR if s is NULL */
+static int push_string(CJobStringStack *stack, char *s)
+{
+  if (!s) return CJOB_MEM_ERROR;
+  if (stack->num_strings == stack->strings_alloc)
+    if (!allocate_string_stack(stack, stack->strings_alloc * 2))
+      return 0;
+  stack->strings[stack->num_strings++] = s;
+  return 1;
+}
+
 static CJob *new_cjob(void)
 {
   CJob *ret = (CJob *)malloc(sizeof *ret);
-  if (!ret) return NULL;
+  if (!ret) goto Failure;
   ret->schema = NULL;
   ret->prefix = NULL;
   ret->output = NULL;
   ret->buffer_protocol = 0;
   ret->file_protocol = 0;
+  if (!init_string_stack(&ret->strings.header_strings) ||
+      !init_string_stack(&ret->strings.source_strings) ||
+      !init_string_stack(&ret->strings.public_functions) ||
+      !init_string_stack(&ret->strings.private_functions))
+    goto Failure;
   return ret;
+  Failure:
+  free(ret);
+  return NULL;
 }
 
 static void destroy_cjob(CJob *job) 
@@ -271,22 +352,29 @@ static CJobStatus check_job(CJob *job)
 static CJobStatus compile(CJob *job)
 {
   CJobStatus result;
+  if ((result = write_utility_lib_header(job))
+      != CJOB_SUCCESS ||
+      (result = write_header_file(job)) 
+      != CJOB_SUCCESS ||
+      (result = write_utility_lib_source(job))
+      != CJOB_SUCCESS ||
+      (result = write_source_file(job))
+      != CJOB_SUCCESS)
+    goto Cleanup;
+  return output_to_file(job);
+}
+
+static CJobStatus output_to_file(CJob *job)
+{
+  CJobStatus result;
   FILE *header = open_source_file(job->output, ".h"), 
        *source = open_source_file(job->output, ".c");
   if (!header || !source) { 
     result = CJOB_IO_ERROR;
     goto Cleanup;
   }
-  if ((result = write_utility_lib_header(job, header))
-      != CJOB_SUCCESS ||
-      (result = write_header_file(job, header)) 
-      != CJOB_SUCCESS ||
-      (result = write_utility_lib_source(job, source))
-      != CJOB_SUCCESS ||
-      (result = write_source_file(job, source))
-      != CJOB_SUCCESS)
-    goto Cleanup;
-  Cleanup:
+  /* WIP */
+  Cleanup;
   if (header) fclose(header);
   if (source) fclose(source);
   return result;
