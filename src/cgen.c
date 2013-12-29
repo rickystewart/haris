@@ -113,7 +113,7 @@ CJobStatus add_public_function(CJobStrings *strings, char *s)
   return CJOB_SUCCESS;
 }
 
-CJobStatus add_private_function(CJobStrins *strings, char *s)
+CJobStatus add_private_function(CJobStrings *strings, char *s)
 {
   if (!push_string(&strings->private_functions, s))
     return CJOB_MEM_ERROR;
@@ -156,6 +156,7 @@ const char *scalar_type_suffix(ScalarTag type)
   case SCALAR_FLOAT64:
     return "float64";
   }
+  return NULL;
 }
 
 const char *scalar_type_name(ScalarTag type)
@@ -208,6 +209,7 @@ int scalar_bit_pattern(ScalarTag type)
   case SCALAR_FLOAT64:
     return 3;
   }
+  return 0;
 }
 
 int sizeof_scalar(ScalarTag type)
@@ -230,6 +232,7 @@ int sizeof_scalar(ScalarTag type)
   case SCALAR_FLOAT64:
     return 8;
   }
+  return 0;
 }
 
 
@@ -374,7 +377,7 @@ static CJobStatus output_to_file(CJob *job)
     goto Cleanup;
   }
   /* WIP */
-  Cleanup;
+  Cleanup:
   if (header) fclose(header);
   if (source) fclose(source);
   return result;

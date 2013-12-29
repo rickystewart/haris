@@ -3,7 +3,7 @@ hash.o lex.o parse.o schema.o
 RESULT = haris
 
 CC = gcc
-CFLAGS = -Wall -Wextra -pedantic -Wconversion -Wsign-conversion -O3
+CFLAGS = -Wall -Wextra -pedantic -Wconversion -Wsign-conversion -O3 -std=c99
 
 all:	$(OBJS)
 	$(CC) $(CFLAGS) -o$(RESULT) $(OBJS)

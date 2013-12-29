@@ -1,13 +1,11 @@
 #include "cgenc_buffer.h"
 
-static CJobStatus write_public_buffer_funcs(CJob *, ParsedStruct *, FILE *);
-static CJobStatus write_static_buffer_funcs(CJob *, ParsedStruct *, FILE *);
-static CJobStatus write_child_buffer_handler(CJob *, FILE *);
+static CJobStatus write_public_buffer_funcs(CJob *, ParsedStruct *);
+static CJobStatus write_static_buffer_funcs(CJob *, ParsedStruct *);
+static CJobStatus write_child_buffer_handler(CJob *);
 
-static CJobStatus write_static_from_buffer_function(CJob *, ParsedStruct *, 
-                                                    FILE *);
-static CJobStatus write_static_to_buffer_function(CJob *, ParsedStruct *, 
-                                                  FILE *);
+static CJobStatus write_static_from_buffer_function(CJob *, ParsedStruct *);
+static CJobStatus write_static_to_buffer_function(CJob *, ParsedStruct *);
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -31,34 +29,19 @@ static CJobStatus write_static_to_buffer_function(CJob *, ParsedStruct *,
                                              haris_uint32_t *, int, 
                                              int body_size, int num_children);                                        
 */
-CJobStatus write_buffer_static_prototypes(CJob *job, FILE *out)
-{
-  const char *prefix = job->prefix, *name;
-  int i;
-  for (i=0; i < job->schema->num_structs; i++) {
-    name = job->schema->structs[i].name;
-    CJOB_FPRINTF(out, "static HarisStatus _%s%s_from_buffer(%s%s *, unsigned \
-char *, haris_uint32_t, haris_uint32_t, haris_uint32_t *, int);\n\
-static unsigned char *_%s%s_to_buffer(%s%s *, unsigned char *);\n\n",
-                prefix, name, prefix, name, prefix, name, prefix, name);
-  }
-  CJOB_FPRINTF(out, "static HarisStatus handle_child_buffer(unsigned char *, \
-haris_uint32_t, haris_uint32_t, haris_uint32_t *, int);\n\n");
-  return CJOB_SUCCESS;
-}
 
-CJobStatus write_buffer_protocol_funcs(CJob *job, FILE *out)
+CJobStatus write_buffer_protocol_funcs(CJob *job)
 {
   CJobStatus result;
   int i;
   ParsedSchema *schema = job->schema;
   for (i = 0; i < schema->num_structs; i++) {
-    if ((result = write_public_buffer_funcs(job, &schema->structs[i], out)) 
+    if ((result = write_public_buffer_funcs(job, &schema->structs[i])) 
         != CJOB_SUCCESS) return result;
-    if ((result = write_static_buffer_funcs(job, &schema->structs[i], out))
+    if ((result = write_static_buffer_funcs(job, &schema->structs[i]))
         != CJOB_SUCCESS) return result;
   }
-  if ((result = write_child_buffer_handler(job, out)) != CJOB_SUCCESS)
+  if ((result = write_child_buffer_handler(job)) != CJOB_SUCCESS)
     return result;
   return CJOB_SUCCESS;
 }
@@ -76,9 +59,9 @@ int num_children, int body_size);
    a structure with 5 children, but we are only aware of 3 children, then we
    will call these functions twice to skip to the next part of the message.
 */
-static CJobStatus write_child_buffer_handler(CJob *job, FILE *out)
+static CJobStatus write_child_buffer_handler(CJob *job)
 {
-  CJOB_FPRINTF(out, "static HarisStatus handle_child_buffer(unsigned char *buf,\
+  CJOB_FMT_PRIV_FUNCTION(job, "static HarisStatus handle_child_buffer(unsigned char *buf,\
  haris_uint32_t ind, haris_uint32_t sz, haris_uint32_t *out_ind, int depth)\n\
 {\n\
   HarisStatus result;\n\
@@ -117,7 +100,7 @@ depth, num_children, body_size);\n\
         return result;\n\
     return HARIS_SUCCESS;\n\
   }\n}\n\n");
-  CJOB_FPRINTF(out, "static HarisStatus handle_child_buffer_struct_posthead(\
+  CJOB_FMT_PRIV_FUNCTION(job, "static HarisStatus handle_child_buffer_struct_posthead(\
 unsigned char *buf,\nharis_uint32_t ind, haris_uint32_t sz, \
 haris_uint32_t *out_ind, int depth, int num_children, int body_size)\n\
 {\n\
@@ -135,8 +118,7 @@ haris_uint32_t *out_ind, int depth, int num_children, int body_size)\n\
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_static_buffer_funcs(CJob *job, ParsedStruct *strct,
-                                            FILE *out)
+static CJobStatus write_static_buffer_funcs(CJob *job, ParsedStruct *strct)
 {
   CJobStatus result;
   if ((result = write_static_from_buffer_function(job, strct, out))
@@ -147,12 +129,11 @@ static CJobStatus write_static_buffer_funcs(CJob *job, ParsedStruct *strct,
 }
 
 static CJobStatus write_static_from_buffer_function(CJob *job, 
-                                                    ParsedStruct *strct, 
-                                                    FILE *out)
+                                                    ParsedStruct *strct)
 {
   int i, scalar_sz;
   const char *prefix = job->prefix, *name = strct->name, *child_name;
-  CJOB_FPRINTF(out, "static HarisStatus _%s%s_from_buffer(%s%s *strct, \
+  CJOB_FMT_PRIV_FUNCTION(job, "static HarisStatus _%s%s_from_buffer(%s%s *strct, \
 unsigned char *buf, haris_uint32_t ind, haris_uint32_t sz, haris_uint32_t *\
 out_ind, int depth)\n{\n\
   HarisStatus result;\n\
@@ -176,7 +157,7 @@ return HARIS_SUCCESS; }\n\
 depth, num_children, body_size);\n}\n\n",
               prefix, name, prefix, name, prefix, name, prefix, name, 
               prefix, name);
-  CJOB_FPRINTF(out, "static HarisStatus _%s%s_from_buffer_posthead(\
+  CJOB_FMT_PRIV_FUNCTION(job, "static HarisStatus _%s%s_from_buffer_posthead(\
 %s%s *strct, unsigned char *buf, haris_uint32_t ind, haris_uint32_t sz, \
 haris_uint32_t *out_ind, int depth, int num_children, int body_size)\n{\n\
   HarisStatus result;\n\

@@ -102,7 +102,7 @@ CJobStatus cgen_main(int, char **);
 CJobStatus add_header_string(CJobStrings *, char *);
 CJobStatus add_source_string(CJobStrings *, char *);
 CJobStatus add_public_function(CJobStrings *, char *);
-CJobStatus add_private_function(CJobStrins *, char *);
+CJobStatus add_private_function(CJobStrings *, char *);
 
 char *strformat(const char *, ...);
 
