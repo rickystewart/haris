@@ -5,7 +5,7 @@ static CJobStatus write_header_boilerplate(CJob *);
 static CJobStatus write_header_macros(CJob *);
 static CJobStatus write_header_structures(CJob *);
 static CJobStatus write_reflective_structures(CJob *);
-static CJobStatus write_child_field(CJob *, ChildField *child);
+static CJobStatus write_child_field(CJob *, const ChildField *child);
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -31,7 +31,6 @@ CJobStatus write_header_file(CJob *job)
 */
 static CJobStatus write_header_boilerplate(CJob *job)
 {
-  int i;
   CJOB_FMT_HEADER_STRING(job, 
 "#include <stdio.h>\n\
 #include <stdlib.h>\n\n");
