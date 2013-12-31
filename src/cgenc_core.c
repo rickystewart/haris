@@ -2,6 +2,14 @@
 
 /* Functions relating to the public constructors, destructors, and
    initializers */
+
+static CJobStatus write_readint(CJob *job);
+static CJobStatus write_readuint(CJob *job);
+static CJobStatus write_writeint(CJob *job);
+static CJobStatus write_writeuint(CJob *job);
+static CJobStatus write_readfloat(CJob *job);
+static CJobStatus write_writefloat(CJob *job);
+
 static CJobStatus write_public_constructor(CJob *, ParsedStruct *);
 static CJobStatus write_general_constructor(CJob *);
 
@@ -28,6 +36,8 @@ static CJobStatus write_core_rfuncs(CJob *);
 static CJobStatus write_core_size(CJob *);
 
 static CJobStatus (* const general_core_writer_functions[])(CJob *) = {
+  write_readint, write_readuint, write_writeint, write_writeuint,
+  write_readfloat, write_writefloat,
   write_in_memory_scalar_sizes, write_message_scalar_sizes, 
   write_scalar_readers, write_scalar_writers, write_core_wfuncs,
   write_message_bit_patterns,
@@ -38,6 +48,325 @@ static CJobStatus (* const general_core_writer_functions[])(CJob *) = {
 };
 
 /* =============================PUBLIC INTERFACE============================= */
+
+static CJobStatus write_util_c_readint(CJob *job)
+{
+  CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int8(const unsigned char *b, void *_ptr)\n\
+{\n\
+  haris_int8_t *ptr = (haris_int8_t*)_ptr;\n\
+  if (*b & 0x80) \n\
+    *ptr = -(haris_int8_t)(*b & 0x7F) - 1;\n\
+  else\n\
+    *ptr = (haris_int8_t)haris_read_uint8(b);\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int16(const unsigned char *b, void *_ptr)\n\
+{\n\
+  haris_int16_t *ptr = (haris_int16_t*)_ptr;\n\
+  if (*b & 0x80)\n\
+    *ptr = -((haris_int16_t)(*b & 0x7F) << 8 | (haris_int16_t)*(b+1)) - 1;\n\
+  else\n\
+    *ptr = (haris_int16_t)haris_read_uint16(b);\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int32(const unsigned char *b, void *_ptr)\n\
+{\n\
+  haris_int32_t *ptr = (haris_int32_t*)_ptr;\n\
+  if (*b & 0x80)\n\
+    *ptr = -((haris_int32_t)(*b & 0x7F) << 24 | (haris_int32_t)*(b+1) << 16 |\n\
+             (haris_int32_t)(*b+2) << 8 | (haris_int32_t)(*b+3)) - 1;\n\
+  else\n\
+    *ptr = (haris_int32_t)haris_read_uint32(b);\n\
+}\n\
+\n\
+");
+  CJOB_FMT_PRIV_FUNCTION(job, "%s%s", 
+"static void haris_read_int64(const unsigned char *b, void *_ptr)\n\
+{\n\
+  haris_int64_t *ptr = (haris_int64_t*)_ptr;\n\
+  if (*b & 0x80)\n\
+    *ptr = -((haris_int64_t)(*b & 0x7F) << 56 | (haris_int64_t)*(b+1) << 48 |\n\
+             (haris_int64_t)*(b+2) << 40 | (haris_int64_t)*(b+3) << 32 |\n\
+             (haris_int64_t)*(b+4) << 24 | (haris_int64_t)*(b+5) << 16 |\n\
+             (haris_int64_t)*(b+6) << 8 | (haris_int64_t)*(b+7)) - 1;\n\
+  else\n\
+    *ptr = (haris_int64_t)haris_read_uint64",
+"(b);\n\
+}\n\
+\n\
+");
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_util_c_readuint(CJob *job)
+{
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_read_uint8(const unsigned char *b, void *_ptr)\n\
+{\n\
+  haris_uint8_t *ptr = (haris_uint8_t*)_ptr;\n\
+  *ptr = *b;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_read_uint16(const unsigned char *b, void *_ptr)\n\
+{\n\
+  haris_uint16_t *ptr = (haris_uint16_t*)_ptr;\n\
+  *ptr = (haris_uint16_t)*b << 8 | *(b+1);\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_read_uint24(const unsigned char *b, void *_ptr)\n\
+{\n\
+  haris_uint32_t *ptr = (haris_uint32_t*)_ptr;\n\
+  *ptr = (haris_uint32_t)*b << 16 | (haris_uint32_t)*(b+1) << 8 |\n\
+    *(b+2);\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_read_uint32(const unsigned char *b, void *_ptr)\n\
+{\n\
+  haris_uint32_t *ptr = (haris_uint32_t*)_ptr;\n\
+  *ptr = (haris_uint32_t)*b << 24 | (haris_uint32_t)*(b+1) << 16 |\n\
+    (haris_uint32_t)*(b+2) << 8 | *(b+3);\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_read_uint64(const unsigned char *b, void *_ptr)\n\
+{\n\
+  haris_uint64_t *ptr = (haris_uint64_t*)_ptr;\n\
+  *ptr = (haris_uint64_t)*b << 56 | (haris_uint64_t)*(b+1) << 48 |\n\
+    (haris_uint64_t)*(b+2) << 40 | (haris_uint64_t)*(b+3) << 32 |\n\
+    (haris_uint64_t)*(b+4) << 24 | (haris_uint64_t)*(b+5) << 16 |\n\
+    (haris_uint64_t)*(b+6) << 8 | *(b+7);\n\
+}\n\n");
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_util_c_writeint(CJob *job)
+{
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_write_int8(unsigned char *b, const void *_ptr)\n\
+{\n\
+  haris_int8_t i = *(const haris_int8_t*)_ptr;\n\
+  if (i >= 0)\n\
+    *b = (unsigned char)i;\n\
+  else {\n\
+    *b = (unsigned char)(-i - 1);\n\
+    *b |= 0x80;\n\
+  }\n\
+  return;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job,
+"static void haris_write_int16(unsigned char *b, const void *_ptr)\n\
+{\n\
+  haris_int16_t i = *(const haris_int16_t*)_ptr;\n\
+  if (i >= 0)\n\
+    haris_write_uint16(b, (haris_uint16_t)i);\n\
+  else {\n\
+    haris_write_uint16(b, (haris_uint16_t)(-i - 1));\n\
+    *b |= 0x80;\n\
+  }\n\
+  return;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job,
+"static void haris_write_int32(unsigned char *b, const void *_ptr)\n\
+{\n\
+  haris_int32_t i = *(const haris_int32_t*)_ptr;\n\
+  if (i >= 0)\n\
+    haris_write_uint32(b, (haris_uint32_t)i);\n\
+  else {\n\
+    haris_write_uint32(b, (haris_uint32_t)(-i - 1));\n\
+    *b |= 0x80;\n\
+  }\n\
+  return;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job,
+"static void haris_write_int64(unsigned char *b, const void *_ptr)\n\
+{\n\
+  haris_int64_t i = *(const haris_int64_t*)_ptr;\n\
+  if (i >= 0)\n\
+    haris_write_uint64(b, (haris_uint64_t)i);\n\
+  else {\n\
+    haris_write_uint64(b, (haris_uint64_t)(-i - 1));\n\
+    *b |= 0x80;\n\
+  }\n\
+  return;\n\
+}\n\n");
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_util_c_writeuint(CJob *job)
+{
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_write_uint8(unsigned char *b, const void *_ptr)\n\
+{\n\
+  haris_uint8_t i = *(const haris_uint8_t*)_ptr;\n\
+  *b = i;\n\
+  return;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_write_uint16(unsigned char *b, const void *_ptr)\n\
+{  \n\
+  haris_uint16_t i = *(const haris_uint16_t*)_ptr;\n\
+  *b = i >> 8;\n\
+  *(b+1) = i;\n\
+  return;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_write_uint24(unsigned char *b, const void *_ptr)\n\
+{\n\
+  haris_uint32_t i = *(const haris_uint32_t*)_ptr;\n\
+  *b = i >> 16;\n\
+  *(b+1) = i >> 8;\n\
+  *(b+2) = i;\n\
+  return;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_write_uint32(unsigned char *b, const void *_ptr)\n\
+{\n\
+  haris_uint32_t i = *(const haris_uint32_t*)_ptr;\n\
+  *b = i >> 24;\n\
+  *(b+1) = i >> 16;\n\
+  *(b+2) = i >> 8;\n\
+  *(b+3) = i;\n\
+  return;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_write_uint64(unsigned char *b, const void *_ptr)\n\
+{\n\
+  haris_uint64_t i = *(const haris_uint64_t*)_ptr;\n\
+  *b = i >> 56;\n\
+  *(b+1) = i >> 48;\n\
+  *(b+2) = i >> 40;\n\
+  *(b+3) = i >> 32;\n\
+  *(b+4) = i >> 24;\n\
+  *(b+5) = i >> 16;\n\
+  *(b+6) = i >> 8;\n\
+  *(b+7) = i;\n\
+  return;\n\
+}\n\n");
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_util_c_readfloat(CJob *job)
+{
+  CJOB_FMT_PRIV_FUNCTION(job, "%s%s", 
+"static void haris_read_float32(const unsigned char *b, void *_ptr)\n\
+{\n\
+  haris_float32 *ptr = (haris_float32*)_ptr;\n\
+  haris_float64 result;\n\
+  haris_int64_t shift;\n\
+  haris_uint32_t i = haris_read_uint32(b);\n\
+  \n\
+  if (i == 0) *ptr = 0.0;\n\
+  \n\
+  result = (i & ((1LL << HARIS_FLOAT32_SIGBITS) - 1));\n\
+  result /= (1LL << HARIS_FLOAT32_SIGBITS); \n\
+  result += 1.0;\n\
+\n\
+  shift = ((i >> HARIS_FLOAT32_SIGBITS) & 255) - HARIS_FLOAT32_BIAS;\n\
+  while (shift > 0) { result *= 2.0",
+"; shift--; }\n\
+  while (shift < 0) { result /= 2.0; shift++; }\n\
+\n\
+  result *= (i >> 31) & 1 ? -1.0: 1.0;\n\
+\n\
+  *ptr = (haris_float32)result;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, "%s%s", 
+"static void haris_read_float64(const unsigned char *b, void *_ptr)\n\
+{\n\
+  haris_float64 result, *ptr = (haris_float64*)_ptr;\n\
+  haris_int64_t shift;\n\
+  haris_uint64_t i = haris_read_uint64(b);\n\
+  \n\
+  if (i == 0) *ptr = 0.0;\n\
+  \n\
+  result = (i & (( 1LL << HARIS_FLOAT64_SIGBITS) - 1));\n\
+  result /= (1LL << HARIS_FLOAT64_SIGBITS); \n\
+  result += 1.0;\n\
+\n\
+  shift = ((i >> HARIS_FLOAT64_SIGBITS) & 2047) - HARIS_FLOAT64_BIAS;\n\
+  while (shift > 0) { result *= 2.0; shift--; }\n\
+ ",
+" while (shift < 0) { result /= 2.0; shift++; }\n\
+\n\
+  result *= (i >> 63) & 1 ? -1.0: 1.0;\n\
+\n\
+  *ptr = result;\n\
+}\n\n");
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_util_c_writefloat(CJob *job)
+{
+  CJOB_FMT_PRIV_FUNCTION(job, "%s%s", 
+"static void haris_write_float32(unsigned char *b, const void *_ptr)\n\
+{\n\
+  haris_float32 f = *(const haris_float32*)_ptr;\n\
+  haris_float64 fnorm;\n\
+  int shift;\n\
+  long sign, exp, significand;\n\
+  haris_uint32_t result;\n\
+\n\
+  if (f == 0.0) {\n\
+    haris_write_uint32(b, 0U);\n\
+    return;\n\
+  } \n\
+\n\
+  if (f < 0) {\n\
+    sign = 1; \n\
+    fnorm = -f; \n\
+  } else { \n\
+    sign = 0; \n\
+    fnorm = f; \n\
+  }\n\
+\n\
+  shift = 0;\n\
+  while (fnorm >= 2.0) { fnorm /= 2.0; shift++;",
+" }\n\
+  while (fnorm < 1.0) { fnorm *= 2.0; shift--; }\n\
+  fnorm = fnorm - 1.0;\n\
+\n\
+  significand = fnorm * ((1LL << HARIS_FLOAT32_SIGBITS) + 0.5f);\n\
+\n\
+  exp = shift + ((1<<7) - 1); \n\
+\n\
+  result = (sign<<31) | (exp<<23) | significand;\n\
+  haris_write_uint32(b, result);\n\
+  return;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, "%s%s", 
+"static void haris_write_float64(unsigned char *b, const void *_ptr)\n\
+{\n\
+  haris_float64 fnorm, f = *(const haris_float64*)_ptr;\n\
+  int shift;\n\
+  long sign, exp, significand;\n\
+  haris_uint64_t result;\n\
+\n\
+  if (f == 0.0) {\n\
+    haris_write_uint64(b, 0U);\n\
+    return;\n\
+  }\n\
+\n\
+  if (f < 0) {\n\
+    sign = 1; \n\
+    fnorm = -f; \n\
+  } else { \n\
+    sign = 0; \n\
+    fnorm = f; \n\
+  }\n\
+\n\
+  shift = 0;\n\
+  while (fnorm >= 2.0) { fnorm /= 2.0; shift++; }\n\
+  while (fnorm",
+" < 1.0) { fnorm *= 2.0; shift--; }\n\
+  fnorm = fnorm - 1.0;\n\
+\n\
+  significand = fnorm * ((1LL<<HARIS_FLOAT64_SIGBITS) + 0.5f);\n\
+\n\
+  exp = shift + ((1<<10) - 1); \n\
+\n\
+  result = (sign<<63) | (exp<<52) | significand;\n\
+  haris_write_uint64(b, result);\n\
+  return;\n\
+}\n\n");
+  return CJOB_SUCCESS;
+}
 
 /* As the header file says, the public functions are 
    S *S_create(void);

@@ -1,7 +1,6 @@
 #include "cgen.h"
 #include "cgenh.h"
 #include "cgenc.h"
-#include "cgenu.h"
 #include "parse.h"
 
 static CJob *new_cjob(void);
@@ -360,9 +359,7 @@ static CJobStatus check_job(CJob *job)
 static CJobStatus compile(CJob *job)
 {
   CJobStatus result;
-  if ((result = write_utility_lib_header(job))
-      != CJOB_SUCCESS ||
-      (result = write_header_file(job)) 
+  if ((result = write_header_file(job)) 
       != CJOB_SUCCESS ||
       (result = write_utility_lib_source(job))
       != CJOB_SUCCESS ||
