@@ -92,30 +92,30 @@ language %s.\n", argv[i+1]);
   return result;
 }
 
-CJobStatus add_header_string(CJobStrings *strings, char *s)
+CJobStatus add_header_string(CJob *job, char *s)
 {
-  if (!push_string(&strings->header_strings, s))
+  if (!push_string(&job->strings.header_strings, s))
     return CJOB_MEM_ERROR;
   return CJOB_SUCCESS;
 }
 
-CJobStatus add_source_string(CJobStrings *strings, char *s)
+CJobStatus add_source_string(CJob *job, char *s)
 {
-  if (!push_string(&strings->source_strings, s))
+  if (!push_string(&job->strings.source_strings, s))
     return CJOB_MEM_ERROR;
   return CJOB_SUCCESS;
 }
 
-CJobStatus add_public_function(CJobStrings *strings, char *s)
+CJobStatus add_public_function(CJob *job, char *s)
 {
-  if (!push_string(&strings->public_functions, s))
+  if (!push_string(&job->strings.public_functions, s))
     return CJOB_MEM_ERROR;
   return CJOB_SUCCESS;
 }
 
-CJobStatus add_private_function(CJobStrings *strings, char *s)
+CJobStatus add_private_function(CJob *job, char *s)
 {
-  if (!push_string(&strings->private_functions, s))
+  if (!push_string(&job->strings.private_functions, s))
     return CJOB_MEM_ERROR;
   return CJOB_SUCCESS;
 }
@@ -368,7 +368,7 @@ static CJobStatus compile(CJob *job)
       != CJOB_SUCCESS ||
       (result = write_source_file(job))
       != CJOB_SUCCESS)
-    goto Cleanup;
+    return result;
   return output_to_file(job);
 }
 

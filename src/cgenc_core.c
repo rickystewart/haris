@@ -16,15 +16,26 @@ static CJobStatus write_general_init_struct_member(CJob *);
 
 static CJobStatus write_in_memory_scalar_sizes(CJob *);
 static CJobStatus write_message_scalar_sizes(CJob *);
+static CJobStatus write_message_bit_patterns(CJob *job);
 static CJobStatus write_scalar_readers(CJob *);
 static CJobStatus write_scalar_writers(CJob *);
 
-static CJobStatus write_scalar_writer(CJob *);
-static CJobStatus write_scalar_reader(CJob *);
+static CJobStatus write_scalar_writer_function(CJob *job);
+static CJobStatus write_scalar_reader_function(CJob *job);
 
 static CJobStatus write_core_wfuncs(CJob *);
 static CJobStatus write_core_rfuncs(CJob *);
 static CJobStatus write_core_size(CJob *);
+
+static CJobStatus (* const general_core_writer_functions[])(CJob *) = {
+  write_in_memory_scalar_sizes, write_message_scalar_sizes, 
+  write_scalar_readers, write_scalar_writers, write_core_wfuncs,
+  write_message_bit_patterns,
+  write_scalar_writer_function, write_scalar_reader_function,
+  write_general_constructor, write_general_destructor, 
+  write_general_init_list_member, write_general_init_struct_member,
+  write_core_rfuncs, write_core_size
+};
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -60,10 +71,11 @@ CJobStatus write_source_public_funcs(CJob *job)
 CJobStatus write_source_core_funcs(CJob *job)
 {
   CJobStatus result;
-  int i;
-  if ((result = write_core_wfuncs(job)) != CJOB_SUCCESS) return result;
-  if ((result = write_core_rfuncs(job)) != CJOB_SUCCESS) return result;
-  if ((result = write_core_size(job)) != CJOB_SUCCESS) return result;
+  unsigned i;
+  for (i = 0; i < sizeof general_core_writer_functions / 
+                  sizeof general_core_writer_functions[0]; i++)
+    if ((result = general_core_writer_functions[i](job)) != CJOB_SUCCESS)
+      return result;
   return CJOB_SUCCESS;
 }
 
@@ -110,6 +122,7 @@ static CJobStatus write_general_constructor(CJob *job)
     }\n\
   }\n\
   return new;\n}\n\n");
+  return CJOB_SUCCESS;
 }
 
 
@@ -168,6 +181,7 @@ static CJobStatus write_general_destructor(CJob *job)
 {\n\
   haris_lib_destroy_contents(ptr, info);\n\
   free(ptr);\n}\n\n");
+  return CJOB_SUCCESS;
 }
 
 /* Write all public initializer functions to the output file. */
@@ -246,8 +260,9 @@ static CJobStatus write_message_scalar_sizes(CJob *job)
 static CJobStatus write_message_bit_patterns(CJob *job)
 {
   CJOB_FMT_SOURCE_STRING(job, "static const size_t haris_lib_scalar_bit_patterns[] = {\n\
-  0, 0, 1, 1, 2, 2, 3, 3, 2, 3
-};\n\n")
+  0, 0, 1, 1, 2, 2, 3, 3, 2, 3\n\
+};\n\n");
+  return CJOB_SUCCESS;
 }
 
 /* Write the array of scalar-reading functions to the output file; as 
@@ -255,7 +270,7 @@ static CJobStatus write_message_bit_patterns(CJob *job)
 */
 static CJobStatus write_scalar_readers(CJob *job)
 {
-  CJOB_FMT_SOURCE_STRING(job, "static const void (*haris_lib_scalar_readers[])(const unsigned char *, void *) = {\n\
+  CJOB_FMT_SOURCE_STRING(job, "static void (* const haris_lib_scalar_readers[])(const unsigned char *, void *) = {\n\
   haris_read_uint8, haris_read_int8, haris_read_uint16, haris_read_int16,\n\
   haris_read_uint32, haris_read_int32, haris_read_uint64, haris_read_int64,\n\
   haris_read_float32, haris_read_float64\n\
@@ -265,7 +280,7 @@ static CJobStatus write_scalar_readers(CJob *job)
 
 static CJobStatus write_scalar_writers(CJob *job)
 {
-  CJOB_FMT_SOURCE_STRING(job, "static const void (*haris_lib_scalar_readers[])(unsigned char *, const void *) = {\n\
+  CJOB_FMT_SOURCE_STRING(job, "static void (* const haris_lib_scalar_readers[])(unsigned char *, const void *) = {\n\
   haris_write_uint8, haris_write_int8, haris_write_uint16, haris_write_int16,\n\
   haris_write_uint32, haris_write_int32, haris_write_uint64, haris_write_int64,\n\
   haris_write_float32, haris_write_float64\n\
@@ -349,7 +364,7 @@ const HarisStructureInfo *info, int field)\n\
    should point to a haris_int8_t object. The scalar will be
    WRITTEN to the Haris buffer.
 */
-static CJobStatus write_scalar_writer(CJob *job)
+static CJobStatus write_scalar_writer_function(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, "static void haris_lib_write_scalar(unsigned char \
 *message, const void *src, HarisScalarType type)\n\
@@ -360,7 +375,7 @@ static CJobStatus write_scalar_writer(CJob *job)
 /* Writes the scalar-reading function to the output file. Parameters are
    analogous to the above, except the scalar is READ from the Haris buffer.
 */
-static CJobStatus write_scalar_reader(CJob *job)
+static CJobStatus write_scalar_reader_function(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, "static void haris_lib_read_scalar(const unsigned char \
 *message, void *src, HarisScalarType type)\n\

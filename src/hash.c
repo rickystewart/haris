@@ -98,9 +98,9 @@ static int hash_string(char *str)
   int c;
 
   while ((c = (unsigned char)(*str++)))
-    hash = ((hash << 5) + hash) + c; 
+    hash = ((hash << 5UL) + hash) + (unsigned long)c; 
 
-  return hash % HASH_SIZE;
+  return (int)(hash % HASH_SIZE);
 }
 
 /* Add all builtin types to the given hash statefully. */

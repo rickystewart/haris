@@ -115,7 +115,7 @@ typedef enum {\n\
 
 static CJobStatus write_util_h_defines(CJob *job)
 {
-  CJOB_FMT_HEADER_STRING(out, "%s%s", 
+  CJOB_FMT_HEADER_STRING(job, "%s%s", 
 "/* Changeable size limits for error-checking. You can freely modify these if\n\
    you would like your Haris client to be able to process larger or deeper\n\
    messages. \n\
@@ -147,7 +147,7 @@ static CJobStatus write_util_h_bottom(CJob *job)
 
 static CJobStatus write_util_c_top(CJob *job)
 {
-  CJOB_FMT_SOURCE_STRING(job, "#include \"%s.h\"\n\n", job->output)
+  CJOB_FMT_SOURCE_STRING(job, "#include \"%s.h\"\n\n", job->output);
   return CJOB_SUCCESS;
 }
 
@@ -466,6 +466,6 @@ static CJobStatus write_util_c_writefloat(CJob *job)
   result = (sign<<63) | (exp<<52) | significand;\n\
   haris_write_uint64(b, result);\n\
   return;\n\
-}\n\n")
+}\n\n");
   return CJOB_SUCCESS;
 }

@@ -40,7 +40,7 @@ CJobStatus write_buffer_protocol_funcs(CJob *job)
         != CJOB_SUCCESS) 
       return result;
   }
-  if ((result = write_static_buffer_funcs(job) != CJOB_SUCCESS) 
+  if ((result = write_static_buffer_funcs(job)) != CJOB_SUCCESS) 
     return result;
   if ((result = write_child_buffer_handler(job)) != CJOB_SUCCESS)
     return result;
@@ -78,7 +78,7 @@ return HARIS_SUCCESS; }\n\
   if ((buf[ind] & 0xC0) == 0x40) {\n\
     num_children = buf[ind] & 0x3F;\n\
     body_size = buf[ind + 1];\n\
-    *out_ind = ind + 2;
+    *out_ind = ind + 2;\n\
     return handle_child_buffer_struct_posthead(buf, out_ind, sz, \
 depth, num_children, body_size);\n\
   } else if ((buf[ind] & 0xE0) == 0xC0) {\n\
@@ -345,31 +345,33 @@ static CJobStatus write_static_to_buffer_functions(CJob *job)
    valid message.
 */
    
-static CJobStatus write_public_buffer_funcs(CJob *job, ParsedStruct *strct,
-                                            FILE *out)
+static CJobStatus write_public_buffer_funcs(CJob *job, ParsedStruct *strct)
 {
   const char *prefix = job->prefix, *name = strct->name;
-  CJOB_FPRINTF(out, "HarisStatus %s%s_from_buffer(%s%s *strct, \
+  CJOB_FMT_PUB_FUNCTION(job, "HarisStatus %s%s_from_buffer(%s%s *strct, \
 unsigned char *buf, haris_uint32_t sz, unsigned char **out_addr)\n\
 {\n\
   HarisStatus result;\n\
-  if ((result = _%s%s_from_buffer(strct, buf, 0, sz, out_addr, 0)) \n\
-               != HARIS_SUCCESS) return result;\n\
+  haris_uint32_t ind = 0;\n\
+  if ((result = haris_from_buffer(strct, &haris_lib_structures[%d],\n\
+                                  buf, &ind, sz, 0)) != HARIS_SUCCESS)\n\
+    return result;\n\
   HARIS_ASSERT(!strct->_null, STRUCTURE);\n\
   return HARIS_SUCCESS;\n}\n\n", 
-              prefix, name, prefix, name, prefix, name);
-  CJOB_FPRINTF(out, "HarisStatus %s%s_to_buffer(%s%s *strct, \
+              prefix, name, prefix, name, strct->schema_index);
+  CJOB_FMT_PUB_FUNCTION(job, "HarisStatus %s%s_to_buffer(%s%s *strct, \
 unsigned char **out_buf, haris_uint32_t *out_sz)\n\
 {\n\
   unsigned char *unused;\n\
   HarisStatus result;\n\
   HARIS_ASSERT(!strct->_null, STRUCTURE);\n\
-  *out_sz = %s%s_lib_size(strct, 0, &result);\n\
+  *out_sz = haris_lib_size(strct, &haris_lib_structures[%d], 0, &result);\n\
   if (!*out_sz) return result;\n\
   *out_buf = (unsigned char *)malloc(sz);\n\
   HARIS_ASSERT(*out_buf, MEM);\n\
-  (void)_%s%s_to_buffer(strct, *out_buf);\n\
+  (void)haris_to_buffer(strct, &haris_lib_structures[%d], *out_buf);\n\
   return HARIS_SUCCESS;\n}\n\n",
-              prefix, name, prefix, name, prefix, name, prefix, name);
+              prefix, name, prefix, name, strct->schema_index,
+              strct->schema_index);
   return CJOB_SUCCESS;
 }

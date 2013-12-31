@@ -7,7 +7,7 @@ static CJobStatus write_header_structures(CJob *);
 static CJobStatus write_reflective_structures(CJob *);
 static CJobStatus write_header_prototypes(CJob *);
 static CJobStatus write_header_footer(CJob *);
-static CJobStatus write_child_field(CJob *ChildField *child);
+static CJobStatus write_child_field(CJob *, ChildField *child);
 static CJobStatus write_public_prototypes(CJob *);
 static CJobStatus write_buffer_prototypes(CJob *);
 static CJobStatus write_file_prototypes(CJob *);
@@ -40,12 +40,11 @@ CJobStatus write_header_file(CJob *job)
 */
 static CJobStatus write_header_boilerplate(CJob *job)
 {
-  CJobStatus result;
   int i;
   char *capital = strdup(job->prefix);
   if (!capital) return CJOB_IO_ERROR;
   for (i = 0; capital[i]; i++)
-    capital[i] = toupper(capital[i]);
+    capital[i] = (char)toupper(capital[i]);
   CJOB_FMT_HEADER_STRING(job, "#ifndef __HARIS_%s_H\n\
 #define __HARIS_%s_H\n\n", capital, capital);
   free(capital);
@@ -71,7 +70,7 @@ static CJobStatus write_header_boilerplate(CJob *job)
 static CJobStatus write_header_macros(CJob *job)
 {
   int i, j;
-  char *prefix = job->prefix;
+  const char *prefix = job->prefix;
   for (i=0; i < job->schema->num_enums; i++) {
     CJOB_FMT_HEADER_STRING(job, "/* enum %s */\n", 
                                 job->schema->enums[i].name);
@@ -113,11 +112,11 @@ static CJobStatus write_reflective_structures(CJob *job)
   char           null;\n\
 } HarisListInfo;\n\n");
   CJOB_FMT_HEADER_STRING(job, "typedef struct HarisStructureInfo_ \
-HarisStructureInfo;\n"));
+HarisStructureInfo;\n");
   CJOB_FMT_HEADER_STRING(job, strdup("typedef struct {\n\
   size_t offset;\n\
   HarisScalarType type;\n\
-} HarisScalar;\n\n");
+} HarisScalar;\n\n"));
   CJOB_FMT_HEADER_STRING(job, "typedef struct {\n\
   int nullable;\n\
   size_t offset;\n\
@@ -148,7 +147,7 @@ static CJobStatus write_header_structures(CJob *job)
 {
   CJobStatus result;
   int i, j;
-  if ((result = write_reflective_structures(job, out)) != CJOB_SUCCESS)
+  if ((result = write_reflective_structures(job)) != CJOB_SUCCESS)
     return result;
   for (i=0; i < job->schema->num_structs; i++) {
     CJOB_FMT_HEADER_STRING(job, "typedef struct haris_%s %s%s;\n", 
@@ -166,9 +165,10 @@ static CJobStatus write_header_structures(CJob *job)
                   job->schema->structs[i].scalars[j].name);
     }
     for (j=0; j < job->schema->structs[i].num_children; j++) {
-      if ((result = write_child_field(job, out, 
-                                      job->schema->structs[i].children + j)) !=
-          CJOB_SUCCESS) return result;
+      if ((result = write_child_field(job, 
+                                      job->schema->structs[i].children + j)) 
+          != CJOB_SUCCESS) 
+        return result;
     }
     CJOB_FMT_HEADER_STRING(job, "};\n\n");
   }

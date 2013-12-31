@@ -108,10 +108,10 @@ typedef struct {
 
 CJobStatus cgen_main(int, char **);
 
-CJobStatus add_header_string(CJobStrings *, char *);
-CJobStatus add_source_string(CJobStrings *, char *);
-CJobStatus add_public_function(CJobStrings *, char *);
-CJobStatus add_private_function(CJobStrings *, char *);
+CJobStatus add_header_string(CJob *, char *);
+CJobStatus add_source_string(CJob *, char *);
+CJobStatus add_public_function(CJob *, char *);
+CJobStatus add_private_function(CJob *, char *);
 
 char *strformat(const char *, ...);
 

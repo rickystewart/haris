@@ -13,7 +13,7 @@ static int add_list_of_scalars_or_enums_field(ParsedStruct *, char *, int,
 /* Dynamically allocate a parsed schema, returning a pointer to it. */
 ParsedSchema *create_parsed_schema(void)
 {
-  const int arr_size = 8;
+  const size_t arr_size = 8;
   ParsedSchema *ret = (ParsedSchema*)malloc(sizeof *ret);
   if (!ret) return NULL;
   ret->structs = (ParsedStruct*)malloc(arr_size * sizeof *ret->structs);
@@ -25,7 +25,7 @@ ParsedSchema *create_parsed_schema(void)
     return NULL;
   }
   ret->num_structs = ret->num_enums = 0;
-  ret->structs_alloc = ret->enums_alloc = arr_size;
+  ret->structs_alloc = ret->enums_alloc = (int)arr_size;
   return ret;
 }
 
@@ -58,11 +58,12 @@ void destroy_parsed_schema(ParsedSchema *p)
    duplicate structure names. */
 ParsedStruct *new_struct(ParsedSchema *schema, char *name)
 {
-  const int arr_size = 8;
+  const size_t arr_size = 8;
   ParsedStruct *ret, *array;
   if (schema->num_structs == schema->structs_alloc) {
     array = realloc(schema->structs, 
-                    (schema->structs_alloc *= 2) * sizeof *array);
+                    (size_t)(schema->structs_alloc *= 2) 
+                     * sizeof *array);
     if (!array) return NULL;
     schema->structs = array;
   } 
@@ -71,7 +72,7 @@ ParsedStruct *new_struct(ParsedSchema *schema, char *name)
   ret->name = strdup(name);
   ret->num_scalars = ret->num_children = 0;
   ret->offset = 0;
-  ret->scalars_alloc = ret->children_alloc = arr_size;
+  ret->scalars_alloc = ret->children_alloc = (int)arr_size;
   ret->scalars = malloc(arr_size * sizeof *ret->scalars);
   ret->children = malloc(arr_size * sizeof *ret->children);
   if (!ret->scalars || !ret->children) {
@@ -87,18 +88,18 @@ ParsedStruct *new_struct(ParsedSchema *schema, char *name)
    of the enumeration. */
 ParsedEnum *new_enum(ParsedSchema *schema, char *name)
 {
-  const int arr_size = 8;
+  const size_t arr_size = 8;
   ParsedEnum *ret, *array;
   if (schema->num_enums == schema->enums_alloc) {
     array = realloc(schema->enums,
-                    (schema->enums_alloc *= 2) * sizeof *array);
+                    (size_t)(schema->enums_alloc *= 2) * sizeof *array);
     if (!array) return NULL;
     schema->enums = array;
   }
   ret = schema->enums + schema->num_enums;
   ret->name = strdup(name);
   ret->num_values = 0;
-  ret->values_alloc = arr_size;
+  ret->values_alloc = (int)arr_size;
   ret->values = malloc(arr_size * sizeof *ret->values);
   if (!ret->values) return NULL;
   schema->num_enums++;
@@ -239,7 +240,7 @@ int add_enumerated_value(ParsedEnum *enm, char *name)
   int i = enm->num_values;
   if (enm->num_values == enm->values_alloc) {
     array = realloc(enm->values,
-                    (enm->values_alloc *= 2) * sizeof *array);
+                    (size_t)(enm->values_alloc *= 2) * sizeof *array);
     if (!array) return 0;
     enm->values = array;
   }
@@ -279,7 +280,8 @@ static int field_length(ScalarTag field)
 static int realloc_struct_scalars(ParsedStruct *strct)
 {
   ScalarField *array = realloc(strct->scalars,
-                               (strct->scalars_alloc *= 2) * sizeof *array);
+                               (size_t)(strct->scalars_alloc *= 2) 
+                                * sizeof *array);
   if (!array) return 0;
   strct->scalars = array;
   return 1;
@@ -289,7 +291,8 @@ static int realloc_struct_scalars(ParsedStruct *strct)
 static int realloc_struct_children(ParsedStruct *strct)
 {
   ChildField *array = realloc(strct->children,
-                              (strct->children_alloc *= 2) * sizeof *array);
+                              (size_t)(strct->children_alloc *= 2) 
+                               * sizeof *array);
   if (!array) return 0;
   strct->children = array;
   return 1;

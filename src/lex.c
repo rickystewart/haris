@@ -128,7 +128,7 @@ static LexerStatus handle_symbol_token(Lexer *lex, Token *tok)
       lex->errno = LONG_STRING;
       return LEXER_ERROR;
     }
-    lex->buffer[ind++] = ch;
+    lex->buffer[ind++] = (char)ch;
   }
   *tok = TOKEN_SYMBOL;
   lex->buffer[ind] = '\0';
@@ -151,7 +151,7 @@ static LexerStatus handle_string_token(Lexer *lex, Token *tok)
 	return LEXER_ERROR;
       }
     }
-    lex->buffer[ind++] = ch;
+    lex->buffer[ind++] = (char)ch;
   }
   *tok = TOKEN_STRING;
   lex->buffer[ind] = '\0';
