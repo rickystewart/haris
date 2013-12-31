@@ -49,7 +49,7 @@ static CJobStatus (* const general_core_writer_functions[])(CJob *) = {
 
 /* =============================PUBLIC INTERFACE============================= */
 
-static CJobStatus write_util_c_readint(CJob *job)
+static CJobStatus write_readint(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int8(const unsigned char *b, void *_ptr)\n\
 {\n\
@@ -78,7 +78,7 @@ static CJobStatus write_util_c_readint(CJob *job)
 }\n\
 \n\
 ");
-  CJOB_FMT_PRIV_FUNCTION(job, "%s%s", 
+  CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_read_int64(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_int64_t *ptr = (haris_int64_t*)_ptr;\n\
@@ -88,15 +88,14 @@ static CJobStatus write_util_c_readint(CJob *job)
              (haris_int64_t)*(b+4) << 24 | (haris_int64_t)*(b+5) << 16 |\n\
              (haris_int64_t)*(b+6) << 8 | (haris_int64_t)*(b+7)) - 1;\n\
   else\n\
-    *ptr = (haris_int64_t)haris_read_uint64",
-"(b);\n\
+    *ptr = (haris_int64_t)haris_read_uint64(b);\n\
 }\n\
 \n\
 ");
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_util_c_readuint(CJob *job)
+static CJobStatus write_readuint(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_read_uint8(const unsigned char *b, void *_ptr)\n\
@@ -136,7 +135,7 @@ static CJobStatus write_util_c_readuint(CJob *job)
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_util_c_writeint(CJob *job)
+static CJobStatus write_writeint(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_write_int8(unsigned char *b, const void *_ptr)\n\
@@ -189,7 +188,7 @@ static CJobStatus write_util_c_writeint(CJob *job)
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_util_c_writeuint(CJob *job)
+static CJobStatus write_writeuint(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_write_uint8(unsigned char *b, const void *_ptr)\n\
@@ -242,9 +241,9 @@ static CJobStatus write_util_c_writeuint(CJob *job)
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_util_c_readfloat(CJob *job)
+static CJobStatus write_readfloat(CJob *job)
 {
-  CJOB_FMT_PRIV_FUNCTION(job, "%s%s", 
+  CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_read_float32(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_float32 *ptr = (haris_float32*)_ptr;\n\
@@ -259,15 +258,14 @@ static CJobStatus write_util_c_readfloat(CJob *job)
   result += 1.0;\n\
 \n\
   shift = ((i >> HARIS_FLOAT32_SIGBITS) & 255) - HARIS_FLOAT32_BIAS;\n\
-  while (shift > 0) { result *= 2.0",
-"; shift--; }\n\
+  while (shift > 0) { result *= 2.0; shift--; }\n\
   while (shift < 0) { result /= 2.0; shift++; }\n\
 \n\
   result *= (i >> 31) & 1 ? -1.0: 1.0;\n\
 \n\
   *ptr = (haris_float32)result;\n\
 }\n\n");
-  CJOB_FMT_PRIV_FUNCTION(job, "%s%s", 
+  CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_read_float64(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_float64 result, *ptr = (haris_float64*)_ptr;\n\
@@ -282,8 +280,7 @@ static CJobStatus write_util_c_readfloat(CJob *job)
 \n\
   shift = ((i >> HARIS_FLOAT64_SIGBITS) & 2047) - HARIS_FLOAT64_BIAS;\n\
   while (shift > 0) { result *= 2.0; shift--; }\n\
- ",
-" while (shift < 0) { result /= 2.0; shift++; }\n\
+  while (shift < 0) { result /= 2.0; shift++; }\n\
 \n\
   result *= (i >> 63) & 1 ? -1.0: 1.0;\n\
 \n\
@@ -292,9 +289,9 @@ static CJobStatus write_util_c_readfloat(CJob *job)
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_util_c_writefloat(CJob *job)
+static CJobStatus write_writefloat(CJob *job)
 {
-  CJOB_FMT_PRIV_FUNCTION(job, "%s%s", 
+  CJOB_FMT_PRIV_FUNCTION(job,  
 "static void haris_write_float32(unsigned char *b, const void *_ptr)\n\
 {\n\
   haris_float32 f = *(const haris_float32*)_ptr;\n\
@@ -317,8 +314,7 @@ static CJobStatus write_util_c_writefloat(CJob *job)
   }\n\
 \n\
   shift = 0;\n\
-  while (fnorm >= 2.0) { fnorm /= 2.0; shift++;",
-" }\n\
+  while (fnorm >= 2.0) { fnorm /= 2.0; shift++; }\n\
   while (fnorm < 1.0) { fnorm *= 2.0; shift--; }\n\
   fnorm = fnorm - 1.0;\n\
 \n\
@@ -330,7 +326,7 @@ static CJobStatus write_util_c_writefloat(CJob *job)
   haris_write_uint32(b, result);\n\
   return;\n\
 }\n\n");
-  CJOB_FMT_PRIV_FUNCTION(job, "%s%s", 
+  CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_write_float64(unsigned char *b, const void *_ptr)\n\
 {\n\
   haris_float64 fnorm, f = *(const haris_float64*)_ptr;\n\
@@ -353,8 +349,7 @@ static CJobStatus write_util_c_writefloat(CJob *job)
 \n\
   shift = 0;\n\
   while (fnorm >= 2.0) { fnorm /= 2.0; shift++; }\n\
-  while (fnorm",
-" < 1.0) { fnorm *= 2.0; shift--; }\n\
+  while (fnorm < 1.0) { fnorm *= 2.0; shift--; }\n\
   fnorm = fnorm - 1.0;\n\
 \n\
   significand = fnorm * ((1LL<<HARIS_FLOAT64_SIGBITS) + 0.5f);\n\
@@ -426,15 +421,16 @@ static CJobStatus write_public_constructor(CJob *job, ParsedStruct *strct)
 */
 static CJobStatus write_general_constructor(CJob *job)
 {
-  CJOB_FMT_PRIV_FUNCTION(job, "static void *haris_lib_create(const HarisStructureInfo *info)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void *haris_lib_create(const HarisStructureInfo *info)\n\
 {\n\
   int i;\n\
   HarisListInfo *list_info;\n\
   void *new = malloc(info->size_of);\n\
   if (!new) return NULL;\n\
   return haris_lib_create_contents(new, info);\n}\n\n");
-  CJOB_FMT_PRIV_FUNCTION(job, "static void *haris_lib_create_contents(void *new,\
- const HarisStructureInfo *info)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void *haris_lib_create_contents(void *new, const HarisStructureInfo *info)\n\
 {\n\
   *((char*)new) = 0;\n\
   for (i = 0; i < info->num_children; i++) {\n\
@@ -475,8 +471,8 @@ static CJobStatus write_public_destructor(CJob *job, ParsedStruct *strct)
 */
 static CJobStatus write_general_destructor(CJob *job)
 {
-  CJOB_FMT_PRIV_FUNCTION(job, "static void haris_lib_destroy_contents(void *ptr,\
- const HarisStructureInfo *info)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_lib_destroy_contents(void *ptr, const HarisStructureInfo *info)\n\
 {\n\
   haris_uint32_t j, alloced;\n\
   int i;\n\
@@ -505,8 +501,8 @@ static CJobStatus write_general_destructor(CJob *job)
     }\n\
   }\n\
 }\n\n");
-  CJOB_FMT_PRIV_FUNCTION(job, "static void haris_lib_destroy(void *ptr,\
- const HarisStructureInfo *info)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_lib_destroy(void *ptr, const HarisStructureInfo *info)\n\
 {\n\
   haris_lib_destroy_contents(ptr, info);\n\
   free(ptr);\n}\n\n");
@@ -782,8 +778,9 @@ const HarisStructureInfo *info, unsigned char *buf)\n\
 */
 static CJobStatus write_core_size(CJob *job)
 {
-  CJOB_FMT_PRIV_FUNCTION(job, "haris_uint32_t haris_lib_size(void *ptr, \
-const HarisStructureInfo *info, int depth, HarisStatus *out)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"haris_uint32_t haris_lib_size(void *ptr, const HarisStructureInfo *info,\n\
+                               int depth, HarisStatus *out)\n\
 {\n\
   int i, j;\n\
   haris_uint32_t accum, buf;\n\

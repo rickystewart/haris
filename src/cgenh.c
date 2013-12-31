@@ -5,7 +5,6 @@ static CJobStatus write_header_boilerplate(CJob *);
 static CJobStatus write_header_macros(CJob *);
 static CJobStatus write_header_structures(CJob *);
 static CJobStatus write_reflective_structures(CJob *);
-static CJobStatus write_header_footer(CJob *);
 static CJobStatus write_child_field(CJob *, ChildField *child);
 
 /* =============================PUBLIC INTERFACE============================= */
@@ -18,8 +17,6 @@ CJobStatus write_header_file(CJob *job)
   if ((result = write_header_macros(job)) != CJOB_SUCCESS)
     return result;
   if ((result = write_header_structures(job)) != CJOB_SUCCESS)
-    return result;
-  if ((result = write_header_footer(job)) != CJOB_SUCCESS)
     return result;
   return CJOB_SUCCESS;
 }
@@ -39,10 +36,8 @@ static CJobStatus write_header_boilerplate(CJob *job)
   if (!capital) return CJOB_IO_ERROR;
   for (i = 0; capital[i]; i++)
     capital[i] = (char)toupper(capital[i]);
-  CJOB_FMT_HEADER_STRING(job, "#ifndef __HARIS_%s_H\n\
-#define __HARIS_%s_H\n\n", capital, capital);
   free(capital);
-  CJOB_FMT_HEADER_STRING(job, "%s\n", 
+  CJOB_FMT_HEADER_STRING(job, 
 "#include <stdio.h>\n\
 #include <stdlib.h>\n\n");
   CJOB_FMT_HEADER_STRING(job, 
@@ -238,12 +233,6 @@ static CJobStatus write_header_structures(CJob *job)
     CJOB_FMT_HEADER_STRING(job, "};\n\n");
   }
 
-  return CJOB_SUCCESS;
-}
-
-static CJobStatus write_header_footer(CJob *job)
-{
-  CJOB_FMT_HEADER_STRING(job, "#endif\n\n");
   return CJOB_SUCCESS;
 }
 

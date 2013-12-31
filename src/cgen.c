@@ -361,8 +361,6 @@ static CJobStatus compile(CJob *job)
   CJobStatus result;
   if ((result = write_header_file(job)) 
       != CJOB_SUCCESS ||
-      (result = write_utility_lib_source(job))
-      != CJOB_SUCCESS ||
       (result = write_source_file(job))
       != CJOB_SUCCESS)
     return result;
