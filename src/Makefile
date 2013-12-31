@@ -11,4 +11,4 @@ all:	$(OBJS)
 %.o:	%.h %.c
 
 clean:
-	rm $(OBJS) 
+	rm $(OBJS) $(RESULT)
