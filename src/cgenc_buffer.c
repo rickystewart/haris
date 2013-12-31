@@ -84,16 +84,16 @@ return HARIS_SUCCESS; }\n\
     return handle_child_buffer_struct_posthead(buf, out_ind, sz, \
 depth, num_children, body_size);\n\
   } else if ((buf[ind] & 0xE0) == 0xC0) {\n\
-    HARIS_ASSERT((ind + 3 < sz) && (ind + 3 < HARIS_MESSAGE_SIZE_LIMIT),\
- INPUT);\n\
+    HARIS_ASSERT(ind + 3 < sz, INPUT);\n\
+    HARIS_ASSERT(ind + 3 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
     i = haris_read_uint24(buf + ind + 1);\n\
     el_size = buf[ind] & 0x3;\n\
     *out_ind = ind + i * el_size + 4;\n\
     return HARIS_SUCCESS;\n\
   } else {\n\
     haris_uint32_t x;\n\
-    HARIS_ASSERT((ind + 5 < sz) && (ind + 5 < HARIS_MESSAGE_SIZE_LIMIT),\
- INPUT);\n\
+    HARIS_ASSERT(ind + 5 < sz, INPUT);\n\
+    HARIS_ASSERT(ind + 5 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
     i = haris_read_uint24(buf + ind + 1);\n\
     num_children = buf[ind + 4] & 0x7F;\n\
     body_size = buf[ind + 5];\n\

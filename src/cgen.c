@@ -452,6 +452,10 @@ static CJobStatus output_to_file(CJob *job)
 /* Consumes a file and a function definition as a C string and outputs the
    prototype. For example, if the definition is "int a() { return 0; }", then
    this function will write "int a();\n" to the file.
+
+   The definition must have an '{' or this function will have undefined 
+   behavior. Of course, the string is not a syntactically correct function 
+   definition unless it does have one.
 */
 static CJobStatus output_prototype(FILE *out, char *definition)
 {
