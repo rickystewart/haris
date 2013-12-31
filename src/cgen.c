@@ -10,6 +10,7 @@ static void destroy_cjob(CJob *);
 static int allocate_string_stack(CJobStringStack *, int);
 static int push_string(CJobStringStack *, char *);
 
+static void usage(void);
 static CJobStatus register_protocol(CJob *, char **, int);
 static CJobStatus register_optimization(CJob *, char **, int);
 static CJobStatus register_file_to_parse(char **, int, Parser *);
@@ -55,6 +56,10 @@ language %s.\n", argv[i+1]);
         goto Finish;
       }
       i ++;
+    } else if (!strcmp(argv[i], "-h")) {
+      usage();
+      result = CJOB_SUCCESS;
+      goto Finish;
     } else if (!strcmp(argv[i], "-o")) {
       if (i + 1 >= argc) goto ArgumentError;
       job->output = argv[i+1];
@@ -329,6 +334,35 @@ static CJobStatus run_cjob(CJob *job)
 }
 
 /* ********** PARSING COMMAND-LINE OPTIONS ********** */
+
+static void usage(void)
+{
+  fprintf(stderr,
+"Usage: haris -l c [-o <FNAME>] [-p <PREFIX>] [-O <OPT>]\n\
+        -p <PROTOCOL> <ARGUMENT_FILES>...\n\n\
+The C compiler, by default, outputs C99-conforming C source code.\n\
+The command line arguments and options that the compiler accepts are as\n\
+follows:\n\
+  -o : Write the output to a pair of source files whose names begin with\n\
+       <FNAME>. For example, `-o haris` will result in a pair of source\n\
+       code files called haris.h and haris.c.\n\
+  -p : Prefix the global names in the generated library with <PREFIX>.\n\
+       All globally exposed names the compiler generates that do not begin\n\
+       with `haris` or `HARIS` will be prefixed with the name you give; this\n\
+       can be used to provide a sort of namespacing.\n\
+  -O : Use an optimization. Optimizations can decrease the size and speed of\n\
+       the output code at the risk of no longer being standard-conforming.\n\
+       By default, the compiler chooses to generate code that is slower but\n\
+       well-defined under the standard. (No optimizations are currently\n\
+       supported; when they are, this space will include a list of\n\
+       optimizations.\n\
+  -p : Choose a protocol. Acceptable protocols at this time are\n\
+         file\n\
+         buffer\n\
+       You must choose at least one protocol.\n\
+In addition to these options, you must provide at least one <ARGUMENT_FILE>,\n\
+which is the name of a .haris schema file to compile.\n");
+}
 
 static CJobStatus register_protocol(CJob *job, char **argv, int i)
 {

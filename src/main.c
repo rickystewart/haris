@@ -45,7 +45,7 @@ static void version(void)
 static void usage(void)
 {
   fprintf(stderr,
-"Usage: haris -l [language] [options] file...\n\
+"Usage: haris -l [language] [options] file...\n\n\
 The Haris tool is a collection of compilers. (The size of this collection,\n\
 currently, is 1.)\n\
 To show this message, run `haris -h`.\n\
