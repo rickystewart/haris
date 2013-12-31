@@ -1,4 +1,4 @@
-OBJS = cgen.o cgenc.o cgenc_buffer.o cgenc_core.o cgenc_file.o cgenh.o cgenu.o \
+OBJS = cgen.o cgenc.o cgenc_buffer.o cgenc_core.o cgenc_file.o cgenh.o \
 hash.o lex.o parse.o schema.o
 RESULT = haris
 
