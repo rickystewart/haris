@@ -5,12 +5,8 @@ static CJobStatus write_header_boilerplate(CJob *);
 static CJobStatus write_header_macros(CJob *);
 static CJobStatus write_header_structures(CJob *);
 static CJobStatus write_reflective_structures(CJob *);
-static CJobStatus write_header_prototypes(CJob *);
 static CJobStatus write_header_footer(CJob *);
 static CJobStatus write_child_field(CJob *, ChildField *child);
-static CJobStatus write_public_prototypes(CJob *);
-static CJobStatus write_buffer_prototypes(CJob *);
-static CJobStatus write_file_prototypes(CJob *);
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -22,8 +18,6 @@ CJobStatus write_header_file(CJob *job)
   if ((result = write_header_macros(job)) != CJOB_SUCCESS)
     return result;
   if ((result = write_header_structures(job)) != CJOB_SUCCESS)
-    return result;
-  if ((result = write_header_prototypes(job)) != CJOB_SUCCESS)
     return result;
   if ((result = write_header_footer(job)) != CJOB_SUCCESS)
     return result;
@@ -138,7 +132,7 @@ HarisStructureInfo;\n");
 /* We need to make two passes through the structure array to define 
    our structures. First, for every structure S (and assuming a prefix P), 
    we do
-     typedef struct _PS PS;
+     typedef struct haris_PS PS;
    ... which has the dual effect of performing the typedef and "forward-
    declaring" the structure so that we don't get any nasty compile errors.
    Then, we loop through the structures again and define them. 
@@ -176,20 +170,6 @@ static CJobStatus write_header_structures(CJob *job)
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_header_prototypes(CJob *job)
-{
-  CJobStatus result;
-  if ((result = write_public_prototypes(job)) != CJOB_SUCCESS)
-    return result;
-  if (job->buffer_protocol)
-    if ((result = write_buffer_prototypes(job)) != CJOB_SUCCESS)
-      return result;
-  if (job->file_protocol)
-    if ((result = write_file_prototypes(job)) != CJOB_SUCCESS)
-      return result;
-  return CJOB_SUCCESS;
-}
-
 static CJobStatus write_header_footer(CJob *job)
 {
   CJOB_FMT_HEADER_STRING(job, "#endif\n\n");
@@ -210,81 +190,5 @@ static CJobStatus write_child_field(CJob *job, ChildField *child)
     CJOB_FMT_HEADER_STRING(job, "  void *%s;\n", child_name);
     break;
   }
-  return CJOB_SUCCESS;
-}
-
-/* The public prototypes for every structure S are
-   S *S_create(void);
-   void S_destroy(S *);
-   HarisStatus S_init_F(S *, haris_uint64_t);
-     ... for every list field F in S, and
-   HarisStatus S_init_F(S *);
-     ... for every structure field F in S.
-*/
-static CJobStatus write_public_prototypes(CJob *job)
-{
-  int i, j;
-  const char *prefix, *strct_name, *child_name;
-  for (i=0; i < job->schema->num_structs; i++) {
-    prefix = job->prefix;
-    strct_name = job->schema->structs[i].name;
-    CJOB_FMT_HEADER_STRING(job, "%s%s *%s%s_create(void);\n\
-void %s%s_destroy(%s%s *);\n", 
-                prefix, strct_name, prefix, strct_name,
-                prefix, strct_name, prefix, strct_name);
-    for (j=0; j < job->schema->structs[i].num_children; j++) {
-      child_name = job->schema->structs[i].children[j].name;
-      if (job->schema->structs[i].children[j].tag != CHILD_STRUCT) {
-        CJOB_FMT_HEADER_STRING(job, "HarisStatus %s%s_init_%s(%s%s *, haris_uint32_t);\n",
-                    prefix, strct_name, child_name, prefix, strct_name);
-      } else {
-        CJOB_FMT_HEADER_STRING(job, "HarisStatus %s%s_init_%s(%s%s *);\n",
-                    prefix, strct_name, child_name, prefix, strct_name);
-      }
-    }
-  }
-  return CJOB_SUCCESS;
-}
-
-/* The buffer prototypes for every structure S are
-   HarisStatus S_from_buffer(S *, unsigned char *, haris_uint32_t, 
-                             unsigned char **);
-   HarisStatus S_to_buffer(S *, unsigned char **, haris_uint32_t *);
-*/
-static CJobStatus write_buffer_prototypes(CJob *job)
-{
-  int i;
-  const char *prefix, *name;
-  for (i=0; i < job->schema->num_structs; i++) {
-    prefix = job->prefix;
-    name = job->schema->structs[i].name;
-    CJOB_FMT_HEADER_STRING(job, "HarisStatus %s%s_from_buffer(%s%s *, \
-unsigned char *, haris_uint32_t, unsigned char **);\n\
-HarisStatus *%s%s_to_buffer(%s%s *, unsigned char **, \
-haris_uint32_t *);\n", 
-                prefix, name, prefix, name,
-                prefix, name, prefix, name);
-  }
-  CJOB_FMT_HEADER_STRING(job, "\n");
-  return CJOB_SUCCESS;
-}
-
-/* The file prototypes for every structure S are 
-   HarisStatus S_from_file(S *, FILE *);
-   HarisStatus S_to_file(S *, FILE *);
-*/
-static CJobStatus write_file_prototypes(CJob *job)
-{
-  int i;
-  const char *prefix, *name;
-  for (i=0; i < job->schema->num_structs; i++) {
-    prefix = job->prefix;
-    name = job->schema->structs[i].name;
-    CJOB_FMT_HEADER_STRING(job, "HarisStatus %s%s_from_file(%s%s *, FILE *);\n\
-HarisStatus %s%s_to_file(%s%s *, FILE *);\n",
-                prefix, name, prefix, name,
-                prefix, name, prefix, name);
-  }
-  CJOB_FMT_HEADER_STRING(job, "\n");
   return CJOB_SUCCESS;
 }
