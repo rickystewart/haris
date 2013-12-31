@@ -10,9 +10,16 @@ static void destroy_cjob(CJob *);
 static int allocate_string_stack(CJobStringStack *, int);
 static int push_string(CJobStringStack *, char *);
 
+static CJobStatus register_protocol(CJob *, char **, int);
+static CJobStatus register_optimization(CJob *, char **, int);
+static CJobStatus register_file_to_parse(CJob *, char **, int, Parser *);
+
 static CJobStatus check_job(CJob *);
 static CJobStatus compile(CJob *);
 static CJobStatus output_to_file(CJob *job);
+static CJobStatus output_to_header_file(CJob *job, FILE *);
+static CJobStatus output_to_source_file(CJob *job, FILE *);
+
 static FILE *open_source_file(const char *prefix, const char *suffix);
 
 /* =============================PUBLIC INTERFACE============================= */
@@ -35,48 +42,41 @@ CJobStatus cgen_main(int argc, char **argv)
   int i;
   CJob *job = new_cjob();
   Parser *parser = create_parser();
-  FILE *input;
   CJobStatus result;
   if (!job || !parser) { result = CJOB_MEM_ERROR; goto Finish; }
   /* Loop through command-line arguments, adjusting job as necessary */
   for (i = 1; i < argc; i ++) {
     if (!strcmp(argv[i], "-l")) {
+      if (i + 1 >= argc) goto ArgumentError;
       if (strcmp(argv[i+1], "c")) {
         fprintf(stderr, "Fatal error: C compiler cannot generate code in \
 language %s.\n", argv[i+1]);
-        return CJOB_JOB_ERROR;
+        result = CJOB_JOB_ERROR;
+        goto Finish;
       }
       i ++;
     } else if (!strcmp(argv[i], "-o")) {
+      if (i + 1 >= argc) goto ArgumentError;
       job->output = argv[i+1];
       i++;
     } else if (!strcmp(argv[i], "-n")) {
+      if (i + 1 >= argc) goto ArgumentError;
       job->prefix = argv[i+1];
       i++;
     } else if (!strcmp(argv[i], "-p")) {
-      if (!strcmp(argv[i+1], "buffer"))
-        job->buffer_protocol = 1;
-      else if (!strcmp(argv[i+1], "file")) 
-        job->file_protocol = 1;
-      else {
-        fprintf(stderr, "Unrecognized protocol %s.\n", argv[i+1]);
-        return CJOB_JOB_ERROR;
-      }
+      if (i + 1 >= argc) goto ArgumentError;
+      if ((result = register_protocol(job, argv, i)) != CJOB_SUCCESS)
+        goto Finish;
       i++;
     } else if (!strcmp(argv[i], "-O")) {
-      fprintf(stderr, "Optimizations are as of yet unimplemented.\n");
-      return CJOB_JOB_ERROR;
+      if (i + 1 >= argc) goto ArgumentError;
+      if ((result = register_optimization(job, argv, i)) != CJOB_SUCCESS)
+        goto Finish;
     } else { /* Strings that aren't command line options are files that we
                 are meant to parse and compile */
-      input = fopen(argv[i], "r");
-      if (!input) { result = CJOB_IO_ERROR; goto Finish; }
-      if (!bind_parser(parser, input, argv[i])) { 
-        result = CJOB_MEM_ERROR; goto Finish; 
-      }
-      if (!parse(parser)) {
-        result = CJOB_PARSE_ERROR; goto Finish;
-      }
-      fclose(input);
+      if (i + 1 >= argc) goto ArgumentError;
+      if ((result = register_file_to_parse(job, argv, i, parser)) != CJOB_SUCCESS)
+        goto Finish;
     }
   }
   /* Make changes to job to reflect optional arguments */
@@ -85,6 +85,11 @@ language %s.\n", argv[i+1]);
   job->schema = parser->schema;
   /* Run the job */
   result = run_cjob(job);
+  goto Finish;
+  ArgumentError:
+  fprintf(stderr, "Missing argument after tag %s", argv[i]);
+  result = CJOB_JOB_ERROR;
+  goto Finish;
   Finish:
   if (parser) destroy_parser(parser);
   if (job) destroy_cjob(job);
@@ -280,8 +285,8 @@ static CJob *new_cjob(void)
   ret->schema = NULL;
   ret->prefix = NULL;
   ret->output = NULL;
-  ret->buffer_protocol = 0;
-  ret->file_protocol = 0;
+  ret->protocols.buffer = 0;
+  ret->protocols.file = 0;
   if (!init_string_stack(&ret->strings.header_strings) ||
       !init_string_stack(&ret->strings.source_strings) ||
       !init_string_stack(&ret->strings.public_functions) ||
@@ -297,6 +302,51 @@ static void destroy_cjob(CJob *job)
 {
   free(job);
   return;
+}
+
+static CJobStatus register_protocol(CJob *job, char **argv, int i)
+{
+  if (!strcmp(argv[i+1], "buffer"))
+    job->protocols.buffer = 1;
+  else if (!strcmp(argv[i+1], "file")) 
+    job->protocols.file = 1;
+  else {
+    fprintf(stderr, "Unrecognized protocol %s.\n", argv[i+1]);
+    return CJOB_JOB_ERROR;
+  }
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus register_optimization(CJob *job, char **argv, int i)
+{
+  fprintf(stderr, "Optimizations are as of yet unimplemented.\n");
+  return CJOB_JOB_ERROR;
+}
+
+static CJobStatus register_file_to_parse(CJob *job, char **argv, int i, 
+                                         Parser *parser)
+{
+  CJobStatus result;
+  FILE *input = fopen(argv[i], "r");
+  if (!input) { 
+    fprintf(stderr, "Could not open file %s.\n", argv[i]);
+    result = CJOB_IO_ERROR; 
+    goto Finish; 
+  }
+  if (!bind_parser(parser, input, argv[i])) { 
+    fprintf(stderr, "A memory error occured; please try again.\n");
+    result = CJOB_MEM_ERROR; 
+    goto Finish; 
+  }
+  if (!parse(parser)) {
+    fprintf(stderr, "There was a parse error.\n", argv[i]);
+    result = CJOB_PARSE_ERROR; 
+    goto Finish;
+  }
+  result = CJOB_SUCCESS;
+  Finish;
+  if (input) fclose(input);
+  return result;
 }
 
 /* Run the given CJob (which will entail processing the attached schema and
@@ -337,7 +387,7 @@ static CJobStatus check_job(CJob *job)
 {
   int i;
   if (!job->schema || !job->prefix || !job->output || 
-      (!job->buffer_protocol && !job->file_protocol))
+      (!job->protocols.buffer && !job->protocols.file))
     return CJOB_JOB_ERROR;
   if (job->schema->num_structs == 0)
     return CJOB_SCHEMA_ERROR;
@@ -383,3 +433,54 @@ static CJobStatus output_to_file(CJob *job)
   return result;
 }
 
+/* Consumes a file and a function definition as a C string and outputs the
+   prototype. For example, if the definition is "int a() { return 0; }", then
+   this function will write "int a();\n" to the file.
+*/
+static CJobStatus output_prototype(FILE *out, char *definition)
+{
+  int i;
+  for (i = 0; definition[i] != '{'; i ++);
+  for (i--; isspace(definition[i]); i --);
+  CJOB_FPRINTF(out, "%.*s;\n", i + 1, definition);
+  return CJOB_SUCCESS;
+}
+
+/* Write everything that goes in the header file to the given output FILE*. */
+static CJobStatus output_to_header_file(CJob *job, FILE *out);
+{
+  int i;
+  CJobStatus result;
+  CJOB_FPRINTF(out, 
+"#ifndef __HARIS_H__ \n\
+#define __HARIS_H__ \n\n");
+  for (i = 0; i < job->strings.header_strings.num_strings; i ++)
+    CJOB_FPRINTF(out, "%s", job->strings.header_strings.strings[i]);
+  CJOB_FPRINTF(out, "\n\n");
+  for (i = 0; i < job->strings.public_functions.num_strings; i ++)
+    if ((result = output_prototype(out, job->strings.public_functions.strings[i]))
+        != CJOB_SUCCESS)
+      return result;
+  CJOB_FPRINTF(out, "#endif\n\n");
+  return CJOB_SUCCESS;
+}
+
+/* Write everything that goes in the source file to the given output FILE*. */
+static CJobStatus output_to_source_file(CJob *job, FILE *out);
+{
+  int i;
+  CJobStatus result;
+  CJOB_FPRINTF(out, 
+"#include <stdio.h>\n\
+#include <stdlib.h\n\n
+#include \"%s.h\"\n\n", job->output);
+  for (i = 0; i < job->strings.private_functions.num_strings; i ++)
+    if ((result = output_prototype(out, job->strings.private_functions.strings[i]))
+        != CJOB_SUCCESS)
+      return result;
+  CJOB_FPRINTF(out, "\n\n");
+  for (i = 0; i < job->strings.source_strings.num_strings; i ++) 
+    CJOB_FPRINTF(out, "%s", job->strings.source_strings.strings[i]);
+  CJOB_FPRINTF(out, "\n\n");
+  return CJOB_SUCCESS;
+}

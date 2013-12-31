@@ -4,6 +4,8 @@ static CJobStatus write_public_file_funcs(CJob *, ParsedStruct *);
 static CJobStatus write_child_file_handler(CJob *);
 static CJobStatus write_static_file_funcs(CJob *);
 
+/* =============================PUBLIC INTERFACE============================= */
+
 /* Writes the file protocol functions to the output source stream. They are
    HarisStatus S_from_file(S *, FILE *);
    HarisStatus S_to_file(S *, FILE *);
@@ -16,6 +18,8 @@ CJobStatus write_file_protocol_funcs(CJob *job)
   (void)job;
   return CJOB_SUCCESS;
 }
+
+/* =============================STATIC FUNCTIONS============================= */
 
 static CJobStatus write_public_file_funcs(CJob *job, ParsedStruct *strct)
 {

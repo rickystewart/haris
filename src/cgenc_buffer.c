@@ -1,8 +1,9 @@
 #include "cgenc_buffer.h"
 
+static CJobStatus write_child_buffer_handler(CJob *);
+
 static CJobStatus write_public_buffer_funcs(CJob *, ParsedStruct *);
 static CJobStatus write_static_buffer_funcs(CJob *);
-static CJobStatus write_child_buffer_handler(CJob *);
 
 static CJobStatus write_static_from_buffer_functions(CJob *);
 static CJobStatus write_static_to_buffer_functions(CJob *);

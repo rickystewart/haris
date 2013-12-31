@@ -94,13 +94,15 @@ typedef struct {
 } CJobStrings;
 
 typedef struct {
+  int buffer;
+  int file;
+} CJobProtocols;
+
+typedef struct {
   ParsedSchema *schema; /* The schema to be compiled */
   const char *prefix;   /* Prefix all global names with this string */
   const char *output;   /* Write the output code to a file with this name */
-  int buffer_protocol;  /* Set if we need to write the buffer protocol to the
-                           output */
-  int file_protocol;    /* Set if we need to write the file protocol to the 
-                           output */
+  CJobProtocols protocols;
   CJobStrings strings; /* The strings that we will copy into the result source
                           and header files; this is built up dynamically at
                           compile time */
