@@ -32,11 +32,6 @@ CJobStatus write_header_file(CJob *job)
 static CJobStatus write_header_boilerplate(CJob *job)
 {
   int i;
-  char *capital = strdup(job->prefix);
-  if (!capital) return CJOB_IO_ERROR;
-  for (i = 0; capital[i]; i++)
-    capital[i] = (char)toupper(capital[i]);
-  free(capital);
   CJOB_FMT_HEADER_STRING(job, 
 "#include <stdio.h>\n\
 #include <stdlib.h>\n\n");
@@ -146,6 +141,9 @@ static CJobStatus write_header_macros(CJob *job)
   return CJOB_SUCCESS;
 }
 
+/* Write the generic structures that capture the makeup of the defined 
+   structures.
+*/
 static CJobStatus write_reflective_structures(CJob *job)
 {
   CJOB_FMT_HEADER_STRING(job, 
@@ -235,9 +233,10 @@ static CJobStatus write_header_structures(CJob *job)
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_child_field(CJob *job, ChildField *child)
+/* Write a child field to the output file. */
+static CJobStatus write_child_field(CJob *job, const ChildField *child)
 {
-  char *child_name = child->name;
+  const char *child_name = child->name;
   switch (child->tag) {
   case CHILD_TEXT:
   case CHILD_SCALAR_LIST:
