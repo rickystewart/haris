@@ -68,9 +68,9 @@ static CJobStatus write_header_boilerplate(CJob *job)
    technically necessary to store the number. If you wish to u",
 "se less space\n\
    in-memory in exchange for a potentially longer running time, use the\n\
-   [u]int_leastN_t types rather than the [u]int_fastN_t types.\n\
-*/\n");
-  CJOB_FMT_HEADER_STRING(job, "%s%s", "#include <stdint.h>\n\
+   [u]int_leastN_t types rather than the [u]int_fastN_t types.\n*/\n");
+  CJOB_FMT_HEADER_STRING(job,
+"#include <stdint.h>\n\
 \n\
 typedef uint_fast8_t    haris_uint8_t;\n\
 typedef int_fast8_t     haris_int8_t;\n\
@@ -85,11 +85,9 @@ typedef float           haris_float32;\n\
 typedef double          haris_float64;\n\
 \n\
 typedef enum {\n\
-  HARIS_SUCCESS, HARIS_ST",
-"RUCTURE_ERROR, HARIS_DEPTH_ERROR, HARIS_SIZE_ERROR,\n\
+  HARIS_SUCCESS, HARIS_STRUCTURE_ERROR, HARIS_DEPTH_ERROR, HARIS_SIZE_ERROR,\n\
   HARIS_INPUT_ERROR, HARIS_MEM_ERROR\n\
-} HarisStatus;\n\
-");
+} HarisStatus;\n");
   return CJOB_SUCCESS;
 }
 
@@ -110,7 +108,7 @@ static CJobStatus write_header_macros(CJob *job)
 {
   int i, j;
   const char *prefix = job->prefix;
-  CJOB_FMT_HEADER_STRING(job, "%s%s", 
+  CJOB_FMT_HEADER_STRING(job, 
 "/* Changeable size limits for error-checking. You can freely modify these if\n\
    you would like your Haris client to be able to process larger or deeper\n\
    messages. \n\
@@ -126,11 +124,9 @@ static CJobStatus write_header_macros(CJob *job)
 #define HARIS_FLOAT32_SIGBITS 23\n\
 #define HARIS_FLOAT32_BIAS    127\n\
 #define HARIS_FLOAT64_SIGBITS 52\n\
-#define HARIS_FLOAT",
-"64_BIAS    1023\n\
+#define HARIS_FLOAT64_BIAS    1023\n\
 \n\
-#define HARIS_ASSERT(cond, err) if (!(cond)) return HARIS_ ## err ## _ERROR\n\
-");
+#define HARIS_ASSERT(cond, err) if (!(cond)) return HARIS_ ## err ## _ERROR\n");
   for (i=0; i < job->schema->num_enums; i++) {
     CJOB_FMT_HEADER_STRING(job, "/* enum %s */\n", 
                                 job->schema->enums[i].name);
@@ -155,36 +151,42 @@ static CJobStatus write_header_macros(CJob *job)
 
 static CJobStatus write_reflective_structures(CJob *job)
 {
-  CJOB_FMT_HEADER_STRING(job, "typedef enum {\n\
+  CJOB_FMT_HEADER_STRING(job, 
+"typedef enum {\n\
   HARIS_SCALAR_UINT8, HARIS_SCALAR_INT8, HARIS_SCALAR_UINT16,\n\
   HARIS_SCALAR_INT16, HARIS_SCALAR_UINT32, HARIS_SCALAR_INT32,\n\
   HARIS_SCALAR_UINT64, HARIS_SCALAR_INT64, HARIS_SCALAR_FLOAT32,\n\
   HARIS_SCALAR_FLOAT64, HARIS_SCALAR_BLANK\n\
 } HarisScalarType;\n\n");
-  CJOB_FMT_HEADER_STRING(job, "typedef enum {\n\
+  CJOB_FMT_HEADER_STRING(job, 
+"typedef enum {\n\
   HARIS_CHILD_TEXT, HARIS_CHILD_SCALAR_LIST, HARIS_CHILD_STRUCT_LIST,\n\
   HARIS_CHILD_STRUCT\n\
 } HarisChildType;\n\n");
-  CJOB_FMT_HEADER_STRING(job, "typedef struct {\n\
+  CJOB_FMT_HEADER_STRING(job, 
+"typedef struct {\n\
   void *         ptr;\n\
   haris_uint32_t len;\n\
   haris_uint32_t alloc;\n\
   char           null;\n\
 } HarisListInfo;\n\n");
-  CJOB_FMT_HEADER_STRING(job, "typedef struct HarisStructureInfo_ \
-HarisStructureInfo;\n");
-  CJOB_FMT_HEADER_STRING(job, strdup("typedef struct {\n\
+  CJOB_FMT_HEADER_STRING(job, 
+"typedef struct HarisStructureInfo_ HarisStructureInfo;\n");
+  CJOB_FMT_HEADER_STRING(job, 
+strdup("typedef struct {\n\
   size_t offset;\n\
   HarisScalarType type;\n\
 } HarisScalar;\n\n"));
-  CJOB_FMT_HEADER_STRING(job, "typedef struct {\n\
+  CJOB_FMT_HEADER_STRING(job, 
+"typedef struct {\n\
   int nullable;\n\
   size_t offset;\n\
   HarisScalarType scalar_element;\n\
   HarisStructureInfo *struct_element;\n\
   HarisChildType child_type;\n\
 } HarisChild;\n\n");
-  CJOB_FMT_HEADER_STRING(job, "struct HarisStructureInfo_ {\n\
+  CJOB_FMT_HEADER_STRING(job, 
+"struct HarisStructureInfo_ {\n\
   int num_scalars;\n\
   HarisScalar *scalars;\n\
   int num_children;\n\
