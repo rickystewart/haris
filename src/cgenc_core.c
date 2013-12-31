@@ -49,6 +49,49 @@ static CJobStatus (* const general_core_writer_functions[])(CJob *) = {
 
 /* =============================PUBLIC INTERFACE============================= */
 
+/* As the header file says, the public functions are 
+   S *S_create(void);
+   void S_destroy(S *);
+   HarisStatus S_init_F(S *, haris_uint32_t);
+     ... for every list field F in S and
+   HarisStatus S_init_F(S *);
+     ... for every structure field F in S.
+*/
+CJobStatus write_source_public_funcs(CJob *job)
+{
+  CJobStatus result;
+  int i;
+  for (i=0; i < job->schema->num_structs; i++) {
+    if ((result = write_public_constructor(job, &job->schema->structs[i]))
+        != CJOB_SUCCESS)
+      return result;
+    if ((result = write_public_destructor(job, &job->schema->structs[i]))
+        != CJOB_SUCCESS)
+      return result;
+    if ((result = write_public_initializers(job, &job->schema->structs[i]))
+        != CJOB_SUCCESS)
+      return result;
+  }
+  return CJOB_SUCCESS;
+}
+
+/* Write all the core functions (whose static definitions are given above)
+   to the given file.
+*/
+CJobStatus write_source_core_funcs(CJob *job)
+{
+  CJobStatus result;
+  unsigned i;
+  for (i = 0; i < sizeof general_core_writer_functions / 
+                  sizeof general_core_writer_functions[0]; i++)
+    if ((result = general_core_writer_functions[i](job)) != CJOB_SUCCESS)
+      return result;
+  return CJOB_SUCCESS;
+}
+
+/* =============================STATIC FUNCTIONS============================= */
+
+/* ********* SCALAR-WRITING AND -READING FUNCTIONS ********* */
 static CJobStatus write_readint(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int8(const unsigned char *b, void *_ptr)\n\
@@ -363,47 +406,69 @@ static CJobStatus write_writefloat(CJob *job)
   return CJOB_SUCCESS;
 }
 
-/* As the header file says, the public functions are 
-   S *S_create(void);
-   void S_destroy(S *);
-   HarisStatus S_init_F(S *, haris_uint32_t);
-     ... for every list field F in S and
-   HarisStatus S_init_F(S *);
-     ... for every structure field F in S.
+/* ********* ARRAYS ********* */
+
+/* Write the array of in-memory C scalar sizes to the output file.
+   This array is keyed by the HarisScalarType enumerators. 
 */
-CJobStatus write_source_public_funcs(CJob *job)
+static CJobStatus write_in_memory_scalar_sizes(CJob *job)
 {
-  CJobStatus result;
-  int i;
-  for (i=0; i < job->schema->num_structs; i++) {
-    if ((result = write_public_constructor(job, &job->schema->structs[i]))
-        != CJOB_SUCCESS)
-      return result;
-    if ((result = write_public_destructor(job, &job->schema->structs[i]))
-        != CJOB_SUCCESS)
-      return result;
-    if ((result = write_public_initializers(job, &job->schema->structs[i]))
-        != CJOB_SUCCESS)
-      return result;
-  }
+  CJOB_FMT_SOURCE_STRING(job, 
+"static const size_t haris_lib_in_memory_scalar_sizes[] = {\n\
+  sizeof(haris_uint8_t), sizeof(haris_int8_t), sizeof(haris_uint16_t),\n\
+  sizeof(haris_int16_t), sizeof(haris_uint32_t), sizeof(haris_int32_t),\n\
+  sizeof(haris_uint64_t), sizeof(haris_int64_t), sizeof(haris_float32),\n\
+  sizeof(haris_float64)\n};\n\n");
   return CJOB_SUCCESS;
 }
 
-/* Write all the core functions (whose static definitions are given above)
-   to the given file.
+/* Write the array of in-message scalar sizes to the output file. 
+   As above, this array is also keyed by HarisScalarType.
 */
-CJobStatus write_source_core_funcs(CJob *job)
+static CJobStatus write_message_scalar_sizes(CJob *job)
 {
-  CJobStatus result;
-  unsigned i;
-  for (i = 0; i < sizeof general_core_writer_functions / 
-                  sizeof general_core_writer_functions[0]; i++)
-    if ((result = general_core_writer_functions[i](job)) != CJOB_SUCCESS)
-      return result;
+  CJOB_FMT_SOURCE_STRING(job, 
+"static const size_t haris_lib_message_scalar_sizes[] = {\n\
+  1, 1, 2, 2, 4, 4, 8, 8, 4, 8\n\
+};\n\n");
   return CJOB_SUCCESS;
 }
 
-/* =============================STATIC FUNCTIONS============================= */
+static CJobStatus write_message_bit_patterns(CJob *job)
+{
+  CJOB_FMT_SOURCE_STRING(job, 
+"static const size_t haris_lib_scalar_bit_patterns[] = {\n\
+  0, 0, 1, 1, 2, 2, 3, 3, 2, 3\n\
+};\n\n");
+  return CJOB_SUCCESS;
+}
+
+/* Write the array of scalar-reading functions to the output file; as 
+   above, this array is keyed by HarisScalarType.
+*/
+static CJobStatus write_scalar_readers(CJob *job)
+{
+  CJOB_FMT_SOURCE_STRING(job, 
+"static void (* const haris_lib_scalar_readers[])(const unsigned char *, void *) = {\n\
+  haris_read_uint8, haris_read_int8, haris_read_uint16, haris_read_int16,\n\
+  haris_read_uint32, haris_read_int32, haris_read_uint64, haris_read_int64,\n\
+  haris_read_float32, haris_read_float64\n\
+};\n\n");
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_scalar_writers(CJob *job)
+{
+  CJOB_FMT_SOURCE_STRING(job, 
+"static void (* const haris_lib_scalar_readers[])(unsigned char *, const void *) = {\n\
+  haris_write_uint8, haris_write_int8, haris_write_uint16, haris_write_int16,\n\
+  haris_write_uint32, haris_write_int32, haris_write_uint64, haris_write_int64,\n\
+  haris_write_float32, haris_write_float64\n\
+};\n\n");
+  return CJOB_SUCCESS;
+}
+
+/* ********* CONSTRUCTOR ********* */
 
 /* Write the public constructor for the given structure to the given file. */
 static CJobStatus write_public_constructor(CJob *job, ParsedStruct *strct)
@@ -450,6 +515,7 @@ static CJobStatus write_general_constructor(CJob *job)
   return CJOB_SUCCESS;
 }
 
+/* ********* DESTRUCTOR ********* */
 
 /* Writes the destructor for the given structure to the output file. */
 static CJobStatus write_public_destructor(CJob *job, ParsedStruct *strct)
@@ -509,6 +575,8 @@ static CJobStatus write_general_destructor(CJob *job)
   return CJOB_SUCCESS;
 }
 
+/* ********* INITIALIZERS ********* */
+
 /* Write all public initializer functions to the output file. */
 static CJobStatus write_public_initializers(CJob *job, ParsedStruct *strct)
 {
@@ -536,8 +604,8 @@ static CJobStatus write_init_list(CJob *job, ParsedStruct *strct,
                                   int field)
 {
   const char *prefix = job->prefix, *name = strct->name;
-  CJOB_FMT_PUB_FUNCTION(job, "HarisStatus %s%s_init_%s(%s%s *strct, \
-haris_uint32_t sz)\n\
+  CJOB_FMT_PUB_FUNCTION(job, 
+"HarisStatus %s%s_init_%s(%s%s *strct, haris_uint32_t sz)\n\
 {\n\
   return haris_lib_init_list_mem((void*)strct, &haris_lib_structures[%d], \
 %d, sz);\n}\n\n", prefix, name, strct->children[field].name, prefix, name, 
@@ -550,66 +618,12 @@ static CJobStatus write_init_struct(CJob *job, ParsedStruct *strct,
                                     int field)
 {
   const char *prefix = job->prefix, *name = strct->name;
-  CJOB_FMT_PUB_FUNCTION(job, "HarisStatus %s%s_init_%s(%s%s *strct)\n\
+  CJOB_FMT_PUB_FUNCTION(job, 
+"HarisStatus %s%s_init_%s(%s%s *strct)\n\
 {\n\
   return haris_lib_init_struct_mem((void*)strct, &haris_lib_structures[%d], \
 %d);\n}\n\n", prefix, name, strct->children[field].name, prefix, name, 
               strct->schema_index, field);
-  return CJOB_SUCCESS;
-}
-
-/* Write the array of in-memory C scalar sizes to the output file.
-   This array is keyed by the HarisScalarType enumerators. 
-*/
-static CJobStatus write_in_memory_scalar_sizes(CJob *job)
-{
-  CJOB_FMT_SOURCE_STRING(job, "static const size_t haris_lib_in_memory_scalar_sizes[] = {\n\
-  sizeof(haris_uint8_t), sizeof(haris_int8_t), sizeof(haris_uint16_t),\n\
-  sizeof(haris_int16_t), sizeof(haris_uint32_t), sizeof(haris_int32_t),\n\
-  sizeof(haris_uint64_t), sizeof(haris_int64_t), sizeof(haris_float32),\n\
-  sizeof(haris_float64)\n};\n\n");
-  return CJOB_SUCCESS;
-}
-
-/* Write the array of in-message scalar sizes to the output file. 
-   As above, this array is also keyed by HarisScalarType.
-*/
-static CJobStatus write_message_scalar_sizes(CJob *job)
-{
-  CJOB_FMT_SOURCE_STRING(job, "static const size_t haris_lib_message_scalar_sizes[] = {\n\
-  1, 1, 2, 2, 4, 4, 8, 8, 4, 8\n\
-};\n\n");
-  return CJOB_SUCCESS;
-}
-
-static CJobStatus write_message_bit_patterns(CJob *job)
-{
-  CJOB_FMT_SOURCE_STRING(job, "static const size_t haris_lib_scalar_bit_patterns[] = {\n\
-  0, 0, 1, 1, 2, 2, 3, 3, 2, 3\n\
-};\n\n");
-  return CJOB_SUCCESS;
-}
-
-/* Write the array of scalar-reading functions to the output file; as 
-   above, this array is keyed by HarisScalarType.
-*/
-static CJobStatus write_scalar_readers(CJob *job)
-{
-  CJOB_FMT_SOURCE_STRING(job, "static void (* const haris_lib_scalar_readers[])(const unsigned char *, void *) = {\n\
-  haris_read_uint8, haris_read_int8, haris_read_uint16, haris_read_int16,\n\
-  haris_read_uint32, haris_read_int32, haris_read_uint64, haris_read_int64,\n\
-  haris_read_float32, haris_read_float64\n\
-};\n\n");
-  return CJOB_SUCCESS;
-}
-
-static CJobStatus write_scalar_writers(CJob *job)
-{
-  CJOB_FMT_SOURCE_STRING(job, "static void (* const haris_lib_scalar_readers[])(unsigned char *, const void *) = {\n\
-  haris_write_uint8, haris_write_int8, haris_write_uint16, haris_write_int16,\n\
-  haris_write_uint32, haris_write_int32, haris_write_uint64, haris_write_int64,\n\
-  haris_write_float32, haris_write_float64\n\
-};\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -621,7 +635,8 @@ static CJobStatus write_scalar_writers(CJob *job)
 */
 static CJobStatus write_general_init_list_member(CJob *job)
 {
-  CJOB_FMT_PRIV_FUNCTION(job, "static HarisStatus haris_lib_init_list_mem(void *ptr,\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static HarisStatus haris_lib_init_list_mem(void *ptr,\
 const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
 {\n\
   void *testptr;\n\
@@ -668,8 +683,9 @@ const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
 */
 static CJobStatus write_general_init_struct_member(CJob *job)
 {
-  CJOB_FMT_PRIV_FUNCTION(job, "static HarisStatus haris_lib_init_struct_mem(void *ptr,\
-const HarisStructureInfo *info, int field)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static HarisStatus haris_lib_init_struct_mem(void *ptr, const HarisStructureInfo *info,\n\
+                                              int field)\n\
 {\n\
   void **vdptrptr;\n\
   vdptrptr = (void**)((char*)ptr + info->children[i].offset);\n\
@@ -681,6 +697,8 @@ const HarisStructureInfo *info, int field)\n\
   return CJOB_SUCCESS;
 }
 
+/* ********* WRITING ********* */
+
 /* Writes the scalar-writing function to the output file. This function 
    consumes an unsigned char * "message" parameter, which is a pointer
    to an in-memory Haris message buffer, a void pointer to a "src" 
@@ -691,20 +709,10 @@ const HarisStructureInfo *info, int field)\n\
 */
 static CJobStatus write_scalar_writer_function(CJob *job)
 {
-  CJOB_FMT_PRIV_FUNCTION(job, "static void haris_lib_write_scalar(unsigned char \
-*message, const void *src, HarisScalarType type)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_lib_write_scalar(unsigned char *message, const void *src,\n\
+                                    HarisScalarType type)\n\
 {\n  haris_lib_scalar_writers[type](message, src);\n}\n\n");
-  return CJOB_SUCCESS;
-}
-
-/* Writes the scalar-reading function to the output file. Parameters are
-   analogous to the above, except the scalar is READ from the Haris buffer.
-*/
-static CJobStatus write_scalar_reader_function(CJob *job)
-{
-  CJOB_FMT_PRIV_FUNCTION(job, "static void haris_lib_read_scalar(const unsigned char \
-*message, void *src, HarisScalarType type)\n\
-{\n  haris_lib_scalar_readers[type](message, src);\n}\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -718,19 +726,22 @@ static CJobStatus write_scalar_reader_function(CJob *job)
 */
 static CJobStatus write_core_wfuncs(CJob *job)
 {
-  CJOB_FMT_PRIV_FUNCTION(job, "static unsigned char *haris_lib_write_nonnull_header(\
-const HarisStructureInfo *info, unsigned char *buf)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static unsigned char *haris_lib_write_nonnull_header(const HarisStructureInfo *info,\n\
+                                                      unsigned char *buf)\n\
 {\n\
   buf[0] = (unsigned char)0x40 | (unsigned char)info->num_children;\n\
   buf[1] = (unsigned char)info->body_size;\n\
   return buf + 2;\n}\n\n");
-  CJOB_FMT_PRIV_FUNCTION(job, "static unsigned char *haris_lib_write_header(\
-const void *ptr, const HarisStructureInfo *info, unsigned char *buf)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static unsigned char *haris_lib_write_header(const void *ptr, const HarisStructureInfo *info,\n\
+                                              unsigned char *buf)\n\
 {\n\
   if (*(char*)ptr) { buf[0] = 0; return buf + 1; }\n\
   else return haris_lib_write_nonnull_header(info, buf);\n}\n\n");
-  CJOB_FMT_PRIV_FUNCTION(job, "static unsigned char *haris_lib_write_body(\
-const void *ptr, const HarisStructureInfo *info, unsigned char *buf)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static unsigned char *haris_lib_write_body(const void *ptr, const HarisStructureInfo *info,\n\
+                                            unsigned char *buf)\n\
 {\n\
   int i;\n\
   HarisScalarType type;\n\
@@ -740,12 +751,27 @@ const void *ptr, const HarisStructureInfo *info, unsigned char *buf)\n\
     haris_lib_write_scalar(buf, ptr, type);\n\
     ptr += haris_lib_message_scalar_sizes[type];\n\
   }\n  return ptr;\n}\n\n");
-  CJOB_FMT_PRIV_FUNCTION(job, "static unsigned char *haris_lib_write_hb(\
-const void *ptr, const HarisStructureInfo *info, unsigned char *buf)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static unsigned char *haris_lib_write_hb(const void *ptr, const HarisStructureInfo *info,\n\
+                                          unsigned char *buf)\n\
 {\n\
   return haris_lib_write_body(ptr, info, \n\
                               haris_lib_write_header(ptr, info, buf));\n\
 }\n\n");
+  return CJOB_SUCCESS;
+}
+
+/* ********* READING ********* */
+
+/* Writes the scalar-reading function to the output file. Parameters are
+   analogous to the above, except the scalar is READ from the Haris buffer.
+*/
+static CJobStatus write_scalar_reader_function(CJob *job)
+{
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_lib_read_scalar(const unsigned char *message, void *src,\n\
+                                   HarisScalarType type)\n\
+{\n  haris_lib_scalar_readers[type](message, src);\n}\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -756,8 +782,9 @@ const void *ptr, const HarisStructureInfo *info, unsigned char *buf)\n\
 */
 static CJobStatus write_core_rfuncs(CJob *job)
 {
-  CJOB_FMT_PRIV_FUNCTION(job, "static unsigned char *haris_lib_read_body(const void *ptr, \
-const HarisStructureInfo *info, unsigned char *buf)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static unsigned char *haris_lib_read_body(const void *ptr, const HarisStructureInfo *info,\n\
+                                           unsigned char *buf)\n\
 {\n\
   int i;\n\
   HarisScalarType type;\n\
@@ -768,6 +795,8 @@ const HarisStructureInfo *info, unsigned char *buf)\n\
   }\n  return ptr;\n}\n\n");
   return CJOB_SUCCESS;
 }
+
+/* ********* SIZE ********* */
 
 /* Writes the core size-measuring function to the output file. This function's
    purpose is twofold: first, to find the size of the buffer that would be
