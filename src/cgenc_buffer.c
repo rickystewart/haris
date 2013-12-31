@@ -1,11 +1,11 @@
 #include "cgenc_buffer.h"
 
 static CJobStatus write_public_buffer_funcs(CJob *, ParsedStruct *);
-static CJobStatus write_static_buffer_funcs(CJob *, ParsedStruct *);
+static CJobStatus write_static_buffer_funcs(CJob *);
 static CJobStatus write_child_buffer_handler(CJob *);
 
-static CJobStatus write_static_from_buffer_function(CJob *, ParsedStruct *);
-static CJobStatus write_static_to_buffer_function(CJob *, ParsedStruct *);
+static CJobStatus write_static_from_buffer_functions(CJob *);
+static CJobStatus write_static_to_buffer_functions(CJob *);
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -37,10 +37,11 @@ CJobStatus write_buffer_protocol_funcs(CJob *job)
   ParsedSchema *schema = job->schema;
   for (i = 0; i < schema->num_structs; i++) {
     if ((result = write_public_buffer_funcs(job, &schema->structs[i])) 
-        != CJOB_SUCCESS) return result;
-    if ((result = write_static_buffer_funcs(job, &schema->structs[i]))
-        != CJOB_SUCCESS) return result;
+        != CJOB_SUCCESS) 
+      return result;
   }
+  if ((result = write_static_buffer_funcs(job) != CJOB_SUCCESS) 
+    return result;
   if ((result = write_child_buffer_handler(job)) != CJOB_SUCCESS)
     return result;
   return CJOB_SUCCESS;
@@ -62,11 +63,11 @@ int num_children, int body_size);
 static CJobStatus write_child_buffer_handler(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, "static HarisStatus handle_child_buffer(unsigned char *buf,\
- haris_uint32_t ind, haris_uint32_t sz, haris_uint32_t *out_ind, int depth)\n\
+ haris_uint32_t *out_ind, haris_uint32_t sz, int depth)\n\
 {\n\
   HarisStatus result;\n\
   int num_children, body_size, el_size;\n\
-  haris_uint32_t i;\n\
+  haris_uint32_t i, ind = *out_ind;\n\
   HARIS_ASSERT(depth <= HARIS_DEPTH_LIMIT, DEPTH);\n\
   HARIS_ASSERT(ind < sz, INPUT);\n\
   HARIS_ASSERT(ind < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
@@ -75,9 +76,10 @@ return HARIS_SUCCESS; }\n\
   HARIS_ASSERT((ind + 1 < sz) && (ind + 1 < HARIS_MESSAGE_SIZE_LIMIT),\
                INPUT);\n\
   if ((buf[ind] & 0xC0) == 0x40) {\n\
-    num_children = buf[ind] & 0x7F;\n\
+    num_children = buf[ind] & 0x3F;\n\
     body_size = buf[ind + 1];\n\
-    return handle_child_buffer_struct_posthead(buf, ind + 2, sz, out_ind, \
+    *out_ind = ind + 2;
+    return handle_child_buffer_struct_posthead(buf, out_ind, sz, \
 depth, num_children, body_size);\n\
   } else if ((buf[ind] & 0xE0) == 0xC0) {\n\
     HARIS_ASSERT((ind + 3 < sz) && (ind + 3 < HARIS_MESSAGE_SIZE_LIMIT),\
@@ -87,237 +89,253 @@ depth, num_children, body_size);\n\
     *out_ind = ind + i * el_size + 4;\n\
     return HARIS_SUCCESS;\n\
   } else {\n\
+    haris_uint32_t x;\n\
     HARIS_ASSERT((ind + 5 < sz) && (ind + 5 < HARIS_MESSAGE_SIZE_LIMIT),\
  INPUT);\n\
-    haris_uint32_t x;\n\
     i = haris_read_uint24(buf + ind + 1);\n\
     num_children = buf[ind + 4] & 0x7F;\n\
     body_size = buf[ind + 5];\n\
     *out_ind = ind + 6;\n\
     for (x = 0; x < i; x++)\n\
-      if ((result = handle_child_buffer_struct_posthead(buf, *out_ind, sz, \n\
-           out_ind, depth + 1, num_children, body_size)) != HARIS_SUCCESS)\n\
+      if ((result = handle_child_buffer_struct_posthead(buf, out_ind, sz, \n\
+           depth + 1, num_children, body_size)) != HARIS_SUCCESS)\n\
         return result;\n\
     return HARIS_SUCCESS;\n\
   }\n}\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, "static HarisStatus handle_child_buffer_struct_posthead(\
-unsigned char *buf,\nharis_uint32_t ind, haris_uint32_t sz, \
-haris_uint32_t *out_ind, int depth, int num_children, int body_size)\n\
+unsigned char *buf,\nharis_uint32_t *out_ind, haris_uint32_t sz, \
+int depth, int num_children, int body_size)\n\
 {\n\
   HarisStatus result;\n\
-  haris_uint32_t i;\n\
+  haris_uint32_t i, ind = *out_ind;\n\
   HARIS_ASSERT(depth <= HARIS_DEPTH_LIMIT, DEPTH);\n\
   HARIS_ASSERT(ind + body_size < sz, INPUT);\n\
   HARIS_ASSERT(ind + body_size < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   *out_ind = ind + body_size;\n\
   for (i = 0; i < num_children; i++)\n\
-    if ((result = handle_child_buffer(buf, *out_ind, sz, out_ind, \n\
+    if ((result = handle_child_buffer(buf, out_ind, sz,\n\
          depth + 1)) != HARIS_SUCCESS)\n\
       return result;\n\
   return HARIS_SUCCESS;\n}\n\n");
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_static_buffer_funcs(CJob *job, ParsedStruct *strct)
+static CJobStatus write_static_buffer_funcs(CJob *job)
 {
   CJobStatus result;
-  if ((result = write_static_from_buffer_function(job, strct, out))
+  if ((result = write_static_from_buffer_functions(job))
       != CJOB_SUCCESS) return result;
-  if ((result = write_static_to_buffer_function(job, strct, out))
+  if ((result = write_static_to_buffer_functions(job))
       != CJOB_SUCCESS) return result;
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_static_from_buffer_function(CJob *job, 
-                                                    ParsedStruct *strct)
+static CJobStatus write_static_from_buffer_functions(CJob *job)
 {
-  int i, scalar_sz;
-  const char *prefix = job->prefix, *name = strct->name, *child_name;
-  CJOB_FMT_PRIV_FUNCTION(job, "static HarisStatus _%s%s_from_buffer(%s%s *strct, \
-unsigned char *buf, haris_uint32_t ind, haris_uint32_t sz, haris_uint32_t *\
-out_ind, int depth)\n{\n\
+  CJOB_FMT_PRIV_FUNCTION(job, "%s%s%s", "static HarisStatus haris_from_buffer(void *ptr, HarisStructureInfo *info, \n\
+  unsigned char *buf, haris_uint32_t *out_ind, haris_uint32_t sz, \n\
+  int depth)\n\
+{\n\
   HarisStatus result;\n\
   int num_children, body_size;\n\
-  haris_uint32_t i;\n\
+  haris_uint32_t i, ind = *out_ind;\n\
   HARIS_ASSERT(depth <= HARIS_DEPTH_LIMIT, DEPTH);\n\
   HARIS_ASSERT(ind < sz, INPUT);\n\
   HARIS_ASSERT(ind < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-  HARIS_ASSERT(!(buf[ind] & 0x80), STRUCTURE);\n\
-  if (buf[ind] & 0x40) { strct->_null = 1; *out_ind = ind + 1; \
-return HARIS_SUCCESS; }\n\
-  HARIS_ASSERT((ind + 1 < sz) && (ind + 1 < HARIS_MESSAGE_SIZE_LIMIT),\n\
-               INPUT);\n\
-  body_size = buf[ind + 1];\n\
-  num_children = buf[ind] & 0x7F;\n\
-  HARIS_ASSERT(body_size >= %s%s_LIB_BODY_SZ && \n\
-               num_children >= %s%s_LIB_NUM_CHILDREN, STRUCTURE);\n\
+  HARIS_ASSERT(!(buf[*ind] & 0x80), STRUCTURE); \n\
+  if (!buf[ind]) { \n\
+    (char*)",
+"ptr = 1; \n\
+    *out_ind = ind + 1; \n\
+    return HARIS_SUCCESS;\n\
+  }\n\
+  HARIS_ASSERT(ind + 1 < sz, INPUT);\n\
+  HARIS_ASSERT(ind + 1 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+  num_children = buf[*ind];\n\
+  body_size = buf[*ind + 1];\n\
+  HARIS_ASSERT(body_size >= info->body_size &&\n\
+  \t\t\t   num_children >= info->num_children, STRUCTURE);\n\
   HARIS_ASSERT(ind + body_size < sz, INPUT);\n\
   HARIS_ASSERT(ind + body_size < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-  return _%s%s_from_buffer_posthead(strct, buf, ind + 2, sz, out_ind, \
-depth, num_children, body_size);\n}\n\n",
-              prefix, name, prefix, name, prefix, name, prefix, name, 
-              prefix, name);
-  CJOB_FMT_PRIV_FUNCTION(job, "static HarisStatus _%s%s_from_buffer_posthead(\
-%s%s *strct, unsigned char *buf, haris_uint32_t ind, haris_uint32_t sz, \
-haris_uint32_t *out_ind, int depth, int num_children, int body_size)\n{\n\
+  *out_ind = ind + 2;\n\
+  ret",
+"urn haris_from_buffer_posthead(ptr, info, buf, sz, out_ind, depth, num_children, body_size);\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, "%s%s%s%s%s%s%s%s%s", 
+"static HarisStatus haris_from_buffer_posthead(void *ptr, HarisStructureInfo *info, \n\
+  unsigned char *buf, haris_uint32_t sz, haris_uint32_t *out_ind, \n\
+  int depth, int num_children, int body_size)\n\
+{\n\
   HarisStatus result;\n\
-  haris_uint32_t i;\n\
-  %s%s_lib_read_body(strct, buf + ind);\n\
-  *out_ind = ind + body_size;\n", prefix, name, prefix, name, prefix, name);
-  for (i = 0; i < strct->num_children; i++) {
-  	child_name = strct->children[i].name;
-    switch (strct->children[i].tag) {
-    case CHILD_STRUCT:
-      CJOB_FPRINTF(out, "  if ((result = %s%s_init_%s(strct)) != \
-HARIS_SUCCESS) return result;\n\
-  if ((result = _%s%s_from_buffer(strct->%s, buf, *out_ind, sz, out_ind, \
-depth+1)) != \n\
-      HARIS_SUCCESS) return result;\n", 
-              prefix, name, strct->children[i].name, prefix,
-              strct->children[i].type.strct->name, child_name);
-      break;
-    case CHILD_TEXT:
-      CJOB_FPRINTF(out, "  HARIS_ASSERT(*out_ind + 4 < sz, INPUT);\n\
-  HARIS_ASSERT(*out_ind + 4 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-  HARIS_ASSERT(buf[*out_ind] == 0xC0, STRUCTURE);\n\
-  i = haris_read_uint24(*out_ind + 1);\n\
-  HARIS_ASSERT(*out_ind + 4 + i < sz, INPUT);\n\
-  HARIS_ASSERT(*out_ind + 4 + i < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-  if ((result = %s%s_init_%s(strct, i)) != HARIS_SUCCESS) return result;\n\
-  (void)memcpy(strct->%s, but + *out_ind + 4, i);\n\
-  *out_ind += 4 + i;\n", prefix, name, child_name, child_name);
-      break;
-    case CHILD_SCALAR_LIST:
-      scalar_sz = sizeof_scalar(strct->children[i].type.scalar_list.tag);
-      CJOB_FPRINTF(out, "  HARIS_ASSERT(*out_ind + 4 < sz, INPUT);\n\
-  HARIS_ASSERT(*out_ind + 4 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-  HARIS_ASSERT(buf[*out_ind] == 0x%X, STRUCTURE);\n\
-  i = haris_read_uint24(*out_ind + 1);\n\
-  if ((result = %s%s_init_%s(strct, i)) != HARIS_SUCCESS) return result;\n\
-  HARIS_ASSERT(*out_ind + 4 + i * %d < sz, INPUT);\n\
-  HARIS_ASSERT(*out_ind + 4 + i * %d < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-  *out_ind += 4;\n\
-  {\n\
-    haris_uint32_t x;\n\
-    for (x = 0; x < i; x++)\n\
-      strct->%s[x] = haris_read_%s(buf + *out_ind + x * %d);\n\
-  }\n\
-  *out_ind += x * sizeof *strct->%s;\n", 0xC0 | 
-              scalar_bit_pattern(strct->children[i].type.scalar_list.tag),
-              prefix, name, child_name, scalar_sz, scalar_sz, child_name,
-              scalar_type_suffix(strct->children[i].type.scalar_list.tag),
-              scalar_sz, child_name);
-      break;
-    case CHILD_STRUCT_LIST:
-      CJOB_FPRINTF(out, "  HARIS_ASSERT(*out_ind + 6 < sz, INPUT);\n\
-  HARIS_ASSERT(*out_ind + 6 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-  HARIS_ASSERT(buf[*out_ind] == 0xE0, STRUCTURE);\n\
-  i = haris_read_uint24(*out_ind + 1);\n\
-  if ((result = %s%s_init_%s(strct, i)) != HARIS_SUCCESS) return result;\n\
-  HARIS_ASSERT(buf[*out_ind + 4] & 0xC0 == 0x40, STRUCTURE);\n\
-  {\n\
-    haris_uint32_t x, body_size = buf[*out_ind + 5], \
-num_children = buf[*out_ind + 4] & 0x3F;\n\
-    *out_ind += 6;\n\
-    for (x = 0; x < i; x++)\n\
-      if ((result = _%s%s_from_buffer_posthead(strct->%s[x], buf, *out_ind, \
-                                               sz, out_ind, depth + 1, \
-                                               body_size, num_children)) \
-           != HARIS_SUCCESS)\n\
+  int i;\n\
+  haris_uint32_t x, ind;\n\
+  HarisChild *child;\n\
+  HarisListInfo *list_info;\n\
+  haris_lib_read_body(ptr, info, buf + *out_ind);\n\
+  *out_ind += body_size;\n\
+  for (i = 0; i < info->num_children; i ++) {\n\
+    ind = *out_ind;\n\
+    child = &inf",
+"o->children[i];\n\
+    list_info = (HarisListInfo*)((char*)ptr + child->offset);\n\
+    HARIS_ASSERT(ind + 1 < sz, INPUT);\n\
+    HARIS_ASSERT(ind + 1 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+    if (!(buf[ind]&0x40)) {\n\
+      if (!child->nullable) goto StructureError;\n\
+      if (child->child_type != HARIS_CHILD_STRUCT) \n\
+        list_info->null = 1;\n\
+      else \n\
+        *(void**)list_info = NULL;\n\
+      *out_ind = ind + 1;\n\
+      continue;\n\
+    }\n\
+    switch (child->child_type) ",
+"{\n\
+    case HARIS_CHILD_TEXT:\n\
+    case HARIS_CHILD_SCALAR_LIST:\n\
+    {\n\
+      haris_uint32_t len, el_size;\n\
+      HARIS_ASSERT(ind + 4 < sz, INPUT);\n\
+      HARIS_ASSERT(ind + 4 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+      HARIS_ASSERT(buf[ind] == (child->child_type == HARIS_CHILD_TEXT ? 0xC0 : \n\
+        0xC0 | haris_lib_scalar_bit_patterns[child->scalar_element]), STRUCTURE);\n\
+      haris_read_uint24((char*)buf + ind + 1, (void*)&len);\n\
+      el_size = (child->child_type == HAR",
+"IS_CHILD_TEXT) ? 1 : \n\
+        haris_lib_message_scalar_sizes[child->scalar_element];\n\
+      HARIS_ASSERT(ind + 4 + len * el_size < sz, INPUT);\n\
+      HARIS_ASSERT(ind + 4 + len * el_size < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+      if ((result = haris_lib_init_list_mem(ptr, info, i, len)) != HARIS_SUCCESS)\n\
         return result;\n\
-  }\n", prefix, name, child_name, prefix, 
-        strct->children[i].type.struct_list->name, child_name);
-        break;
-    }
-  }
-  CJOB_FPRINTF(out, "  for (i = 0; i < num_children - %s%s_LIB_NUM_CHILDREN; \
-i++)\n\
-    if ((result = handle_child_buffer(buf, *out_ind, sz, out_ind, depth + 1)) \
+      ind += 4;\n\
+      for (x = 0; x < len; x ++, ind += el_size) {\n\
+        haris_lib_read_scalar(buf + ind, \n\
+                              (char*)li",
+"st_info->ptr + \n\
+                               x * haris_in_memory_scalar_sizes[child->scalar_element],\n\
+                              child->child_type == HARIS_CHILD_TEXT ? \n\
+                              HARIS_SCALAR_UINT8 : child->scalar_element);\n\
+      }\n\
+      *out_ind = ind;\n\
+      break;\n\
+    }\n\
+    case HARIS_CHILD_STRUCT_LIST:\n\
+    {\n\
+      haris_uint32_t len, body_size, num_children;\n\
+      HARIS_ASSERT(ind + 6 < sz, INPUT);\n\
+      HARIS_ASSERT(ind + 6 < HARI",
+"S_MESSAGE_SIZE_LIMIT, SIZE);\n\
+      HARIS_ASSERT(buf[ind] == 0xE0, STRUCTURE);\n\
+      haris_read_uint24((char*)buf + ind + 1, (void*)&len);\n\
+      if ((result = haris_lib_init_list_mem(ptr, info, i, len)) != HARIS_SUCCESS)\n\
+        return result;\n\
+      HARIS_ASSERT(buf[ind+4] & 0xC0 == 0x40);\n\
+      num_children = buf[ind + 4] & 0x3F;\n\
+      body_size = buf[ind + 5];\n\
+      *out_ind = ind + 6;\n\
+      for (x = 0; x < len; x ++) {\n\
+        if ((result = haris_from_buffer_posth",
+"ead((char*)list_info->ptr + \n\
+                                                x * child->struct_element->size_of, \n\
+                                               child->struct_element, buf, sz, \n\
+                                               out_ind, depth + 1, num_children, \n\
+                                               body_size)) != HARIS_SUCCESS) \n\
+          return result;\n\
+      }\n\
+      break;\n\
+    }\n\
+    case HARIS_CHILD_STRUCT:\n\
+    {\n\
+      if ((result = haris_",
+"lib_init_struct_mem(ptr, info, i)) != HARIS_SUCCESS)\n\
+        return result;\n\
+      if ((result = haris_from_buffer(list_info->ptr, child->struct_element, \n\
+                                      buf, out_ind, sz, depth + 1)) \n\
+          != HARIS_SUCCESS)\n\
+        return result;\n\
+      break;\n\
+    }\n\
+    }\n\
+  }\n\
+  for (; i < num_children; i ++) {\n\
+    if ((result = handle_child_buffer(buf, out_ind, sz, depth + 1))\n\
         != HARIS_SUCCESS)\n\
-      return result;\n  return HARIS_SUCCESS;\n}\n\n", prefix, name);
+      return result;\n\
+  }\n",
+"\
+  return HARIS_SUCCESS;\n}\n\n");
   return CJOB_SUCCESS;
 }
 
-static CJobStatus write_static_to_buffer_function(CJob *job, 
-                                                  ParsedStruct *strct, 
-                                                  FILE *out)
+static CJobStatus write_static_to_buffer_functions(CJob *job)
 {
-  int i;
-  const char *prefix = job->prefix, *name = strct->name, *fname;
-  CJOB_FPRINTF(out, "static unsigned char *_%s%s_to_buffer(%s%s *strct, \
-unsigned char *addr)\n{\n\
-  addr = %s%s_lib_write_header(strct, addr);\n\
-  if (strct->_null) return addr;\n\
-  return _%s%s_to_buffer_posthead(strct, addr);\n}\n\n", 
-              prefix, name, prefix, name, prefix, name,
-              prefix, name);
-  CJOB_FPRINTF(out, "static unsigned char *_%s%s_to_buffer_posthead(\
-%s%s *strct, unsigned char *addr)\n{\n\
-  addr = %s%s_lib_write_body(strct, addr)", prefix, name, prefix, name, 
-               prefix, name);
-  for (i = 0; i < strct->num_children; i++) {
-    fname = strct->children[i].name;
-    switch (strct->children[i].tag) {
-    case CHILD_STRUCT:
-      CJOB_FPRINTF(out, "  addr = _%s%s_to_buffer(strct->%s, addr);\n",
-                  prefix, strct->children[i].type.strct->name, 
-                  strct->children[i].name);
-      break;
-    case CHILD_TEXT:
-      if (strct->children[i].nullable) {
-        CJOB_FPRINTF(out, "  if (strct->_null_%s) *(addr++) = 0x80;\n\
-  else {\n\
-    *addr = 0xC0;\n\
-    haris_write_uint24(addr + 1, strct->_len_%s);\n\
-    (void)memcpy(addr + 4, strct->%s, strct->_len_%s);\n\
-    addr += 4 + strct->_len_%s;\n}\n", 
-                    fname, fname, fname, fname, fname);
-      } else {
-        CJOB_FPRINTF(out, "  *addr = 0xC0;\n\
-  haris_write_uint24(addr + 1, strct->_len_%s);\n\
-  (void)memcpy(addr + 4, strct->%s, strct->_len_%s);\n\
-  addr += 4 + strct->_len_%s;\n}\n", 
-                    fname, fname, fname, fname);
-      }
-      break;
-    case CHILD_SCALAR_LIST:
-      if (strct->children[i].nullable) {
-        CJOB_FPRINTF(out, "  if (strct->_null_%s) *(addr++) = 0x80;\n\
-  else", fname);
-      } 
-      CJOB_FPRINTF(out, "  {\n\
-    haris_uint32_t x;\n\
-    *addr = 0x%x;\n\
-    haris_write_uint24(addr + 1, strct->_len_%s);\n\
-    addr += 4;\n\
-    for (x = 0; x < strct->_len_%s; x++, addr += %d) {\n\
-      haris_write_%s(addr, strct->%s[x]);\n\
-    }\n  }\n", 0xC0 | 
-                scalar_bit_pattern(strct->children[i].type.scalar_list.tag),
-                fname, fname, 
-                sizeof_scalar(strct->children[i].type.scalar_list.tag),
-                scalar_type_suffix(strct->children[i].type.scalar_list.tag),
-                fname);
-      break;
-    case CHILD_STRUCT_LIST:
-      if (strct->children[i].nullable) {
-        CJOB_FPRINTF(out, "  if (strct->_null_%s) *(addr++) = 0x80;\n\
-  else", fname);
-      }
-      CJOB_FPRINTF(out, "  {\n\
-    haris_uint32_t x;\n\
-    *addr = 0xE0;\n\
-    haris_write_uint24(addr + 1, strct->_len_%s);\n\
-    addr = %s%s_lib_write_nonnull_header(addr + 4);\n\
-    for (x = 0; x < strct->_len_%s; x++)\n\
-      _%s%s_to_buffer_posthead(strct->%s[x], addr);\n  }\n", 
-                  fname, prefix, strct->children[i].type.strct->name, 
-                  fname, prefix, strct->children[i].type.strct->name,
-                  fname);
-      break;
-    }
-  }
-  CJOB_FPRINTF(out, "  return addr;\n}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static unsigned char *haris_to_buffer(void *ptr, HarisStructureInfo *info,\n\
+  unsigned char *buf)\n\
+{\n\
+  buf = haris_lib_write_header(ptr, info, buf);\n\
+  if (*(char*)ptr) return buf;\n\
+  return haris_to_buffer_posthead(ptr, info, buf);\n\
+}\n\
+\n\
+");
+  CJOB_FMT_PRIV_FUNCTION(job, "%s%s%s%s%s", 
+"static unsigned char *haris_to_buffer_posthead(void *ptr, \n\
+  HarisStructureInfo *info, unsigned char *buf)\n\
+{\n\
+  int i, el_size;\n\
+  HarisChild *child;\n\
+  HarisListInfo *list_info;\n\
+  haris_uint32_t x;\n\
+  buf = haris_lib_write_body(ptr, info, buf);\n\
+  for (i = 0; i < info->num_children; i ++) {\n\
+    child = &info->children[i];\n\
+    list_info = (HarisListInfo*)((char*)ptr + child->offset);\n\
+    switch (child->child_type) {\n\
+    case HARIS_CHILD_TEXT:\n\
+    case HARIS_CHIL",
+"D_SCALAR_LIST:\n\
+      el_size = child->child_type == HARIS_CHILD_TEXT : 1 ? \n\
+        haris_lib_message_scalar_sizes[child->scalar_element];\n\
+      if (list_info->null) {\n\
+        *buf = 0x80;\n\
+        buf++;\n\
+        continue;\n\
+      }\n\
+      *buf = 0xC0 | (child->child_type == HARIS_CHILD_TEXT ? 0 : \n\
+                     haris_lib_scalar_bit_patterns[child->scalar_element]);\n\
+      haris_write_uint24(buf + 1, &list_info->len);\n\
+      buf += 4;\n\
+      for (x = 0; x < li",
+"st_info->len; x ++, buf += el_size)\n\
+        haris_lib_write_scalar(buf, \n\
+                               (char*)list_info->ptr + \n\
+                               x * haris_in_memory_scalar_sizes[child->scalar_element],\n\
+                               child->child_type == HARIS_CHILD_TEXT ? \n\
+                               HARIS_SCALAR_UINT8 : child->child_scalar_type);\n\
+      break;\n\
+    case HARIS_CHILD_STRUCT_LIST:\n\
+      if (list_info->null) {\n\
+        *buf = 0x80;\n\
+     ",
+"   buf++;\n\
+        continue;\n\
+      }\n\
+      *buf = 0xE0;\n\
+      haris_write_uint24(buf + 1, &list_info->len);\n\
+      buf = haris_lib_write_nonnull_header(child->struct_element, buf + 4);\n\
+      for (x = 0; x < list_info->len; x ++)\n\
+        buf = haris_to_buffer_posthead((char*)list_info->ptr + x * child->size_of,\n\
+                                       child->struct_element, buf);\n\
+      break;\n\
+    case HARIS_CHILD_STRUCT:\n\
+      buf = haris_to_buffer(list_info->ptr, chi",
+"ld->struct_element, buf);\n\
+      break;\n\
+    }\n\
+  }\n\
+  return HARIS_SUCCESS;\n\
+}\n\n");
   return CJOB_SUCCESS;
 }
 

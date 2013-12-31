@@ -73,6 +73,15 @@ typedef struct {
 
    The advantage of using an additional structure is to make it easier to
    extend the compiler or modify its behavior.
+
+   The strings that are stored MUST be dynamically allocated, as they will
+   all be `free`d when the time comes to destroy the CJob. In general, you
+   should not try to access a string at all once you push it onto the stack;
+   that is, if you have a char *s = ..., and you push s onto one of
+   the stacks, you should never try to access s again, as it must be assumed
+   to be immediately invalidated. The library will free it later. If you must
+   continue to access it after pushing it onto the stack, push a copy 
+   (that is, push strdup(s)).
 */ 
 typedef struct {
   CJobStringStack header_strings; /* Strings that will be copied verbatim into

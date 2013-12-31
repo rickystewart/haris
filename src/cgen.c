@@ -249,7 +249,7 @@ static int init_string_stack(CJobStringStack *stack)
 static int allocate_string_stack(CJobStringStack *stack, int sz)
 {
   int i;
-  char **ret = (char**)realloc(stack->strings, sz * sizeof(char*));
+  char **ret = (char**)realloc(stack->strings, (unsigned)sz * sizeof(char*));
   if (!ret) return 0;
   for (i = stack->num_strings; i < sz; i++)
     ret[i] = NULL;
@@ -263,8 +263,13 @@ static int push_string(CJobStringStack *stack, char *s)
 {
   if (!s) return CJOB_MEM_ERROR;
   if (stack->num_strings == stack->strings_alloc)
-    if (!allocate_string_stack(stack, stack->strings_alloc * 2))
+    if (!allocate_string_stack(stack, stack->strings_alloc * 2)) {
+      /* Free the string we're trying to push if there's a memory allocation
+         error; we would need to free the string anyway, so we might as well
+         do it now */
+      free(s);
       return 0;
+    }
   stack->strings[stack->num_strings++] = s;
   return 1;
 }

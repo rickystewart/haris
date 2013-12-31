@@ -3,7 +3,7 @@
 
 #include "cgen.h"
 
-CJobStatus write_utility_lib_header(CJob *, FILE *);
-CJobStatus write_utility_lib_source(CJob *, FILE *);
+CJobStatus write_utility_lib_header(CJob *);
+CJobStatus write_utility_lib_source(CJob *);
 
 #endif

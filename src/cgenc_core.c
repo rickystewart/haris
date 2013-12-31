@@ -17,6 +17,7 @@ static CJobStatus write_general_init_struct_member(CJob *);
 static CJobStatus write_in_memory_scalar_sizes(CJob *);
 static CJobStatus write_message_scalar_sizes(CJob *);
 static CJobStatus write_scalar_readers(CJob *);
+static CJobStatus write_scalar_writers(CJob *);
 
 static CJobStatus write_scalar_writer(CJob *);
 static CJobStatus write_scalar_reader(CJob *);
@@ -242,6 +243,13 @@ static CJobStatus write_message_scalar_sizes(CJob *job)
   return CJOB_SUCCESS;
 }
 
+static CJobStatus write_message_bit_patterns(CJob *job)
+{
+  CJOB_FMT_SOURCE_STRING(job, "static const size_t haris_lib_scalar_bit_patterns[] = {\n\
+  0, 0, 1, 1, 2, 2, 3, 3, 2, 3
+};\n\n")
+}
+
 /* Write the array of scalar-reading functions to the output file; as 
    above, this array is keyed by HarisScalarType.
 */
@@ -251,6 +259,16 @@ static CJobStatus write_scalar_readers(CJob *job)
   haris_read_uint8, haris_read_int8, haris_read_uint16, haris_read_int16,\n\
   haris_read_uint32, haris_read_int32, haris_read_uint64, haris_read_int64,\n\
   haris_read_float32, haris_read_float64\n\
+};\n\n");
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_scalar_writers(CJob *job)
+{
+  CJOB_FMT_SOURCE_STRING(job, "static const void (*haris_lib_scalar_readers[])(unsigned char *, const void *) = {\n\
+  haris_write_uint8, haris_write_int8, haris_write_uint16, haris_write_int16,\n\
+  haris_write_uint32, haris_write_int32, haris_write_uint64, haris_write_int64,\n\
+  haris_write_float32, haris_write_float64\n\
 };\n\n");
   return CJOB_SUCCESS;
 }
@@ -335,40 +353,7 @@ static CJobStatus write_scalar_writer(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, "static void haris_lib_write_scalar(unsigned char \
 *message, const void *src, HarisScalarType type)\n\
-{\n\
-  switch (type) {\n\
-  case HARIS_SCALAR_UINT8:\n\
-    haris_write_uint8(message, *(haris_uint8_t*)src);\n\
-    break;\n\
-  case HARIS_SCALAR_INT8:\n\
-    haris_write_int8(message, *(haris_int8_t*)src);\n\
-    break;\n\
-  case HARIS_SCALAR_UINT16:\n\
-    haris_write_uint16(message, *(haris_uint16_t*)src);\n\
-    break;\n\
-  case HARIS_SCALAR_INT16:\n\
-    haris_write_int16(message, *(haris_int16_t*)src);\n\
-    break;\n\
-  case HARIS_SCALAR_UINT32:\n\
-    haris_write_uint32(message, *(haris_uint32_t*)src);\n\
-    break;\n\
-  case HARIS_SCALAR_INT32:\n\
-    haris_write_int32(message, *(haris_int32_t*)src);\n\
-    break;\n\
-  case HARIS_SCALAR_UINT64:\n\
-    haris_write_uint64(message, *(haris_uint64_t*)src);\n\
-    break;\n\
-  case HARIS_SCALAR_INT64:\n\
-    haris_write_int64(message, *(haris_int64_t*)src);\n\
-    break;\n\
-  case HARIS_SCALAR_FLOAT32:\n\
-    haris_write_float32(message, *(haris_float32*)src);\n\
-    break;\n\
-  case HARIS_SCALAR_FLOAT64:\n\
-    haris_write_float64(message, *(haris_float64*)src);\n\
-    break;\n\
-  }\n\
-}\n\n");
+{\n  haris_lib_scalar_writers[type](message, src);\n}\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -470,9 +455,9 @@ const HarisStructureInfo *info, int depth, HarisStatus *out)\n\
     child = &info->children[i];\n\
     list_info = (HarisListInfo*)((char*)ptr + child->offset);\n\
     if (!child->nullable) {\n\
-      int structure_is_null = child->child_type == HARIS_CHILD_STRUCT ?\n\
+      int child_is_null = child->child_type == HARIS_CHILD_STRUCT ?\n\
         (int)!*(void**)list_info : list_info->null;\n\
-      if (structure_is_null) goto StructureError;\n\
+      if (child_is_null) goto StructureError;\n\
     }\n\
     switch (child->child_type) {\n\
     case HARIS_CHILD_TEXT:\n\
