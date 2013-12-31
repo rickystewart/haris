@@ -3,6 +3,8 @@
 #include "cgenc.h"
 #include "parse.h"
 
+/* C COMPILER */
+
 static CJob *new_cjob(void);
 static CJobStatus run_cjob(CJob *);
 static void destroy_cjob(CJob *);
@@ -417,22 +419,40 @@ static CJobStatus register_file_to_parse(char **argv, int i,
 static CJobStatus check_job(CJob *job)
 {
   int i;
-  if (!job->schema || !job->prefix || !job->output || 
-      (!job->protocols.buffer && !job->protocols.file))
+  const ParsedStruct *strct;
+  if (!job->schema || !job->prefix || !job->output)
     return CJOB_JOB_ERROR;
-  if (job->schema->num_structs == 0)
+  else if (!job->protocols.buffer && !job->protocols.file) {
+    fprintf(stderr, "No protocol selected.\n\
+Run `haris -l c -h` for help.\n");
+    return CJOB_JOB_ERROR;
+  } else if (job->schema->num_structs == 0) {
+    fprintf(stderr, "Compiled schema contains no structures.\n");
     return CJOB_SCHEMA_ERROR;
+  }
   for (i = 0; i < job->schema->num_structs; i++) {
-    if (job->schema->structs[i].num_scalars == 0 &&
-        job->schema->structs[i].num_children == 0)
+    strct = &job->schema->structs[i];
+    if (strct->num_scalars == 0 && strct->num_children == 0) {
+      fprintf(stderr, "Structure %s is empty.\n", 
+              strct->name);
       return CJOB_SCHEMA_ERROR;
-    if (job->schema->structs[i].offset > 256 ||
-        job->schema->structs[i].num_children > 63)
-      return CJOB_SZ_ERROR;
+    } else if (strct->offset > 256) {
+      fprintf(stderr, 
+              "Structure %s has a body size of %d; 255 is the maximum.\n", 
+              strct->name, strct->offset);
+      return CJOB_SCHEMA_ERROR;
+    } else if (strct->num_children > 63) {
+      fprintf(stderr,
+              "Structure %s has %d children; 62 is the maximum.\n",
+              strct->name, strct->num_children);
+      return CJOB_SCHEMA_ERROR;
+    }
   }
   for (i = 0; i < job->schema->num_enums; i++) {
-    if (job->schema->enums[i].num_values == 0)
+    if (job->schema->enums[i].num_values == 0) {
+      fprintf(stderr, "Enum %s is empty.\n", job->schema->enums[i].name);
       return CJOB_SCHEMA_ERROR;
+    }
   }
   return CJOB_SUCCESS;
 }
@@ -440,10 +460,8 @@ static CJobStatus check_job(CJob *job)
 static CJobStatus compile(CJob *job)
 {
   CJobStatus result;
-  if ((result = write_header_file(job)) 
-      != CJOB_SUCCESS ||
-      (result = write_source_file(job))
-      != CJOB_SUCCESS)
+  if ((result = write_header_file(job)) != CJOB_SUCCESS ||
+      (result = write_source_file(job)) != CJOB_SUCCESS)
     return result;
   return output_to_file(job);
 }

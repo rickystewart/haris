@@ -83,9 +83,6 @@ static int delegate_to_c(int argc, char **argv)
   case CJOB_SCHEMA_ERROR:
     fprintf(stderr, "A schema error occured.\n");
     break;
-  case CJOB_SZ_ERROR:
-    fprintf(stderr, "A size error occured.\n");
-    break;
   case CJOB_JOB_ERROR:
     fprintf(stderr, "A job error occured.\n");
     break;
