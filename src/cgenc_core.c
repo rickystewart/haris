@@ -294,7 +294,7 @@ static CJobStatus write_readfloat(CJob *job)
   haris_uint32_t i;\n\
   haris_read_uint32(b, &i);\n\
   \n\
-  if (i == 0) *ptr = 0.0;\n\
+  if (i == 0) { *ptr = 0.0; return; }\n\
   \n\
   result = (i & ((1LL << HARIS_FLOAT32_SIGBITS) - 1));\n\
   result /= (1LL << HARIS_FLOAT32_SIGBITS); \n\
@@ -316,7 +316,7 @@ static CJobStatus write_readfloat(CJob *job)
   haris_uint64_t i;\n\
   haris_read_uint64(b, &i);\n\
   \n\
-  if (i == 0) *ptr = 0.0;\n\
+  if (i == 0) { *ptr = 0.0; return; }\n\
   \n\
   result = (i & (( 1LL << HARIS_FLOAT64_SIGBITS) - 1));\n\
   result /= (1LL << HARIS_FLOAT64_SIGBITS); \n\
@@ -345,8 +345,8 @@ static CJobStatus write_writefloat(CJob *job)
   haris_uint32_t result;\n\
 \n\
   if (f == 0.0) {\n\
-    haris_write_uint32(b, 0U);\n\
-    return;\n\
+    result = 0.0;\n\
+    goto Finish;\n\
   } \n\
 \n\
   if (f < 0) {\n\
@@ -367,9 +367,8 @@ static CJobStatus write_writefloat(CJob *job)
   exp = shift + ((1<<7) - 1); \n\
 \n\
   result = (sign<<31) | (exp<<23) | significand;\n\
-  haris_write_uint32(b, &result);\n\
-  return;\n\
-}\n\n");
+  Finish:\n\
+  haris_write_uint32(b, &result);\n}\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_write_float64(unsigned char *b, const void *_ptr)\n\
 {\n\
@@ -379,8 +378,8 @@ static CJobStatus write_writefloat(CJob *job)
   haris_uint64_t result;\n\
 \n\
   if (f == 0.0) {\n\
-    haris_write_uint64(b, 0U);\n\
-    return;\n\
+    result = 0.0;\n\
+    goto Finish;\n\
   }\n\
 \n\
   if (f < 0) {\n\
@@ -401,9 +400,8 @@ static CJobStatus write_writefloat(CJob *job)
   exp = shift + ((1<<10) - 1); \n\
 \n\
   result = (sign<<63) | (exp<<52) | significand;\n\
-  haris_write_uint64(b, &result);\n\
-  return;\n\
-}\n\n");
+  Finish:\n\
+  haris_write_uint64(b, &result);\n}\n\n");
   return CJOB_SUCCESS;
 }
 
