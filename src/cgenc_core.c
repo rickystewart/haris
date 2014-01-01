@@ -98,44 +98,52 @@ static CJobStatus write_readint(CJob *job)
   CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int8(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_int8_t *ptr = (haris_int8_t*)_ptr;\n\
+  haris_uint8_t uint;\n\
   if (*b & 0x80) \n\
     *ptr = -(haris_int8_t)(*b & 0x7F) - 1;\n\
-  else\n\
-    *ptr = (haris_int8_t)haris_read_uint8(b);\n\
+  else {\n\
+    haris_read_uint8(b, &uint);\n\
+    *ptr = (haris_int8_t)uint;\n\
+  }\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int16(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_int16_t *ptr = (haris_int16_t*)_ptr;\n\
+  haris_uint16_t uint;\n\
   if (*b & 0x80)\n\
     *ptr = -((haris_int16_t)(*b & 0x7F) << 8 | (haris_int16_t)*(b+1)) - 1;\n\
-  else\n\
-    *ptr = (haris_int16_t)haris_read_uint16(b);\n\
+  else {\n\
+    haris_read_uint16(b, &uint);\n\
+    *ptr = (haris_int16_t)uint;\n\
+  }\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int32(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_int32_t *ptr = (haris_int32_t*)_ptr;\n\
+  haris_uint32_t uint;\n\
   if (*b & 0x80)\n\
     *ptr = -((haris_int32_t)(*b & 0x7F) << 24 | (haris_int32_t)*(b+1) << 16 |\n\
              (haris_int32_t)(*b+2) << 8 | (haris_int32_t)(*b+3)) - 1;\n\
-  else\n\
-    *ptr = (haris_int32_t)haris_read_uint32(b);\n\
-}\n\
-\n\
-");
+  else {\n\
+    haris_read_uint32(b, &uint);\n\
+    *ptr = (haris_int32_t)uint;\n\
+  }\n\
+}\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_read_int64(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_int64_t *ptr = (haris_int64_t*)_ptr;\n\
+  haris_uint64_t uint;\n\
   if (*b & 0x80)\n\
     *ptr = -((haris_int64_t)(*b & 0x7F) << 56 | (haris_int64_t)*(b+1) << 48 |\n\
              (haris_int64_t)*(b+2) << 40 | (haris_int64_t)*(b+3) << 32 |\n\
              (haris_int64_t)*(b+4) << 24 | (haris_int64_t)*(b+5) << 16 |\n\
              (haris_int64_t)*(b+6) << 8 | (haris_int64_t)*(b+7)) - 1;\n\
-  else\n\
-    *ptr = (haris_int64_t)haris_read_uint64(b);\n\
-}\n\
-\n\
-");
+  else {\n\
+    haris_read_uint64(b, &uint);\n\
+    *ptr = (haris_int64_t)uint;\n\
+  }\n\
+}\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -187,46 +195,44 @@ static CJobStatus write_writeint(CJob *job)
   haris_int8_t i = *(const haris_int8_t*)_ptr;\n\
   if (i >= 0)\n\
     *b = (unsigned char)i;\n\
-  else {\n\
-    *b = (unsigned char)(-i - 1);\n\
-    *b |= 0x80;\n\
-  }\n\
+  else\n\
+    *b = ~(unsigned char)(-i) + (unsigned char)1;\n\
   return;\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job,
 "static void haris_write_int16(unsigned char *b, const void *_ptr)\n\
 {\n\
   haris_int16_t i = *(const haris_int16_t*)_ptr;\n\
+  haris_uint16_t ui;\n\
   if (i >= 0)\n\
-    haris_write_uint16(b, (haris_uint16_t)i);\n\
-  else {\n\
-    haris_write_uint16(b, (haris_uint16_t)(-i - 1));\n\
-    *b |= 0x80;\n\
-  }\n\
+    ui = (haris_uint16_t)i;\n\
+  else\n\
+    ui = ~(haris_uint16_t)(-i) + 1;\n\
+  haris_write_uint16(b, &ui);\n\
   return;\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job,
 "static void haris_write_int32(unsigned char *b, const void *_ptr)\n\
 {\n\
   haris_int32_t i = *(const haris_int32_t*)_ptr;\n\
+  haris_uint32_t ui;\n\
   if (i >= 0)\n\
-    haris_write_uint32(b, (haris_uint32_t)i);\n\
-  else {\n\
-    haris_write_uint32(b, (haris_uint32_t)(-i - 1));\n\
-    *b |= 0x80;\n\
-  }\n\
+    ui = (haris_uint32_t)i;\n\
+  else\n\
+    ui = ~(haris_uint32_t)(-i) + 1;\n\
+  haris_write_uint32(b, &ui);\n\
   return;\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job,
 "static void haris_write_int64(unsigned char *b, const void *_ptr)\n\
 {\n\
   haris_int64_t i = *(const haris_int64_t*)_ptr;\n\
+  haris_uint64_t ui;\n\
   if (i >= 0)\n\
-    haris_write_uint64(b, (haris_uint64_t)i);\n\
-  else {\n\
-    haris_write_uint64(b, (haris_uint64_t)(-i - 1));\n\
-    *b |= 0x80;\n\
-  }\n\
+    ui = (haris_uint64_t)i;\n\
+  else\n\
+    ui = ~(haris_uint64_t)(-i) + 1;\n\
+  haris_write_uint64(b, &ui);\n\
   return;\n\
 }\n\n");
   return CJOB_SUCCESS;
@@ -293,7 +299,8 @@ static CJobStatus write_readfloat(CJob *job)
   haris_float32 *ptr = (haris_float32*)_ptr;\n\
   haris_float64 result;\n\
   haris_int64_t shift;\n\
-  haris_uint32_t i = haris_read_uint32(b);\n\
+  haris_uint32_t i;\n\
+  haris_read_uint32(b, &i);\n\
   \n\
   if (i == 0) *ptr = 0.0;\n\
   \n\
@@ -314,7 +321,8 @@ static CJobStatus write_readfloat(CJob *job)
 {\n\
   haris_float64 result, *ptr = (haris_float64*)_ptr;\n\
   haris_int64_t shift;\n\
-  haris_uint64_t i = haris_read_uint64(b);\n\
+  haris_uint64_t i;\n\
+  haris_read_uint64(b, &i);\n\
   \n\
   if (i == 0) *ptr = 0.0;\n\
   \n\
@@ -367,7 +375,7 @@ static CJobStatus write_writefloat(CJob *job)
   exp = shift + ((1<<7) - 1); \n\
 \n\
   result = (sign<<31) | (exp<<23) | significand;\n\
-  haris_write_uint32(b, result);\n\
+  haris_write_uint32(b, &result);\n\
   return;\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
@@ -401,7 +409,7 @@ static CJobStatus write_writefloat(CJob *job)
   exp = shift + ((1<<10) - 1); \n\
 \n\
   result = (sign<<63) | (exp<<52) | significand;\n\
-  haris_write_uint64(b, result);\n\
+  haris_write_uint64(b, &result);\n\
   return;\n\
 }\n\n");
   return CJOB_SUCCESS;
@@ -625,24 +633,25 @@ static CJobStatus write_general_constructor(CJob *job)
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void *haris_lib_create(const HarisStructureInfo *info)\n\
 {\n\
-  int i;\n\
-  HarisListInfo *list_info;\n\
   void *new = malloc(info->size_of);\n\
   if (!new) return NULL;\n\
   return haris_lib_create_contents(new, info);\n}\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static void *haris_lib_create_contents(void *new, const HarisStructureInfo *info)\n\
+"static void *haris_lib_create_contents(void *new,\n\
+                                        const HarisStructureInfo *info)\n\
 {\n\
+  int i;\n\
+  HarisListInfo *list_info;\n\
   *((char*)new) = 0;\n\
   for (i = 0; i < info->num_children; i++) {\n\
     switch (info->children[i].child_type) {\n\
     case HARIS_CHILD_TEXT:\n\
-    case HARIS_SCALAR_LIST:\n\
-    case HARIS_STRUCT_LIST:\n\
+    case HARIS_CHILD_SCALAR_LIST:\n\
+    case HARIS_CHILD_STRUCT_LIST:\n\
       list_info = (HarisListInfo*)((char*)new + info->children[i].offset);\n\
       list_info->alloc = list_info->len = 0;\n\
       /* Intentional break omission */\n\
-    case HARIS_STRUCT:\n\
+    case HARIS_CHILD_STRUCT:\n\
       *((void**)((char*)new + info->children[i].offset)) = NULL;\n\
       break;\n\
     }\n\
@@ -679,25 +688,25 @@ static CJobStatus write_general_destructor(CJob *job)
   haris_uint32_t j, alloced;\n\
   int i;\n\
   HarisListInfo *list_info;\n\
-  HarisStructureInfo *child_structure;\n\
-  HarisChild *child;\n\
+  const HarisStructureInfo *child_structure;\n\
+  const HarisChild *child;\n\
   for (i = 0; i < info->num_children; i++) {\n\
     child = &info->children[i];\n\
     list_info = (HarisListInfo*)((char*)ptr + child->offset);\n\
     switch (info->children[i].child_type) {\n\
     case HARIS_CHILD_TEXT:\n\
-    case HARIS_SCALAR_LIST:\n\
+    case HARIS_CHILD_SCALAR_LIST:\n\
       if (list_info->alloc > 0)\n\
         free(list_info->ptr);\n\
       break;\n\
-    case HARIS_STRUCT_LIST:\n\
+    case HARIS_CHILD_STRUCT_LIST:\n\
       alloced = ((HarisListInfo*)((char*)ptr + child->offset))->alloc;\n\
       child_structure = child->struct_element;\n\
       for (j = 0; j < alloced; j++)\n\
         haris_lib_destroy_contents((char*)list_info->ptr +\n\
                                      j * child_structure->size_of,\n\
                                    child_structure);\n\
-    case HARIS_STRUCT:\n\
+    case HARIS_CHILD_STRUCT:\n\
       free(list_info->ptr);\n\
       break;\n\
     }\n\
@@ -776,7 +785,7 @@ static CJobStatus write_general_init_list_member(CJob *job)
 const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
 {\n\
   void *testptr;\n\
-  HarisChild *child = &info->children[field];\n\
+  const HarisChild *child = &info->children[field];\n\
   HarisListInfo *list_info = (HarisListInfo*)((char*)ptr + child->offset);\n\
   haris_uint32_t i;\n\
   size_t element_size;\n\
@@ -787,19 +796,19 @@ const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
   case HARIS_CHILD_TEXT:\n\
     element_size = 1;\n\
     break;\n\
-  case HARIS_SCALAR_LIST:\n\
+  case HARIS_CHILD_SCALAR_LIST:\n\
     element_size = haris_lib_in_memory_scalar_sizes[child->scalar_element];\n\
     break;\n\
-  case HARIS_STRUCTURE_LIST:\n\
+  case HARIS_CHILD_STRUCT_LIST:\n\
     element_size = child->struct_element->size_of;\n\
     break;\n\
-  case HARIS_STRUCTURE:\n\
+  case HARIS_CHILD_STRUCT:\n\
     return HARIS_STRUCTURE_ERROR;\n\
   }\n\
   testptr = realloc(list_info->ptr, sz * element_size);\n\
   if (!testptr) return HARIS_MEM_ERROR;\n\
   list_info->ptr = testptr;\n\
-  if (child->child_type == HARIS_STRUCTURE_LIST) {\n\
+  if (child->child_type == HARIS_CHILD_STRUCT_LIST) {\n\
     for (i = list_info->alloc; i < sz; i ++) {\n\
       haris_lib_create_contents((char*)testptr + i * element_size,\n\
                                 child->struct_element);\n\
@@ -820,14 +829,15 @@ const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
 static CJobStatus write_general_init_struct_member(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static HarisStatus haris_lib_init_struct_mem(void *ptr, const HarisStructureInfo *info,\n\
+"static HarisStatus haris_lib_init_struct_mem(void *ptr,\n\
+                                              const HarisStructureInfo *info,\n\
                                               int field)\n\
 {\n\
   void **vdptrptr;\n\
-  vdptrptr = (void**)((char*)ptr + info->children[i].offset);\n\
+  vdptrptr = (void**)((char*)ptr + info->children[field].offset);\n\
   if (*vdptrptr) return HARIS_SUCCESS;\n\
   if ((*vdptrptr = \n\
-      haris_lib_create(info->children[field].struct_element)\n\
+      haris_lib_create(info->children[field].struct_element))\n\
       == NULL) return HARIS_MEM_ERROR;\n\
   return HARIS_SUCCESS;\n}\n\n");
   return CJOB_SUCCESS;
@@ -863,20 +873,23 @@ static CJobStatus write_scalar_writer_function(CJob *job)
 static CJobStatus write_core_wfuncs(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static unsigned char *haris_lib_write_nonnull_header(const HarisStructureInfo *info,\n\
+"static\n\
+unsigned char *haris_lib_write_nonnull_header(const HarisStructureInfo *info,\n\
                                                       unsigned char *buf)\n\
 {\n\
   buf[0] = (unsigned char)0x40 | (unsigned char)info->num_children;\n\
   buf[1] = (unsigned char)info->body_size;\n\
   return buf + 2;\n}\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static unsigned char *haris_lib_write_header(const void *ptr, const HarisStructureInfo *info,\n\
+"static unsigned char *haris_lib_write_header(const void *ptr,\n\
+                                              const HarisStructureInfo *info,\n\
                                               unsigned char *buf)\n\
 {\n\
   if (*(char*)ptr) { buf[0] = 0; return buf + 1; }\n\
   else return haris_lib_write_nonnull_header(info, buf);\n}\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static unsigned char *haris_lib_write_body(const void *ptr, const HarisStructureInfo *info,\n\
+"static unsigned char *haris_lib_write_body(const void *ptr,\n\
+                                            const HarisStructureInfo *info,\n\
                                             unsigned char *buf)\n\
 {\n\
   int i;\n\
@@ -884,16 +897,9 @@ static CJobStatus write_core_wfuncs(CJob *job)
   if (*(char*)ptr) return buf;\n\
   for (i = 0; i < info->num_scalars; i ++) {\n\
     type = info->scalars[i].type;\n\
-    haris_lib_write_scalar(buf, ptr, type);\n\
-    ptr += haris_lib_message_scalar_sizes[type];\n\
-  }\n  return ptr;\n}\n\n");
-  CJOB_FMT_PRIV_FUNCTION(job, 
-"static unsigned char *haris_lib_write_hb(const void *ptr, const HarisStructureInfo *info,\n\
-                                          unsigned char *buf)\n\
-{\n\
-  return haris_lib_write_body(ptr, info, \n\
-                              haris_lib_write_header(ptr, info, buf));\n\
-}\n\n");
+    haris_lib_write_scalar(buf, (char*)ptr + info->scalars[i].offset, type);\n\
+    buf += haris_lib_message_scalar_sizes[type];\n\
+  }\n  return buf;\n}\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -919,16 +925,17 @@ static CJobStatus write_scalar_reader_function(CJob *job)
 static CJobStatus write_core_rfuncs(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static unsigned char *haris_lib_read_body(const void *ptr, const HarisStructureInfo *info,\n\
+"static unsigned char *haris_lib_read_body(void *ptr,\n\
+                                           const HarisStructureInfo *info,\n\
                                            unsigned char *buf)\n\
 {\n\
   int i;\n\
   HarisScalarType type;\n\
   for (i = 0; i < info->num_scalars; i ++) {\n\
     type = info->scalars[i].type;\n\
-    haris_lib_read_scalar(buf, ptr, type);\n\
-    ptr = (void*)((char*)ptr + haris_lib_message_scalar_sizes[type]);\n\
-  }\n  return ptr;\n}\n\n");
+    haris_lib_read_scalar(buf, (char*)ptr + info->scalars[i].offset, type);\n\
+    buf = buf + haris_lib_message_scalar_sizes[type];\n\
+  }\n  return buf;\n}\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -947,12 +954,12 @@ static CJobStatus write_core_size(CJob *job)
 "haris_uint32_t haris_lib_size(void *ptr, const HarisStructureInfo *info,\n\
                                int depth, HarisStatus *out)\n\
 {\n\
-  int i, j;\n\
-  haris_uint32_t accum, buf;\n\
-  HarisChild *child;\n\
+  int i;\n\
+  haris_uint32_t accum, buf, j;\n\
+  const HarisChild *child;\n\
   HarisListInfo *list_info;\n\
   if (*(char*)ptr) return 1;\n\
-  else if (depth > HARIS_MAXIMUM_DEPTH) {\n\
+  else if (depth > HARIS_DEPTH_LIMIT) {\n\
     *out = HARIS_DEPTH_ERROR;\n\
     return 0;\n\
   }\n\
