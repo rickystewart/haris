@@ -118,6 +118,23 @@ LexerStatus next_token(Lexer *lex, Token *tok)
   }
 }
 
+void diagnose_lexer_error(Lexer *lex)
+{
+  switch (lex->errno) {
+  case LONG_STRING:
+    fprintf(stderr, 
+"Schema file included a string that was far too long around line %ld.\n\
+The maximum string size is %d.\n", lex->line_no, BUFFER_SIZE);
+    return;
+  case UNEXPECTED_CHAR:
+    fprintf(stderr, "There was an unexpected character around line %ld.\n",
+            lex->line_no);
+    return;
+  default:
+    return;
+  }
+}
+
 /* =============================STATIC FUNCTIONS============================= */
 
 static LexerStatus handle_symbol_token(Lexer *lex, Token *tok)

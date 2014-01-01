@@ -77,25 +77,6 @@ Run `haris -h` for help.\n", argv[2]);
 static int delegate_to_c(int argc, char **argv)
 {
   CJobStatus result = cgen_main(argc, argv);
-  switch (result) {
-  case CJOB_SUCCESS:
-    break;
-  case CJOB_SCHEMA_ERROR:
-    fprintf(stderr, "A schema error occured.\n");
-    break;
-  case CJOB_JOB_ERROR:
-    fprintf(stderr, "A job error occured.\n");
-    break;
-  case CJOB_IO_ERROR:
-    fprintf(stderr, "An I/O error occured.\n");
-    break;
-  case CJOB_MEM_ERROR:
-    fprintf(stderr, "A memory error occured.\n");
-    break;
-  case CJOB_PARSE_ERROR:
-    fprintf(stderr, "A parse error occured.\n");
-    break;
-  }
   if (result == CJOB_SUCCESS) return 0;
   else return 1;
 }

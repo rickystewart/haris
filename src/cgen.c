@@ -394,7 +394,7 @@ static CJobStatus register_file_to_parse(char **argv, int i,
   CJobStatus result;
   FILE *input = fopen(argv[i], "r");
   if (!input) { 
-    fprintf(stderr, "Could not open file %s.\n", argv[i]);
+    fprintf(stderr, "Could not open input file %s.\n", argv[i]);
     result = CJOB_IO_ERROR; 
     goto Finish; 
   }
@@ -404,7 +404,7 @@ static CJobStatus register_file_to_parse(char **argv, int i,
     goto Finish; 
   }
   if (!parse(parser)) {
-    fprintf(stderr, "There was a parse error.\n");
+    diagnose_parse_error(parser);
     result = CJOB_PARSE_ERROR; 
     goto Finish;
   }
@@ -461,9 +461,23 @@ static CJobStatus compile(CJob *job)
 {
   CJobStatus result;
   if ((result = write_header_file(job)) != CJOB_SUCCESS ||
-      (result = write_source_file(job)) != CJOB_SUCCESS)
-    return result;
-  return output_to_file(job);
+      (result = write_source_file(job)) != CJOB_SUCCESS ||
+      (result = output_to_file(job)) != CJOB_SUCCESS)
+    goto Failure;
+  return CJOB_SUCCESS;
+  Failure:
+  switch (result) {
+  case CJOB_IO_ERROR:
+    fprintf(stderr, "An I/O error occured. Please try again.\n");
+    break;
+  case CJOB_MEM_ERROR:
+    fprintf(stderr, "A memory allocation error occured. Please try again.\n");
+    break;
+  default:
+    fprintf(stderr, "An unexpected error occured; error code %d\n", result);
+    break;
+  }
+  return result;
 }
 
 /* ********** OUTPUT ********** */

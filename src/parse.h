@@ -53,8 +53,8 @@ typedef enum {
    - If the error is an unexpected token error, the token was pushed back
    onto the input stream. Call next_token on p->lex to see what the token
    was. 
-   - If the error is a redundant symbol or undefined symbol error, check
-   p->errbuf to get the name of the symbol in error.
+   - If the error is a redundant symbol, undefined symbol, or invalid type error, 
+   check p->errbuf to get the name of the symbol in error.
    - If the error is an invalid qualifier error, check p->errbuf to get the
    name of the type in error.
 
@@ -78,6 +78,8 @@ Parser *create_parser(void);
 void destroy_parser(Parser *);
 
 int bind_parser(Parser *, FILE *, char *);
+
+void diagnose_parse_error(Parser *);
 
 int parse(Parser *);
 

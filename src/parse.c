@@ -92,13 +92,62 @@ int bind_parser(Parser *p, FILE *stream, char *filename)
   return 1;
 }
 
-/* parse: Run the given parser to completion, handling any errors that
+/* Run the given parser to completion, handling any errors that
    may occur along the way. */
 int parse(Parser *p)
 {
   if (p->stack >= PARSER_MAX_STACK) 
     return trigger_parse_error(p, PARSE_STACK_OVERFLOW, NULL);
   return toplevel_parse(p);
+}
+
+/* Write a message to stderr detailing the parse error that was encountered. */
+void diagnose_parse_error(Parser *p)
+{
+  fprintf(stderr, "The following parser error was encountered:\n");
+  switch (p->errno) {
+  case PARSE_MEM_ERROR:
+    fprintf(stderr, "There was a memory error; please try again.\n");
+    return;
+  case PARSE_LEX_ERROR:
+    fprintf(stderr, "A lexer error was encountered.\n");
+    diagnose_lexer_error(p->lex);
+    return;
+  case PARSE_UNEXPECTED_TOKEN: 
+    fprintf(stderr, "An unexpected token was encountered.\n");
+    return;
+  case PARSE_UNEXPECTED_EOF:
+    fprintf(stderr, "An unexpected EOF was encountered around line %ld.\n",
+            p->lex->line_no);
+    return;
+  case PARSE_REDUNDANT_SYMBOL:
+    fprintf(stderr, "Attempt to define predefined symbol %s around line %ld.\n",
+            p->errbuf, p->lex->line_no);;
+    return;
+  case PARSE_UNDEF_SYMBOL:
+    fprintf(stderr, "Unrecognized symbol %s around line %ld.\n",
+            p->errbuf, p->lex->line_no);
+    return;
+  case PARSE_INVALID_QUALIFIER:
+    fprintf(stderr, "Invalid qualifier on type %s around line %ld.\n",
+            p->errbuf, p->lex->line_no);
+    return;
+  case PARSE_INVALID_TYPE:
+    fprintf(stderr, "Invalid type %s around line %ld.\n",
+            p->errbuf, p->lex->line_no);
+    return;
+  case PARSE_IO_ERROR:
+    fprintf(stderr, "Unable to open file %s around line %ld.\n",
+            p->errbuf, p->lex->line_no);
+    return;
+  case PARSE_STACK_OVERFLOW:
+    fprintf(stderr, 
+"A stack overflow occured. Please ensure you are not doing any cyclic\n\
+compilation and try again.\n");
+    return;
+  default:
+    return;
+  }
 }
 
 /* =============================STATIC FUNCTIONS============================= */
@@ -598,7 +647,7 @@ static int include_file(Parser *p, char *filename)
   if (!included) return trigger_parse_error(p, PARSE_MEM_ERROR, NULL);
   included->stack = p->stack + 1;
   if (!bind_parser(included, stream, filename))
-    return trigger_parse_error(p, PARSE_IO_ERROR, filename);
+    return trigger_parse_error(p, PARSE_MEM_ERROR, filename);
   ret = parse(included);
   if (!ret) {
     (void)trigger_parse_error(p, included->errno, included->errbuf);

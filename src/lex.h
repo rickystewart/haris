@@ -78,4 +78,6 @@ void destroy_lexer(Lexer *);
 LexerStatus next_token(Lexer *, Token *);
 void push_token(Lexer *, Token);
 
+void diagnose_lexer_error(Lexer *);
+
 #endif
