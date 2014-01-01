@@ -126,7 +126,7 @@ static CJobStatus write_header_macros(CJob *job)
       child = &strct->children[j];
       if (child->tag == CHILD_STRUCT) {
         CJOB_FMT_HEADER_STRING(job, 
-                               "#define %s%s_get_%s(X) ((%s%s*)((X)->_%s))",
+                               "#define %s%s_get_%s(X) ((%s%s*)((X)->_%s))\n\n",
                                job->prefix, strct->name, child->name,
                                job->prefix, child->type.strct->name, 
                                child->name);
@@ -173,6 +173,7 @@ static CJobStatus write_header_macros(CJob *job)
   }
   return CJOB_SUCCESS;
 }
+
 
 /* Write the generic structures that capture the makeup of the defined 
    structures.

@@ -520,6 +520,9 @@ static CJobStatus write_reflective_arrays(CJob *job)
   int i;
   ParsedStruct *strct;
   CJobStatus result;
+  CJOB_FMT_SOURCE_STRING(job, 
+"static const HarisStructureInfo haris_lib_structures[%d];\n\n",
+                         job->schema->num_structs);
   for (i = 0; i < job->schema->num_structs; i ++) {
     strct = &job->schema->structs[i];
     if ((result = write_reflective_scalar_array(job, strct)) != CJOB_SUCCESS)
@@ -697,6 +700,7 @@ static CJobStatus write_general_destructor(CJob *job)
         haris_lib_destroy_contents((char*)list_info->ptr +\n\
                                      j * child_structure->size_of,\n\
                                    child_structure);\n\
+      /* Intentional break omission */\n\
     case HARIS_CHILD_STRUCT:\n\
       free(list_info->ptr);\n\
       break;\n\
@@ -991,15 +995,11 @@ static CJobStatus write_core_size(CJob *job)
         }\n\
       }\n\
     case HARIS_CHILD_STRUCT:\n\
-      if (*(void**)list_info)\n\
-        accum += 1;\n\
-      else {\n\
-        buf = haris_lib_size((void*)list_info, child->struct_element,\n\
-                             depth + 1, out);\n\
-        if (buf == 0) return 0;\n\
-        else if ((accum += buf) > HARIS_MESSAGE_SIZE_LIMIT) {\n\
-          *out = HARIS_SIZE_ERROR; return 0;\n\
-        }\n\
+      buf = haris_lib_size(*(void**)list_info, child->struct_element,\n\
+                           depth + 1, out);\n\
+      if (buf == 0) return 0;\n\
+      else if ((accum += buf) > HARIS_MESSAGE_SIZE_LIMIT) {\n\
+        *out = HARIS_SIZE_ERROR; return 0;\n\
       }\n\
     }\n\
   }\n\
