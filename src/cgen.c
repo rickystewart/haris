@@ -81,7 +81,6 @@ language %s.\n", argv[i+1]);
         goto Finish;
     } else { /* Strings that aren't command line options are files that we
                 are meant to parse and compile */
-      if (i + 1 >= argc) goto ArgumentError;
       if ((result = register_file_to_parse(argv, i, parser)) != CJOB_SUCCESS)
         goto Finish;
     }
@@ -94,7 +93,7 @@ language %s.\n", argv[i+1]);
   result = run_cjob(job);
   goto Finish;
   ArgumentError:
-  fprintf(stderr, "Missing argument after tag %s", argv[i]);
+  fprintf(stderr, "Missing argument after tag %s\n", argv[i]);
   result = CJOB_JOB_ERROR;
   goto Finish;
   Finish:
@@ -558,7 +557,8 @@ static CJobStatus output_to_source_file(CJob *job, FILE *out)
   CJobStatus result;
   CJOB_FPRINTF(out, 
 "#include <stdio.h>\n\
-#include <stdlib.h\n\n\
+#include <stddef.h>\n\
+#include <stdlib.h>\n\n\
 #include \"%s.h\"\n\n", job->output);
   for (i = 0; i < job->strings.private_functions.num_strings; i ++)
     if ((result = output_prototype(out, job->strings.private_functions.strings[i]))
@@ -567,6 +567,10 @@ static CJobStatus output_to_source_file(CJob *job, FILE *out)
   CJOB_FPRINTF(out, "\n\n");
   for (i = 0; i < job->strings.source_strings.num_strings; i ++) 
     CJOB_FPRINTF(out, "%s", job->strings.source_strings.strings[i]);
+  for (i = 0; i < job->strings.private_functions.num_strings; i ++)
+    CJOB_FPRINTF(out, "%s", job->strings.private_functions.strings[i]);
+  for (i = 0; i < job->strings.public_functions.num_strings; i ++)
+    CJOB_FPRINTF(out, "%s", job->strings.public_functions.strings[i]);
   CJOB_FPRINTF(out, "\n\n");
   return CJOB_SUCCESS;
 }

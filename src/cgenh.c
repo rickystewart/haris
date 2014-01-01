@@ -98,7 +98,6 @@ typedef enum {\n\
 static CJobStatus write_header_macros(CJob *job)
 {
   int i, j;
-  const char *prefix = job->prefix;
   CJOB_FMT_HEADER_STRING(job, 
 "/* Changeable size limits for error-checking. You can freely modify these if\n\
    you would like your Haris client to be able to process larger or deeper\n\
@@ -128,14 +127,6 @@ static CJobStatus write_header_macros(CJob *job)
                   job->schema->enums[i].values[j], j);
     }
     CJOB_FMT_HEADER_STRING(job, "\n");
-  }
-  for (i=0; i < job->schema->num_structs; i++) {
-    CJOB_FMT_HEADER_STRING(job, "#define %s%s_LIB_BODY_SZ %d\n\
-#define %s%s_LIB_NUM_CHILDREN %d\n\n",
-                prefix, job->schema->structs[i].name,
-                job->schema->structs[i].offset,
-                prefix, job->schema->structs[i].name, 
-                job->schema->structs[i].num_children);
   }
   return CJOB_SUCCESS;
 }
@@ -173,18 +164,18 @@ strdup("typedef struct {\n\
 } HarisScalar;\n\n"));
   CJOB_FMT_HEADER_STRING(job, 
 "typedef struct {\n\
-  int nullable;\n\
   size_t offset;\n\
+  int nullable;\n\
   HarisScalarType scalar_element;\n\
-  HarisStructureInfo *struct_element;\n\
+  const HarisStructureInfo *struct_element;\n\
   HarisChildType child_type;\n\
 } HarisChild;\n\n");
   CJOB_FMT_HEADER_STRING(job, 
 "struct HarisStructureInfo_ {\n\
   int num_scalars;\n\
-  HarisScalar *scalars;\n\
+  const HarisScalar *scalars;\n\
   int num_children;\n\
-  HarisChild *children;\n\
+  const HarisChild *children;\n\
   int body_size;\n\
   size_t size_of;\n\
 };\n\n");
@@ -206,14 +197,14 @@ static CJobStatus write_header_structures(CJob *job)
   if ((result = write_reflective_structures(job)) != CJOB_SUCCESS)
     return result;
   for (i=0; i < job->schema->num_structs; i++) {
-    CJOB_FMT_HEADER_STRING(job, "typedef struct haris_%s %s%s;\n", 
+    CJOB_FMT_HEADER_STRING(job, "typedef struct _%s %s%s;\n", 
                 job->schema->structs[i].name,
                 job->prefix, job->schema->structs[i].name);
   }
   CJOB_FMT_HEADER_STRING(job, "\n");
 
   for (i=0; i < job->schema->num_structs; i++) {
-    CJOB_FMT_HEADER_STRING(job, "struct haris_%s {\n  char _null;\n",
+    CJOB_FMT_HEADER_STRING(job, "struct _%s {\n  char _null;\n",
                            job->schema->structs[i].name);
     for (j=0; j < job->schema->structs[i].num_scalars; j++) {
       CJOB_FMT_HEADER_STRING(job, "  %s %s;\n",

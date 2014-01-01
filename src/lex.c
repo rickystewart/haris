@@ -106,10 +106,10 @@ LexerStatus next_token(Lexer *lex, Token *tok)
       return LEXER_OK;
     } else if (next_char == '\n') {
       lex->line_no++;
-      next_char = fgetc(lex->stream);
+      next_char = lex->previous = fgetc(lex->stream);
       continue;
     } else if (isspace(next_char)) {
-      next_char = fgetc(lex->stream);
+      next_char = lex->previous = fgetc(lex->stream);
       continue;
     } else {
       lex->errno = UNEXPECTED_CHAR;

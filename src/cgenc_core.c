@@ -22,9 +22,11 @@ static CJobStatus write_general_init_list_member(CJob *);
 static CJobStatus write_init_struct(CJob *, ParsedStruct *, int);
 static CJobStatus write_general_init_struct_member(CJob *);
 
+static CJobStatus write_reflective_arrays(CJob *);
+
 static CJobStatus write_in_memory_scalar_sizes(CJob *);
 static CJobStatus write_message_scalar_sizes(CJob *);
-static CJobStatus write_message_bit_patterns(CJob *job);
+static CJobStatus write_message_bit_patterns(CJob *);
 static CJobStatus write_scalar_readers(CJob *);
 static CJobStatus write_scalar_writers(CJob *);
 
@@ -61,15 +63,12 @@ CJobStatus write_source_public_funcs(CJob *job)
 {
   CJobStatus result;
   int i;
+  ParsedStruct *strct;
   for (i=0; i < job->schema->num_structs; i++) {
-    if ((result = write_public_constructor(job, &job->schema->structs[i]))
-        != CJOB_SUCCESS)
-      return result;
-    if ((result = write_public_destructor(job, &job->schema->structs[i]))
-        != CJOB_SUCCESS)
-      return result;
-    if ((result = write_public_initializers(job, &job->schema->structs[i]))
-        != CJOB_SUCCESS)
+    strct = &job->schema->structs[i];
+    if ((result = write_public_constructor(job, strct)) != CJOB_SUCCESS ||
+        (result = write_public_destructor(job, strct)) != CJOB_SUCCESS ||
+        (result = write_public_initializers(job, strct)) != CJOB_SUCCESS)
       return result;
   }
   return CJOB_SUCCESS;
@@ -82,6 +81,8 @@ CJobStatus write_source_core_funcs(CJob *job)
 {
   CJobStatus result;
   unsigned i;
+  if ((result = write_reflective_arrays(job)) != CJOB_SUCCESS)
+    return result;
   for (i = 0; i < sizeof general_core_writer_functions / 
                   sizeof general_core_writer_functions[0]; i++)
     if ((result = general_core_writer_functions[i](job)) != CJOB_SUCCESS)
@@ -408,6 +409,141 @@ static CJobStatus write_writefloat(CJob *job)
 
 /* ********* ARRAYS ********* */
 
+static const char *scalar_enumerated_name(ScalarTag type)
+{
+  switch (type) {
+  case SCALAR_UINT8:
+  case SCALAR_ENUM:
+  case SCALAR_BOOL:
+    return "HARIS_SCALAR_UINT8";
+  case SCALAR_INT8:
+    return "HARIS_SCALAR_INT8";
+  case SCALAR_UINT16:
+    return "HARIS_SCALAR_UINT16";
+  case SCALAR_INT16:
+    return "HARIS_SCALAR_INT16";
+  case SCALAR_UINT32:
+    return "HARIS_SCALAR_UINT32";
+  case SCALAR_INT32:
+    return "HARIS_SCALAR_INT32";
+  case SCALAR_UINT64:
+    return "HARIS_SCALAR_UINT64";
+  case SCALAR_INT64:
+    return "HARIS_SCALAR_INT64";
+  case SCALAR_FLOAT32:
+    return "HARIS_SCALAR_FLOAT32";
+  case SCALAR_FLOAT64:
+    return "HARIS_SCALAR_FLOAT64";
+  default:
+    return NULL;
+  }
+}
+
+static const char *child_enumerated_name(ChildTag type)
+{
+  switch (type) {
+  case CHILD_TEXT:
+    return "HARIS_CHILD_TEXT";
+  case CHILD_STRUCT:
+    return "HARIS_CHILD_STRUCT";
+  case CHILD_SCALAR_LIST:
+    return "HARIS_CHILD_SCALAR_LIST";
+  case CHILD_STRUCT_LIST:
+    return "HARIS_CHILD_STRUCT_LIST";
+  default:
+    return NULL;
+  }
+}
+
+static CJobStatus write_reflective_scalar_array(CJob *job, ParsedStruct *strct)
+{
+  int i;
+  if (strct->num_scalars == 0) {
+    CJOB_FMT_SOURCE_STRING(job, "#define %s%s_lib_scalars NULL\n\n", 
+                           job->prefix, strct->name);
+    return CJOB_SUCCESS;
+  }
+  CJOB_FMT_SOURCE_STRING(job, 
+"static const HarisScalar %s%s_lib_scalars[] = {\n", job->prefix, strct->name);
+  for (i = 0; i < strct->num_scalars; i ++)
+    CJOB_FMT_SOURCE_STRING(job, "  { offsetof(%s%s, %s), %s }%s\n",
+                           job->prefix, strct->name, strct->scalars[i].name, 
+                           scalar_enumerated_name(strct->scalars[i].type.tag),
+                           (i + 1 >= strct->num_scalars ? "" : ","));
+  CJOB_FMT_SOURCE_STRING(job, "};\n\n");
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_reflective_child_array(CJob *job, ParsedStruct *strct)
+{
+  int i;
+  ChildField *child;
+  if (strct->num_children == 0) {
+    CJOB_FMT_SOURCE_STRING(job, "#define %s%s_lib_children NULL\n\n",
+                           job->prefix, strct->name);
+    return CJOB_SUCCESS;
+  }
+  CJOB_FMT_SOURCE_STRING(job, "static const HarisChild %s%s_lib_children[] = {\n", 
+                         job->prefix, strct->name);
+  for (i = 0; i < strct->num_children; i ++) {
+    child = &strct->children[i];
+    CJOB_FMT_SOURCE_STRING(job, 
+"  { offsetof(%s%s, _%s_info), %d, %s, ",
+                           job->prefix, strct->name, child->name,
+                           child->nullable, 
+                           child->tag == CHILD_SCALAR_LIST ? 
+                           scalar_enumerated_name(child->type.scalar_list.tag) :
+                           "HARIS_SCALAR_BLANK");
+    if (child->tag == CHILD_STRUCT_LIST || child->tag == CHILD_STRUCT) {
+      CJOB_FMT_SOURCE_STRING(job, "&haris_lib_structures[%d], ",
+                             child->tag == CHILD_STRUCT_LIST ?
+                             child->type.struct_list->schema_index :
+                             child->type.strct->schema_index);
+    } else {
+      CJOB_FMT_SOURCE_STRING(job, "NULL, ");
+    }
+    CJOB_FMT_SOURCE_STRING(job, "%s }%s\n", 
+                           child_enumerated_name(child->tag), 
+                           (i + 1 >= strct->num_children ? "" : ","));
+  }
+  CJOB_FMT_SOURCE_STRING(job, "};\n\n");
+  return CJOB_SUCCESS;
+}
+
+/* Write the reflective structure arrays to the output file;
+   each structure has an entry in the array describing its makeup. Each 
+   structure's position in the array is determined by its position in
+   the compiled in-memory schema that the Haris tool generates, which is known
+   for a fact at compile time.
+*/
+static CJobStatus write_reflective_arrays(CJob *job)
+{
+  int i;
+  ParsedStruct *strct;
+  CJobStatus result;
+  for (i = 0; i < job->schema->num_structs; i ++) {
+    strct = &job->schema->structs[i];
+    if ((result = write_reflective_scalar_array(job, strct)) != CJOB_SUCCESS)
+      return result;
+    if ((result = write_reflective_child_array(job, strct)) != CJOB_SUCCESS)
+      return result;
+  }
+  CJOB_FMT_SOURCE_STRING(job, 
+"static const HarisStructureInfo haris_lib_structures[] = {\n");
+  for (i = 0; i < job->schema->num_structs; i ++) {
+    strct = &job->schema->structs[i];
+    CJOB_FMT_SOURCE_STRING(job, 
+"  { %d, %s%s_lib_scalars, %d, %s%s_lib_children, %d, sizeof(%s%s) }%s\n",
+                           strct->num_scalars, job->prefix, strct->name, 
+                           strct->num_children, job->prefix, 
+                           strct->name, strct->offset, job->prefix, 
+                           strct->name, 
+                           (i + 1 >= job->schema->num_structs ? "" : ","));
+  }
+  CJOB_FMT_SOURCE_STRING(job, "};\n\n");
+  return CJOB_SUCCESS;
+}
+
 /* Write the array of in-memory C scalar sizes to the output file.
    This array is keyed by the HarisScalarType enumerators. 
 */
@@ -460,7 +596,7 @@ static CJobStatus write_scalar_readers(CJob *job)
 static CJobStatus write_scalar_writers(CJob *job)
 {
   CJOB_FMT_SOURCE_STRING(job, 
-"static void (* const haris_lib_scalar_readers[])(unsigned char *, const void *) = {\n\
+"static void (* const haris_lib_scalar_writers[])(unsigned char *, const void *) = {\n\
   haris_write_uint8, haris_write_int8, haris_write_uint16, haris_write_int16,\n\
   haris_write_uint32, haris_write_int32, haris_write_uint64, haris_write_int64,\n\
   haris_write_float32, haris_write_float64\n\
@@ -474,7 +610,7 @@ static CJobStatus write_scalar_writers(CJob *job)
 static CJobStatus write_public_constructor(CJob *job, ParsedStruct *strct)
 {
   const char *prefix = job->prefix, *name = strct->name;
-  CJOB_FMT_PUB_FUNCTION(job, "%s%s *%s%s_create() {\n\
+  CJOB_FMT_PUB_FUNCTION(job, "%s%s *%s%s_create(void) {\n\
   return (%s%s*)haris_lib_create(&haris_lib_structures[%d]);\n}\n\n",
                prefix, name, prefix, name, prefix, name, strct->schema_index);
   return CJOB_SUCCESS;

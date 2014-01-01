@@ -104,7 +104,9 @@ int parse(Parser *p)
 /* Write a message to stderr detailing the parse error that was encountered. */
 void diagnose_parse_error(Parser *p)
 {
-  fprintf(stderr, "The following parser error was encountered:\n");
+  Token tok;
+  fprintf(stderr, "The following parser error was encountered in file %s:\n",
+          p->lex->filename);
   switch (p->errno) {
   case PARSE_MEM_ERROR:
     fprintf(stderr, "There was a memory error; please try again.\n");
@@ -114,8 +116,37 @@ void diagnose_parse_error(Parser *p)
     diagnose_lexer_error(p->lex);
     return;
   case PARSE_UNEXPECTED_TOKEN: 
-    fprintf(stderr, "An unexpected token was encountered.\n");
-    return;
+    fprintf(stderr, "An unexpected token was encountered around line %ld:\n",
+            p->lex->line_no);
+    (void)next_token(p->lex, &tok);
+    switch (tok) {
+    case TOKEN_LPAR:
+      fprintf(stderr, "Unexpected `(`.\n");
+      return;
+    case TOKEN_RPAR: 
+      fprintf(stderr, "Unexpected `)`.\n");
+      return;
+    case TOKEN_FORWARD:
+      fprintf(stderr, "Unexpected `@`.\n");
+      return;
+    case TOKEN_LIST:
+      fprintf(stderr, "Unexpected `[]`.\n");
+      return;
+    case TOKEN_NULLABLE:
+      fprintf(stderr, "Unexpected `?`.\n");
+      return;
+    case TOKEN_COMMA:
+      fprintf(stderr, "Unexpected `,`.\n");
+      return;
+    case TOKEN_STRING:
+      fprintf(stderr, "Unexpected string: %s\n", p->lex->buffer);
+      return;
+    case TOKEN_SYMBOL:
+      fprintf(stderr, "Unexpected symbol: %s\n", p->lex->buffer);
+      return;
+    default:
+      return;
+    }
   case PARSE_UNEXPECTED_EOF:
     fprintf(stderr, "An unexpected EOF was encountered around line %ld.\n",
             p->lex->line_no);
