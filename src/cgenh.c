@@ -78,7 +78,7 @@ typedef double          haris_float64;\n\
 typedef enum {\n\
   HARIS_SUCCESS, HARIS_STRUCTURE_ERROR, HARIS_DEPTH_ERROR, HARIS_SIZE_ERROR,\n\
   HARIS_INPUT_ERROR, HARIS_MEM_ERROR\n\
-} HarisStatus;\n");
+} HarisStatus;\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -116,7 +116,7 @@ static CJobStatus write_header_macros(CJob *job)
 #define HARIS_FLOAT64_SIGBITS 52\n\
 #define HARIS_FLOAT64_BIAS    1023\n\
 \n\
-#define HARIS_ASSERT(cond, err) if (!(cond)) return HARIS_ ## err ## _ERROR\n");
+#define HARIS_ASSERT(cond, err) if (!(cond)) return HARIS_ ## err ## _ERROR\n\n");
   for (i=0; i < job->schema->num_enums; i++) {
     CJOB_FMT_HEADER_STRING(job, "/* enum %s */\n", 
                                 job->schema->enums[i].name);
