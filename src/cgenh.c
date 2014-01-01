@@ -156,7 +156,7 @@ static CJobStatus write_reflective_structures(CJob *job)
   char           null;\n\
 } HarisListInfo;\n\n");
   CJOB_FMT_HEADER_STRING(job, 
-"typedef struct HarisStructureInfo_ HarisStructureInfo;\n");
+"typedef struct HarisStructureInfo_ HarisStructureInfo;\n\n");
   CJOB_FMT_HEADER_STRING(job, 
 strdup("typedef struct {\n\
   size_t offset;\n\
