@@ -989,11 +989,12 @@ static CJobStatus write_core_size(CJob *job)
                                 depth + 1, out);\n\
           if (buf == 0) return 0;\n\
           else if (buf == 1) goto StructureError;\n\
-          else if ((accum += buf) > HARIS_MESSAGE_SIZE_LIMIT) {\n\
+          else if ((accum += buf - 2) > HARIS_MESSAGE_SIZE_LIMIT) {\n\
             *out = HARIS_SIZE_ERROR; return 0;\n\
           }\n\
         }\n\
       }\n\
+      break;\n\
     case HARIS_CHILD_STRUCT:\n\
       buf = haris_lib_size(*(void**)list_info, child->struct_element,\n\
                            depth + 1, out);\n\

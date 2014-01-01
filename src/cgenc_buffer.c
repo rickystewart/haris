@@ -139,6 +139,22 @@ static CJobStatus write_static_buffer_funcs(CJob *job)
 static CJobStatus write_static_from_buffer_functions(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
+"static HarisStatus haris_public_from_buffer(void *ptr,\n\
+                                             const HarisStructureInfo *info,\n\
+                                             unsigned char *buf,\n\
+                                             haris_uint32_t sz,\n\
+                                             unsigned char **out_addr)\n\
+{\n\
+  HarisStatus result;\n\
+  haris_uint32_t ind = 0;\n\
+  if ((result = haris_from_buffer(ptr, info, buf,\n\
+                                  &ind, sz, 0)) != HARIS_SUCCESS)\n\
+    return result;\n\
+  if (out_addr) *out_addr = buf + ind;\n\
+  HARIS_ASSERT(!*(char*)ptr, STRUCTURE);\n\
+  return HARIS_SUCCESS;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, 
 "static HarisStatus haris_from_buffer(void *ptr,\n\
   const HarisStructureInfo *info, unsigned char *buf,\n\
   haris_uint32_t *out_ind, haris_uint32_t sz, int depth)\n\
@@ -267,6 +283,20 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
 static CJobStatus write_static_to_buffer_functions(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
+"static HarisStatus haris_public_to_buffer(void *ptr,\n\
+                                           const HarisStructureInfo *info,\n\
+                                           unsigned char **out_buf,\n\
+                                           haris_uint32_t *out_sz)\n\
+{\n\
+  HarisStatus result;\n\
+  HARIS_ASSERT(!*(char*)ptr, STRUCTURE);\n\
+  *out_sz = haris_lib_size(ptr, info, 0, &result);\n\
+  if (!*out_sz) return result;\n\
+  *out_buf = (unsigned char *)malloc(*out_sz);\n\
+  HARIS_ASSERT(*out_buf, MEM);\n\
+  (void)haris_to_buffer(ptr, info, *out_buf);\n\
+  return HARIS_SUCCESS;\n}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job, 
 "static unsigned char *haris_to_buffer(void *ptr,\n\
   const HarisStructureInfo *info, unsigned char *buf)\n\
 {\n\
@@ -346,27 +376,15 @@ static CJobStatus write_public_buffer_funcs(CJob *job, ParsedStruct *strct)
 "HarisStatus %s%s_from_buffer(%s%s *strct, unsigned char *buf, haris_uint32_t sz,\n\
                               unsigned char **out_addr)\n\
 {\n\
-  HarisStatus result;\n\
-  haris_uint32_t ind = 0;\n\
-  if ((result = haris_from_buffer(strct, &haris_lib_structures[%d],\n\
-                                  buf, &ind, sz, 0)) != HARIS_SUCCESS)\n\
-    return result;\n\
-  if (out_addr) *out_addr = buf + ind;\n\
-  HARIS_ASSERT(!strct->_null, STRUCTURE);\n\
-  return HARIS_SUCCESS;\n}\n\n", 
+  return haris_public_from_buffer(strct, &haris_lib_structures[%d],\n\
+                                  buf, sz, out_addr);\n}\n\n", 
               prefix, name, prefix, name, strct->schema_index);
   CJOB_FMT_PUB_FUNCTION(job, 
 "HarisStatus %s%s_to_buffer(%s%s *strct, unsigned char **out_buf, \n\
                             haris_uint32_t *out_sz)\n\
 {\n\
-  HarisStatus result;\n\
-  HARIS_ASSERT(!strct->_null, STRUCTURE);\n\
-  *out_sz = haris_lib_size(strct, &haris_lib_structures[%d], 0, &result);\n\
-  if (!*out_sz) return result;\n\
-  *out_buf = (unsigned char *)malloc(*out_sz);\n\
-  HARIS_ASSERT(*out_buf, MEM);\n\
-  (void)haris_to_buffer(strct, &haris_lib_structures[%d], *out_buf);\n\
-  return HARIS_SUCCESS;\n}\n\n",
+  return haris_public_to_buffer(strct, &haris_lib_structures[%d],\n\
+                                out_buf, out_sz);\n}\n\n",
               prefix, name, prefix, name, strct->schema_index,
               strct->schema_index);
   return CJOB_SUCCESS;
