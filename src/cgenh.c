@@ -124,7 +124,13 @@ static CJobStatus write_header_macros(CJob *job)
     strct = &job->schema->structs[i];
     for (j = 0; j < strct->num_children; j ++) {
       child = &strct->children[j];
-      if (child->tag != CHILD_STRUCT) {
+      if (child->tag == CHILD_STRUCT) {
+        CJOB_FMT_HEADER_STRING(job, 
+                               "#define %s%s_get_%s(X) ((%s%s*)((X)->_%s))",
+                               job->prefix, strct->name, child->name,
+                               job->prefix, child->type.strct->name, 
+                               child->name);
+      } else {
         if (child->nullable) 
           CJOB_FMT_HEADER_STRING(job, 
                                  "#define %s%s_null_%s(X) ((X)->_%s_info.null)\n",
@@ -272,7 +278,7 @@ static CJobStatus write_child_field(CJob *job, const ChildField *child)
                            child_name);
     break;
   case CHILD_STRUCT:
-    CJOB_FMT_HEADER_STRING(job, "  void *%s;\n", child_name);
+    CJOB_FMT_HEADER_STRING(job, "  void *_%s;\n", child_name);
     break;
   }
   return CJOB_SUCCESS;
