@@ -75,8 +75,8 @@ static CJobStatus write_child_buffer_handler(CJob *job)
   HARIS_ASSERT(ind < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   if (buf[ind] == 0x80 || buf[ind] == 0x0) { *out_ind = ind + 1; \
 return HARIS_SUCCESS; }\n\
-  HARIS_ASSERT((ind + 1 < sz) && (ind + 1 < HARIS_MESSAGE_SIZE_LIMIT),\
-               INPUT);\n\
+  HARIS_ASSERT(ind + 1 < sz, INPUT);\n\
+  HARIS_ASSERT(ind + 1 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   if ((buf[ind] & 0xC0) == 0x40) {\n\
     num_children = buf[ind] & 0x3F;\n\
     body_size = buf[ind + 1];\n\
@@ -115,8 +115,8 @@ depth, num_children, body_size);\n\
   haris_uint32_t ind = *out_ind;\n\
   int i;\n\
   HARIS_ASSERT(depth <= HARIS_DEPTH_LIMIT, DEPTH);\n\
-  HARIS_ASSERT(ind + body_size < sz, INPUT);\n\
-  HARIS_ASSERT(ind + body_size < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+  HARIS_ASSERT(ind + body_size <= sz, INPUT);\n\
+  HARIS_ASSERT(ind + body_size <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   *out_ind = ind + body_size;\n\
   for (i = 0; i < num_children; i++)\n\
     if ((result = handle_child_buffer(buf, out_ind, sz,\n\
@@ -160,8 +160,8 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
   body_size = buf[ind + 1];\n\
   HARIS_ASSERT(body_size >= info->body_size &&\n\
                num_children >= info->num_children, STRUCTURE);\n\
-  HARIS_ASSERT(ind + body_size < sz, INPUT);\n\
-  HARIS_ASSERT(ind + body_size < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+  HARIS_ASSERT(ind + 1 + body_size < sz, INPUT);\n\
+  HARIS_ASSERT(ind + 1 + body_size < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   *out_ind = ind + 2;\n\
   return haris_from_buffer_posthead(ptr, info, buf, sz, out_ind, depth, num_children, body_size);\n\
 }\n\n");
@@ -198,15 +198,15 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
     case HARIS_CHILD_SCALAR_LIST:\n\
     {\n\
       haris_uint32_t len, el_size;\n\
-      HARIS_ASSERT(ind + 4 < sz, INPUT);\n\
-      HARIS_ASSERT(ind + 4 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+      HARIS_ASSERT(ind + 3 < sz, INPUT);\n\
+      HARIS_ASSERT(ind + 3 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
       HARIS_ASSERT(buf[ind] == (child->child_type == HARIS_CHILD_TEXT ? 0xC0 : \n\
         0xC0 | haris_lib_scalar_bit_patterns[child->scalar_element]), STRUCTURE);\n\
       haris_read_uint24(buf + ind + 1, (void*)&len);\n\
       el_size = (child->child_type == HARIS_CHILD_TEXT) ? 1 : \n\
         haris_lib_message_scalar_sizes[child->scalar_element];\n\
-      HARIS_ASSERT(ind + 4 + len * el_size < sz, INPUT);\n\
-      HARIS_ASSERT(ind + 4 + len * el_size < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+      HARIS_ASSERT(ind + 3 + len * el_size < sz, INPUT);\n\
+      HARIS_ASSERT(ind + 3 + len * el_size < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
       if ((result = haris_lib_init_list_mem(ptr, info, i, len)) != HARIS_SUCCESS)\n\
         return result;\n\
       ind += 4;\n\
@@ -223,8 +223,8 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
     case HARIS_CHILD_STRUCT_LIST:\n\
     {\n\
       haris_uint32_t len, body_size, num_children;\n\
-      HARIS_ASSERT(ind + 6 < sz, INPUT);\n\
-      HARIS_ASSERT(ind + 6 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+      HARIS_ASSERT(ind + 5 < sz, INPUT);\n\
+      HARIS_ASSERT(ind + 5 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
       HARIS_ASSERT(buf[ind] == 0xE0, STRUCTURE);\n\
       haris_read_uint24(buf + ind + 1, (void*)&len);\n\
       if ((result = haris_lib_init_list_mem(ptr, info, i, len)) != HARIS_SUCCESS)\n\
