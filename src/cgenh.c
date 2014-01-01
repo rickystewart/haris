@@ -98,6 +98,9 @@ typedef enum {\n\
 static CJobStatus write_header_macros(CJob *job)
 {
   int i, j;
+  ParsedEnum *enm;
+  ParsedStruct *strct;
+  ChildField *child;
   CJOB_FMT_HEADER_STRING(job, 
 "/* Changeable size limits for error-checking. You can freely modify these if\n\
    you would like your Haris client to be able to process larger or deeper\n\
@@ -117,14 +120,48 @@ static CJobStatus write_header_macros(CJob *job)
 #define HARIS_FLOAT64_BIAS    1023\n\
 \n\
 #define HARIS_ASSERT(cond, err) if (!(cond)) return HARIS_ ## err ## _ERROR\n\n");
-  for (i=0; i < job->schema->num_enums; i++) {
-    CJOB_FMT_HEADER_STRING(job, "/* enum %s */\n", 
-                                job->schema->enums[i].name);
-    for (j=0; j < job->schema->enums[i].num_values; j++) {
+  for (i = 0; i < job->schema->num_structs; i ++) {
+    strct = &job->schema->structs[i];
+    for (j = 0; j < strct->num_children; j ++) {
+      child = &strct->children[j];
+      if (child->tag != CHILD_STRUCT) {
+        if (child->nullable) 
+          CJOB_FMT_HEADER_STRING(job, 
+                                 "#define %s%s_null_%s(X) ((X)->_%s_info.null)\n",
+                                 job->prefix, strct->name, child->name, 
+                                 child->name);
+        CJOB_FMT_HEADER_STRING(job, 
+                               "#define %s%s_len_%s(X) \
+((haris_uint32_t)((X)->_%s_info.len))\n",
+                               job->prefix, strct->name, child->name,
+                               child->name);
+        CJOB_FMT_HEADER_STRING(job, "#define %s%s_get_%s(X) ",
+                               job->prefix, strct->name, child->name);
+        switch (child->tag) {
+        case CHILD_TEXT:
+          CJOB_FMT_HEADER_STRING(job, "((char*)");
+          break;
+        case CHILD_SCALAR_LIST:
+          CJOB_FMT_HEADER_STRING(job, "((%s*)", 
+                                 scalar_type_name(child->type.scalar_list.tag));
+          break;
+        case CHILD_STRUCT_LIST:
+          CJOB_FMT_HEADER_STRING(job, "((%s%s*)",
+                                 job->prefix, child->type.struct_list->name);
+          break;
+        default:
+          break;
+        }
+        CJOB_FMT_HEADER_STRING(job, "((X)->_%s_info.ptr))\n\n", child->name);
+      }
+    }
+  }
+  for (i = 0; i < job->schema->num_enums; i ++) {
+    enm = &job->schema->enums[i];
+    CJOB_FMT_HEADER_STRING(job, "/* enum %s */\n", enm->name);
+    for (j = 0; j < job->schema->enums[i].num_values; j ++) {
       CJOB_FMT_HEADER_STRING(job, "#define %s%s_%s %d\n", 
-                  job->prefix, 
-                  job->schema->enums[i].name, 
-                  job->schema->enums[i].values[j], j);
+                  job->prefix, enm->name, enm->values[j], j);
     }
     CJOB_FMT_HEADER_STRING(job, "\n");
   }

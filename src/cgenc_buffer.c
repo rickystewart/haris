@@ -351,7 +351,7 @@ static CJobStatus write_public_buffer_funcs(CJob *job, ParsedStruct *strct)
   if ((result = haris_from_buffer(strct, &haris_lib_structures[%d],\n\
                                   buf, &ind, sz, 0)) != HARIS_SUCCESS)\n\
     return result;\n\
-  *out_addr = buf + ind;\n\
+  if (out_addr) *out_addr = buf + ind;\n\
   HARIS_ASSERT(!strct->_null, STRUCTURE);\n\
   return HARIS_SUCCESS;\n}\n\n", 
               prefix, name, prefix, name, strct->schema_index);

@@ -99,50 +99,42 @@ static CJobStatus write_readint(CJob *job)
 {\n\
   haris_int8_t *ptr = (haris_int8_t*)_ptr;\n\
   haris_uint8_t uint;\n\
+  haris_read_uint8(b, &uint);\n\
   if (*b & 0x80) \n\
-    *ptr = -(haris_int8_t)(*b & 0x7F) - 1;\n\
-  else {\n\
-    haris_read_uint8(b, &uint);\n\
+    *ptr = -(haris_int8_t)~(uint - 1);\n\
+  else\n\
     *ptr = (haris_int8_t)uint;\n\
-  }\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int16(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_int16_t *ptr = (haris_int16_t*)_ptr;\n\
   haris_uint16_t uint;\n\
+  haris_read_uint16(b, &uint);\n\
   if (*b & 0x80)\n\
-    *ptr = -((haris_int16_t)(*b & 0x7F) << 8 | (haris_int16_t)*(b+1)) - 1;\n\
-  else {\n\
-    haris_read_uint16(b, &uint);\n\
+    *ptr = -(haris_int16_t)~(uint - 1);\n\
+  else\n\
     *ptr = (haris_int16_t)uint;\n\
-  }\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int32(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_int32_t *ptr = (haris_int32_t*)_ptr;\n\
   haris_uint32_t uint;\n\
+  haris_read_uint32(b, &uint);\n\
   if (*b & 0x80)\n\
-    *ptr = -((haris_int32_t)(*b & 0x7F) << 24 | (haris_int32_t)*(b+1) << 16 |\n\
-             (haris_int32_t)(*b+2) << 8 | (haris_int32_t)(*b+3)) - 1;\n\
-  else {\n\
-    haris_read_uint32(b, &uint);\n\
+    *ptr = -(haris_int32_t)~(uint - 1);\n\
+  else\n\
     *ptr = (haris_int32_t)uint;\n\
-  }\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_read_int64(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_int64_t *ptr = (haris_int64_t*)_ptr;\n\
   haris_uint64_t uint;\n\
+  haris_read_uint64(b, &uint);\n\
   if (*b & 0x80)\n\
-    *ptr = -((haris_int64_t)(*b & 0x7F) << 56 | (haris_int64_t)*(b+1) << 48 |\n\
-             (haris_int64_t)*(b+2) << 40 | (haris_int64_t)*(b+3) << 32 |\n\
-             (haris_int64_t)*(b+4) << 24 | (haris_int64_t)*(b+5) << 16 |\n\
-             (haris_int64_t)*(b+6) << 8 | (haris_int64_t)*(b+7)) - 1;\n\
-  else {\n\
-    haris_read_uint64(b, &uint);\n\
+    *ptr = -(haris_int64_t)~(uint - 1);\n\
+  else\n\
     *ptr = (haris_int64_t)uint;\n\
-  }\n\
 }\n\n");
   return CJOB_SUCCESS;
 }
