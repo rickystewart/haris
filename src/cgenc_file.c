@@ -1,7 +1,7 @@
 #include "cgenc_file.h"
 
+static CJobStatus write_file_structures(CJob *);
 static CJobStatus write_public_file_funcs(CJob *, ParsedStruct *);
-static CJobStatus write_child_file_handler(CJob *);
 static CJobStatus write_static_file_funcs(CJob *);
 
 /* =============================PUBLIC INTERFACE============================= */
@@ -15,28 +15,111 @@ static CJobStatus write_static_file_funcs(CJob *);
 */
 CJobStatus write_file_protocol_funcs(CJob *job)
 {
-  (void)job;
-  fprintf(stderr, "The file protocol has not been implemented.\n");
-  return CJOB_JOB_ERROR;
+  CJobStatus result;
+  int i;
+  ParsedSchema *schema = job->schema;
+  if ((result = write_file_structures(job)) != CJOB_SUCCESS ||
+      (result = write_static_file_funcs(job)) != CJOB_SUCCESS)
+    return result;
+  for (i = 0; i < schema->num_structs; i ++) {
+    if ((result = write_public_file_funcs(job, &schema->structs[i])) 
+        != CJOB_SUCCESS)
+      return result;
+  }
+  return CJOB_SUCCESS;
 }
 
 /* =============================STATIC FUNCTIONS============================= */
 
-static CJobStatus write_public_file_funcs(CJob *job, ParsedStruct *strct)
+static CJobStatus write_file_structures(CJob *job)
 {
-  (void)job;
-  (void)strct;
-  return CJOB_SUCCESS;
-}
-
-static CJobStatus write_child_file_handler(CJob *job)
-{
-  (void)job;
+  CJOB_FMT_HEADER_STRING(job,
+"typedef struct {\n\
+  FILE *file;\n\
+  haris_uint32_t curr;\n\
+} HarisFileStream;\n\n");
   return CJOB_SUCCESS;
 }
 
 static CJobStatus write_static_file_funcs(CJob *job)
 {
-  (void)job;
+  CJOB_FMT_PRIV_FUNCTION(job,
+"static HarisStatus read_from_file_stream(void *_stream,\n\
+                                         unsigned char *dest,\n\
+                                         haris_uint32_t count)\n\
+{\n\
+  HarisFileStream *stream = (HarisFileStream*)_stream;\n\
+  HARIS_ASSERT(count + stream->curr <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+  HARIS_ASSERT(fread(dest, 1, count, stream->file) == count, INPUT);\n\
+  stream->curr += count;\n\
+  return HARIS_SUCCESS;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job,
+"static HarisStatus write_to_file_stream(void *_stream,\n\
+                                        const unsigned char *src,\n\
+                                        haris_uint32_t count)\n\
+{\n\
+  HarisFileStream *stream = (HarisFileStream*)_stream;\n\
+  HARIS_ASSERT(count + stream->curr <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+  HARIS_ASSERT(fwrite(src, 1, count, stream->file) == count, INPUT);\n\
+  stream->curr += count;\n\
+  return HARIS_SUCCESS;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job,
+"static HarisStatus _public_to_file(void *ptr,\n\
+                                   const HarisStructureInfo *info,\n\
+                                   FILE *f,\n\
+                                   haris_uint32_t *out_sz)\n\
+{\n\
+  HarisStatus result;\n\
+  HarisFileStream file_stream;\n\
+  HARIS_ASSERT(!*(char*)ptr, STRUCTURE); /* the encoded struct can't be null */\n\
+  if (haris_lib_size(ptr, info, 0, &result) == 0) return result;\n\
+  file_stream.file = f;\n\
+  file_stream.curr = 0;\n\
+  if ((result = _haris_to_stream(ptr, info, &file_stream,\n\
+                                 write_to_file_stream)) != HARIS_SUCCESS)\n\
+    return result;\n\
+  if (out_sz) *out_sz = file_stream.curr;\n\
+  return HARIS_SUCCESS;\n\
+}\n\n");
+  CJOB_FMT_PRIV_FUNCTION(job,
+"static HarisStatus _public_from_file(void *ptr,\n\
+                                     const HarisStructureInfo *info,\n\
+                                     FILE *f,\n\
+                                     haris_uint32_t *out_sz)\n\
+{\n\
+  HarisStatus result;\n\
+  HarisFileStream file_stream;\n\
+  file_stream.file = f;\n\
+  file_stream.curr = 0;\n\
+  if ((result = _haris_from_stream(ptr, info, &file_stream,\n\
+                                   read_from_file_stream, 0)) != HARIS_SUCCESS)\n\
+    return result;\n\
+  if (out_sz) *out_sz = file_stream.curr;\n\
+  HARIS_ASSERT(!*(char*)ptr, STRUCTURE); /* the decoded struct can't be null */\n\
+  return HARIS_SUCCESS;\n\
+}\n\n");
   return CJOB_SUCCESS;
 }
+
+static CJobStatus write_public_file_funcs(CJob *job, ParsedStruct *strct)
+{
+  const char *prefix = job->prefix, *name = strct->name;
+  CJOB_FMT_PUB_FUNCTION(job,
+"HarisStatus %s%s_to_file(%s%s *strct, FILE *f, \n\
+                          haris_uint32_t *out_sz)\n\
+{\n\
+  return _public_to_file(strct, &haris_lib_structures[%d],\n\
+                         f, out_sz);\n}\n\n",
+                        prefix, name, prefix, name, strct->schema_index);
+  CJOB_FMT_PUB_FUNCTION(job,
+"HarisStatus %s%s_from_file(%s%s *strct, FILE *f,\n\
+                            haris_uint32_t *out_sz)\n\
+{\n\
+  return _public_from_file(strct, &haris_lib_structures[%d],\n\
+                           f, out_sz);\n}\n\n",
+                        prefix, name, prefix, name, strct->schema_index);
+  return CJOB_SUCCESS;
+}
+

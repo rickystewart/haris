@@ -5,6 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* class_main.c: A file that constructs a "class" object (as described
+   in the class.haris schema), serializes it to a byte array, reads it
+   back from the byte array, and then re-serializes it to a file.
+
+   The file class_read_back.c reads the class object back from the file.
+*/
+
 const char *students[] = { "John Smith", "Jane Smith", "Smith Jones" };
 
 void print_haris_message(unsigned char *message, haris_uint32_t sz)
@@ -44,6 +51,7 @@ int main(void)
   /* Allocate our in-memory class here; the generated API provides this
      function */
   Class *class = Class_create(); 
+  FILE *fout = fopen("class.msg", "wb");
   class->graduation_year = 2018;
   /* Initialize our students array */
   Class_init_students(class, sizeof students / sizeof students[0]);
@@ -83,6 +91,14 @@ int main(void)
   }
   printf("AFTER DESERIALIZATION:\n");
   print_Class(class);
+  /* ******* SERIALIZATION TO FILE ******* */
+  printf("\nThe class will now be written to the output file.\n\
+Run class_read_back to test the file deserialization protocol.\n\n");
+  if ((result = Class_to_file(class, fout, NULL)) != HARIS_SUCCESS) {
+    fprintf(stderr, "There was an error in file serialization.\n");
+    exit(1);
+  }
+  fclose(fout);
   Class_destroy(class);
   free(haris_message);
 } 

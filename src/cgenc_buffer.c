@@ -71,7 +71,7 @@ static CJobStatus write_static_buffer_funcs(CJob *job)
   HarisBufferStream buffer_stream;\n\
   HARIS_ASSERT(!*(char*)ptr, STRUCTURE); /* encoded structure can't be null */\n\
   buffer_stream.sz = haris_lib_size(ptr, info, 0, &result);\n\
-  if (!buffer_stream.sz) return result;\n\
+  if (buffer_stream.sz == 0) return result;\n\
   buffer_stream.buffer = (unsigned char *)malloc(buffer_stream.sz);\n\
   HARIS_ASSERT(buffer_stream.buffer, MEM);\n\
   buffer_stream.curr = 0;\n\
