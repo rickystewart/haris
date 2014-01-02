@@ -1,4 +1,5 @@
 #include "class.h"
+#include "class_common.h"
 
 #include <stdio.h>
 #include <stddef.h>
@@ -12,7 +13,9 @@
    The file class_read_back.c reads the class object back from the file.
 */
 
-const char *students[] = { "John Smith", "Jane Smith", "Smith Jones" };
+const char *students[] = { "John Smith", "Jane Smith", "Smith Jones",
+                           "James Spader", "John Krasinski", "Steve Carell"
+};
 
 void print_haris_message(unsigned char *message, haris_uint32_t sz)
 {
@@ -21,23 +24,6 @@ void print_haris_message(unsigned char *message, haris_uint32_t sz)
   for (i = 0; i < sz; i ++) 
     printf("%x ", (int)message[i]);
   printf("\n\n");
-}
-
-void print_Student(Student *student)
-{
-  printf("%s (ID %lu) has $%lu in debt.\n", 
-         Student_get_name(student),
-         (unsigned long)student->id,
-         (unsigned long)student->debt_in_dollars);
-}
-
-void print_Class(Class *class)
-{
-  haris_uint32_t i;
-  printf("===CLASS OF %u===\n", (unsigned)class->graduation_year);
-  for (i = 0; i < Class_len_students(class); i ++)
-    print_Student(Class_get_students(class) + i);
-  printf("\n");
 }
 
 int main(void)
