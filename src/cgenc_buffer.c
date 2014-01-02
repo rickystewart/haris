@@ -10,27 +10,6 @@ static CJobStatus write_static_to_buffer_functions(CJob *);
 
 /* =============================PUBLIC INTERFACE============================= */
 
-/* The following static buffer functions exist for every structure S:
-   static HarisStatus _S_from_buffer(S *, unsigned char *, haris_uint32_t ind,
-                                     haris_uint32_t sz,
-                                     unsigned char **, int depth);
-   static HarisStatus _S_from_buffer_posthead(S *, unsigned char *,
-                                              haris_uint32_t, unsigned char **,
-                                              int depth, int body_size, 
-                                              int num_children)
-   static unsigned char *_S_to_buffer(S *, unsigned char **);
-   static unsigned char *_S_to_buffer_posthead(S *, unsigned char **)
-
-   Finally, we have the following recursive function:
-   static unsigned char *handle_child_buffer(unsigned char *, haris_uint32_t, 
-                                             haris_uint32_t, haris_uint32_t *,
-                                             int);
-   static unsigned char *handle_child_buffer_struct_posthead(unsigned char *, 
-                                             haris_uint32_t, haris_uint32_t, 
-                                             haris_uint32_t *, int, 
-                                             int body_size, int num_children);                                        
-*/
-
 CJobStatus write_buffer_protocol_funcs(CJob *job)
 {
   CJobStatus result;
@@ -41,9 +20,8 @@ CJobStatus write_buffer_protocol_funcs(CJob *job)
         != CJOB_SUCCESS) 
       return result;
   }
-  if ((result = write_static_buffer_funcs(job)) != CJOB_SUCCESS) 
-    return result;
-  if ((result = write_child_buffer_handler(job)) != CJOB_SUCCESS)
+  if ((result = write_static_buffer_funcs(job)) != CJOB_SUCCESS ||
+      (result = write_child_buffer_handler(job)) != CJOB_SUCCESS)
     return result;
   return CJOB_SUCCESS;
 }
@@ -155,12 +133,14 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
     return result;\n\
   if (out_addr) *out_addr = buf + ind;\n\
   HARIS_ASSERT(!*(char*)ptr, STRUCTURE);\n\
-  return HARIS_SUCCESS;\n\
-}\n\n");
+  return HARIS_SUCCESS;\n}\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static HarisStatus haris_from_buffer(void *ptr,\n\
-  const HarisStructureInfo *info, unsigned char *buf,\n\
-  haris_uint32_t *out_ind, haris_uint32_t sz, int depth)\n\
+                                      const HarisStructureInfo *info,\n\
+                                      unsigned char *buf,\n\
+                                      haris_uint32_t *out_ind,\n\
+                                      haris_uint32_t sz,\n\
+                                      int depth)\n\
 {\n\
   int num_children, body_size;\n\
   haris_uint32_t ind = *out_ind;\n\
@@ -179,8 +159,6 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
   body_size = buf[ind + 1];\n\
   HARIS_ASSERT(body_size >= info->body_size &&\n\
                num_children >= info->num_children, STRUCTURE);\n\
-  HARIS_ASSERT(ind + 1 + body_size < sz, INPUT);\n\
-  HARIS_ASSERT(ind + 1 + body_size < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   *out_ind = ind + 2;\n\
   return haris_from_buffer_posthead(ptr, info, buf, sz, out_ind, depth, \n\
                                     num_children, body_size);\n\
@@ -196,6 +174,8 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
   haris_uint32_t x, ind;\n\
   const HarisChild *child;\n\
   HarisListInfo *list_info;\n\
+  HARIS_ASSERT(ind + body_size <= sz, INPUT);\n\
+  HARIS_ASSERT(ind + body_size <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   haris_lib_read_body(ptr, info, buf + *out_ind);\n\
   *out_ind += body_size;\n\
   for (i = 0; i < info->num_children; i ++) {\n\
