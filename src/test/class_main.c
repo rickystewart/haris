@@ -77,8 +77,10 @@ int main(void)
   /* Deserialize! This will populate the fields of the Class structure with
      the information we wrote to the buffer. */
   if ((result = Class_from_buffer(class, haris_message, sz, NULL)) 
-      != HARIS_SUCCESS)
-    return result;
+      != HARIS_SUCCESS) {
+    fprintf(stderr, "There was an error in deserialization.\n");
+    exit(1);
+  }
   printf("AFTER DESERIALIZATION:\n");
   print_Class(class);
   Class_destroy(class);
