@@ -496,7 +496,9 @@ static CJobStatus write_reflective_child_array(CJob *job, ParsedStruct *strct)
                            child->nullable, 
                            child->tag == CHILD_SCALAR_LIST ? 
                            scalar_enumerated_name(child->type.scalar_list.tag) :
-                           "HARIS_SCALAR_BLANK");
+                             child->tag == CHILD_TEXT ?
+                             "HARIS_SCALAR_UINT8" :
+                             "HARIS_SCALAR_BLANK");
     if (child->tag == CHILD_STRUCT_LIST || child->tag == CHILD_STRUCT) {
       CJOB_FMT_SOURCE_STRING(job, "&haris_lib_structures[%d], ",
                              child->tag == CHILD_STRUCT_LIST ?
@@ -796,8 +798,6 @@ const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
     goto Success;\n\
   switch (child->child_type) {\n\
   case HARIS_CHILD_TEXT:\n\
-    element_size = 1;\n\
-    break;\n\
   case HARIS_CHILD_SCALAR_LIST:\n\
     element_size = haris_lib_in_memory_scalar_sizes[child->scalar_element];\n\
     break;\n\
@@ -982,8 +982,7 @@ static CJobStatus write_core_size(CJob *job)
         accum += 1;\n\
       else\n\
         accum += 4 + \n\
-          list_info->len * (child->child_type == HARIS_CHILD_TEXT ?\n\
-                            1 : haris_lib_message_scalar_sizes[child->scalar_element]);\n\
+          list_info->len * haris_lib_message_scalar_sizes[child->scalar_element];\n\
       break;\n\
     case HARIS_CHILD_STRUCT_LIST:\n\
       if (list_info->null)\n\

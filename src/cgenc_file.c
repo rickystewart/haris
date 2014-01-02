@@ -16,7 +16,8 @@ static CJobStatus write_static_file_funcs(CJob *);
 CJobStatus write_file_protocol_funcs(CJob *job)
 {
   (void)job;
-  return CJOB_SUCCESS;
+  fprintf(stderr, "The file protocol has not been implemented.\n");
+  return CJOB_JOB_ERROR;
 }
 
 /* =============================STATIC FUNCTIONS============================= */

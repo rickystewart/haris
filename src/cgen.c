@@ -550,6 +550,23 @@ static CJobStatus output_to_header_file(CJob *job, FILE *out)
   return CJOB_SUCCESS;
 }
 
+/* If the given filename has one or more slashes (/) in it, then everything
+   preceding the final slash is the directory path to the file. This function
+   returns a pointer to the proper filename of the file, not including the
+   directories. For example, if filename is passed as "path/to/hello.txt", 
+   then this function returns a pointer to "hello.txt".
+
+   This function returns a pointer within the string itself and as such the
+   return value should not be freed.
+*/
+static const char *find_proper_filename(const char *filename)
+{
+  const char *buf;
+  while((buf = strchr(filename, '/')) != NULL)
+    filename = buf + 1;
+  return filename;
+}
+
 /* Write everything that goes in the source file to the given output FILE*. */
 static CJobStatus output_to_source_file(CJob *job, FILE *out)
 {
@@ -559,7 +576,7 @@ static CJobStatus output_to_source_file(CJob *job, FILE *out)
 "#include <stdio.h>\n\
 #include <stddef.h>\n\
 #include <stdlib.h>\n\n\
-#include \"%s.h\"\n\n", job->output);
+#include \"%s.h\"\n\n", find_proper_filename(job->output));
   for (i = 0; i < job->strings.private_functions.num_strings; i ++)
     if ((result = output_prototype(out, job->strings.private_functions.strings[i]))
         != CJOB_SUCCESS)

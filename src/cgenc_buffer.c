@@ -47,7 +47,7 @@ static CJobStatus write_child_buffer_handler(CJob *job)
                                         haris_uint32_t sz, int depth)\n\
 {\n\
   HarisStatus result;\n\
-  int num_children, body_size, el_size;\n\
+  int num_children, body_size, msg_size;\n\
   haris_uint32_t i, ind = *out_ind;\n\
   HARIS_ASSERT(depth <= HARIS_DEPTH_LIMIT, DEPTH);\n\
   HARIS_ASSERT(ind < sz, INPUT);\n\
@@ -66,8 +66,8 @@ depth, num_children, body_size);\n\
     HARIS_ASSERT(ind + 3 < sz, INPUT);\n\
     HARIS_ASSERT(ind + 3 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
     haris_read_uint24(buf + ind + 1, &i);\n\
-    el_size = buf[ind] & 0x3;\n\
-    *out_ind = ind + i * el_size + 4;\n\
+    msg_size = buf[ind] & 0x3;\n\
+    *out_ind = ind + i * msg_size + 4;\n\
     return HARIS_SUCCESS;\n\
   } else {\n\
     haris_uint32_t x;\n\
@@ -174,8 +174,8 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
   haris_uint32_t x, ind;\n\
   const HarisChild *child;\n\
   HarisListInfo *list_info;\n\
-  HARIS_ASSERT(ind + body_size <= sz, INPUT);\n\
-  HARIS_ASSERT(ind + body_size <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
+  HARIS_ASSERT(*out_ind + body_size <= sz, INPUT);\n\
+  HARIS_ASSERT(*out_ind + body_size <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   haris_lib_read_body(ptr, info, buf + *out_ind);\n\
   *out_ind += body_size;\n\
   for (i = 0; i < info->num_children; i ++) {\n\
@@ -197,29 +197,26 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
     case HARIS_CHILD_TEXT:\n\
     case HARIS_CHILD_SCALAR_LIST:\n\
     {\n\
-      haris_uint32_t len, el_size;\n\
+      haris_uint32_t len, msg_size, mem_size;\n\
       HARIS_ASSERT(ind + 3 < sz, INPUT);\n\
       HARIS_ASSERT(ind + 3 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-      HARIS_ASSERT(buf[ind] == (child->child_type == HARIS_CHILD_TEXT ?\n\
-                                 0xC0 :\n\
-                                 0xC0 | haris_lib_scalar_bit_patterns[child->scalar_element]),\n\
+      HARIS_ASSERT(buf[ind] == (0xC0 | \n\
+                    haris_lib_scalar_bit_patterns[child->scalar_element]),\n\
                    STRUCTURE);\n\
       haris_read_uint24(buf + ind + 1, (void*)&len);\n\
-      el_size = (child->child_type == HARIS_CHILD_TEXT) ? 1 : \n\
-        haris_lib_message_scalar_sizes[child->scalar_element];\n\
-      HARIS_ASSERT(ind + 3 + len * el_size < sz, INPUT);\n\
-      HARIS_ASSERT(ind + 3 + len * el_size < HARIS_MESSAGE_SIZE_LIMIT,\n\
+      msg_size = haris_lib_message_scalar_sizes[child->scalar_element];\n\
+      mem_size = haris_lib_in_memory_scalar_sizes[child->scalar_element];\n\
+      HARIS_ASSERT(ind + 3 + len * msg_size < sz, INPUT);\n\
+      HARIS_ASSERT(ind + 3 + len * msg_size < HARIS_MESSAGE_SIZE_LIMIT,\n\
                    SIZE);\n\
       if ((result = haris_lib_init_list_mem(ptr, info, i, len))\n\
            != HARIS_SUCCESS)\n\
         return result;\n\
       ind += 4;\n\
-      for (x = 0; x < len; x ++, ind += el_size) {\n\
+      for (x = 0; x < len; x ++, ind += msg_size) {\n\
         haris_lib_read_scalar(buf + ind, \n\
-                              (char*)list_info->ptr + \n\
-                               x * haris_lib_in_memory_scalar_sizes[child->scalar_element],\n\
-                              child->child_type == HARIS_CHILD_TEXT ? \n\
-                              HARIS_SCALAR_UINT8 : child->scalar_element);\n\
+                              (char*)list_info->ptr + x * mem_size,\n\
+                              child->scalar_element);\n\
       }\n\
       *out_ind = ind;\n\
       break;\n\
@@ -301,7 +298,7 @@ static CJobStatus write_static_to_buffer_functions(CJob *job)
 "static unsigned char *haris_to_buffer_posthead(void *ptr, \n\
   const HarisStructureInfo *info, unsigned char *buf)\n\
 {\n\
-  int i, el_size;\n\
+  int i, msg_size, mem_size;\n\
   const HarisChild *child;\n\
   HarisListInfo *list_info;\n\
   haris_uint32_t x;\n\
@@ -312,23 +309,20 @@ static CJobStatus write_static_to_buffer_functions(CJob *job)
     switch (child->child_type) {\n\
     case HARIS_CHILD_TEXT:\n\
     case HARIS_CHILD_SCALAR_LIST:\n\
-      el_size = (child->child_type == HARIS_CHILD_TEXT ? 1 : \n\
-        haris_lib_message_scalar_sizes[child->scalar_element]);\n\
+      msg_size = haris_lib_message_scalar_sizes[child->scalar_element];\n\
+      mem_size = haris_lib_in_memory_scalar_sizes[child->scalar_element];\n\
       if (list_info->null) {\n\
         *buf = 0x80;\n\
         buf++;\n\
         continue;\n\
       }\n\
-      *buf = 0xC0 | (child->child_type == HARIS_CHILD_TEXT ? 0 : \n\
-                     haris_lib_scalar_bit_patterns[child->scalar_element]);\n\
+      *buf = 0xC0 | haris_lib_scalar_bit_patterns[child->scalar_element];\n\
       haris_write_uint24(buf + 1, &list_info->len);\n\
       buf += 4;\n\
-      for (x = 0; x < list_info->len; x ++, buf += el_size)\n\
+      for (x = 0; x < list_info->len; x ++, buf += msg_size)\n\
         haris_lib_write_scalar(buf, \n\
-                               (char*)list_info->ptr + \n\
-                               x * haris_lib_in_memory_scalar_sizes[child->scalar_element],\n\
-                               child->child_type == HARIS_CHILD_TEXT ? \n\
-                               HARIS_SCALAR_UINT8 : child->scalar_element);\n\
+                               (char*)list_info->ptr + x * mem_size,\n\
+                               child->scalar_element);\n\
       break;\n\
     case HARIS_CHILD_STRUCT_LIST:\n\
       if (list_info->null) {\n\
