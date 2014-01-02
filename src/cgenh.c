@@ -33,7 +33,9 @@ static CJobStatus write_header_boilerplate(CJob *job)
 {
   CJOB_FMT_HEADER_STRING(job, 
 "#include <stdio.h>\n\
-#include <stdlib.h>\n\n");
+#include <stdlib.h>\n\
+#include <stddef.h>\n\
+#include <string.h>\n\n");
   CJOB_FMT_HEADER_STRING(job, 
 "/* In order to generate C code, the utility library needs exact-precision\n\
    unsigned and signed integers. In particular, in order to ensure that we don't\n\
@@ -78,7 +80,11 @@ typedef double          haris_float64;\n\
 typedef enum {\n\
   HARIS_SUCCESS, HARIS_STRUCTURE_ERROR, HARIS_DEPTH_ERROR, HARIS_SIZE_ERROR,\n\
   HARIS_INPUT_ERROR, HARIS_MEM_ERROR\n\
-} HarisStatus;\n\n");
+} HarisStatus;\n\n\
+typedef HarisStatus (*HarisStreamReader)(void *, unsigned char *, \n\
+                                         haris_uint32_t);\n\n\
+typedef HarisStatus (*HarisStreamWriter)(void *, const unsigned char *, \n\
+                                         haris_uint32_t);\n\n");
   return CJOB_SUCCESS;
 }
 
