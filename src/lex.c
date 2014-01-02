@@ -99,6 +99,7 @@ LexerStatus next_token(Lexer *lex, Token *tok)
       return handle_string_token(lex, tok);
     else if (next_char == '#') {
       handle_comment(lex);
+      next_char = lex->previous;
       continue;
     } else if (next_char == '@') {
       *tok = TOKEN_FORWARD;
@@ -179,7 +180,7 @@ static LexerStatus handle_string_token(Lexer *lex, Token *tok)
 static void handle_comment(Lexer *lex)
 {
   int ch = lex->previous;
-  while (ch != '\n')
+  while (ch != '\n' && ch != EOF)
     ch = fgetc(lex->stream);
   lex->previous = fgetc(lex->stream);
   lex->line_no++;

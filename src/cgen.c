@@ -339,10 +339,10 @@ static CJobStatus run_cjob(CJob *job)
 static void usage(void)
 {
   fprintf(stderr,
-"Usage: haris -l c [-o <FNAME>] [-p <PREFIX>] [-O <OPT>]\n\
-        -p <PROTOCOL> <ARGUMENT_FILES>...\n\n\
-The C compiler, by default, outputs C99-conforming C source code.\n\
-The command line arguments and options that the compiler accepts are as\n\
+"Usage: haris -l c [-o <FNAME>] [-p <PREFIX>] [-O <OPT>] -p <PROTOCOL> \
+<ARGUMENT_FILES>...\n\n\
+The C compiler, by default, outputs C99-conforming C source code. \
+The command line arguments and options that the compiler accepts are as \
 follows:\n\
   -o : Write the output to a pair of source files whose names begin with\n\
        <FNAME>. For example, `-o haris` will result in a pair of source\n\
@@ -361,7 +361,7 @@ follows:\n\
          file\n\
          buffer\n\
        You must choose at least one protocol.\n\
-In addition to these options, you must provide at least one <ARGUMENT_FILE>,\n\
+In addition to these options, you must provide at least one <ARGUMENT_FILE>, \
 which is the name of a .haris schema file to compile.\n");
 }
 

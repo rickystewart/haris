@@ -95,7 +95,8 @@ CJobStatus write_source_core_funcs(CJob *job)
 /* ********* SCALAR-WRITING AND -READING FUNCTIONS ********* */
 static CJobStatus write_readint(CJob *job)
 {
-  CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int8(const unsigned char *b, void *_ptr)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_read_int8(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_int8_t *ptr = (haris_int8_t*)_ptr;\n\
   haris_uint8_t uint;\n\
@@ -105,7 +106,8 @@ static CJobStatus write_readint(CJob *job)
   else\n\
     *ptr = (haris_int8_t)uint;\n\
 }\n\n");
-  CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int16(const unsigned char *b, void *_ptr)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_read_int16(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_int16_t *ptr = (haris_int16_t*)_ptr;\n\
   haris_uint16_t uint;\n\
@@ -115,7 +117,8 @@ static CJobStatus write_readint(CJob *job)
   else\n\
     *ptr = (haris_int16_t)uint;\n\
 }\n\n");
-  CJOB_FMT_PRIV_FUNCTION(job, "static void haris_read_int32(const unsigned char *b, void *_ptr)\n\
+  CJOB_FMT_PRIV_FUNCTION(job, 
+"static void haris_read_int32(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_int32_t *ptr = (haris_int32_t*)_ptr;\n\
   haris_uint32_t uint;\n\
@@ -481,7 +484,8 @@ static CJobStatus write_reflective_child_array(CJob *job, ParsedStruct *strct)
                            job->prefix, strct->name);
     return CJOB_SUCCESS;
   }
-  CJOB_FMT_SOURCE_STRING(job, "static const HarisChild %s%s_lib_children[] = {\n", 
+  CJOB_FMT_SOURCE_STRING(job, 
+"static const HarisChild %s%s_lib_children[] = {\n", 
                          job->prefix, strct->name);
   for (i = 0; i < strct->num_children; i ++) {
     child = &strct->children[i];
@@ -587,7 +591,8 @@ static CJobStatus write_message_bit_patterns(CJob *job)
 static CJobStatus write_scalar_readers(CJob *job)
 {
   CJOB_FMT_SOURCE_STRING(job, 
-"static void (* const haris_lib_scalar_readers[])(const unsigned char *, void *) = {\n\
+"static\n\
+void (* const haris_lib_scalar_readers[])(const unsigned char *, void *) = {\n\
   haris_read_uint8, haris_read_int8, haris_read_uint16, haris_read_int16,\n\
   haris_read_uint32, haris_read_int32, haris_read_uint64, haris_read_int64,\n\
   haris_read_float32, haris_read_float64\n\
@@ -598,7 +603,8 @@ static CJobStatus write_scalar_readers(CJob *job)
 static CJobStatus write_scalar_writers(CJob *job)
 {
   CJOB_FMT_SOURCE_STRING(job, 
-"static void (* const haris_lib_scalar_writers[])(unsigned char *, const void *) = {\n\
+"static\n\
+void (* const haris_lib_scalar_writers[])(unsigned char *, const void *) = {\n\
   haris_write_uint8, haris_write_int8, haris_write_uint16, haris_write_int16,\n\
   haris_write_uint32, haris_write_int32, haris_write_uint64, haris_write_int64,\n\
   haris_write_float32, haris_write_float64\n\
@@ -677,7 +683,8 @@ static CJobStatus write_public_destructor(CJob *job, ParsedStruct *strct)
 static CJobStatus write_general_destructor(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static void haris_lib_destroy_contents(void *ptr, const HarisStructureInfo *info)\n\
+"static void haris_lib_destroy_contents(void *ptr,\n\
+                                        const HarisStructureInfo *info)\n\
 {\n\
   haris_uint32_t j, alloced;\n\
   int i;\n\
@@ -824,9 +831,10 @@ const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
 static CJobStatus write_general_init_struct_member(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static HarisStatus haris_lib_init_struct_mem(void *ptr,\n\
-                                              const HarisStructureInfo *info,\n\
-                                              int field)\n\
+"static\n\
+HarisStatus haris_lib_init_struct_mem(void *ptr,\n\
+                                      const HarisStructureInfo *info,\n\
+                                      int field)\n\
 {\n\
   void **vdptrptr;\n\
   vdptrptr = (void**)((char*)ptr + info->children[field].offset);\n\

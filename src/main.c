@@ -46,15 +46,14 @@ static void usage(void)
 {
   fprintf(stderr,
 "Usage: haris -l [language] [options] file...\n\n\
-The Haris tool is a collection of compilers. (The size of this collection,\n\
-currently, is 1.)\n\
-To show this message, run `haris -h`.\n\
-To run a compiler, run `haris -l X` where X is an acceptable language code.\n\
+The Haris tool is a collection of compilers. (The size of this collection, \
+currently, is 1.) To show this message, run `haris -h`.\n\n\
+To run a compiler, run `haris -l X` where X is an acceptable language code. \
 Currently acceptable language codes at this point in time are:\n\
   c\n\n\
-The compilers may each have different interfaces, and are expected to be\n\
-called with different arguments and options. To receive help about how to\n\
-use a particular compiler, run `haris -l X -h` where X is the applicable\n\
+The compilers may each have different interfaces, and are expected to be \
+called with different arguments and options. To receive help about how to \
+use a particular compiler, run `haris -l X -h` where X is the applicable \
 language code.\n");
 }
 

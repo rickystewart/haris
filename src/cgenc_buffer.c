@@ -64,7 +64,8 @@ int num_children, int body_size);
 static CJobStatus write_child_buffer_handler(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static HarisStatus handle_child_buffer(unsigned char *buf, haris_uint32_t *out_ind,\n\
+"static HarisStatus handle_child_buffer(unsigned char *buf,\n\
+                                        haris_uint32_t *out_ind,\n\
                                         haris_uint32_t sz, int depth)\n\
 {\n\
   HarisStatus result;\n\
@@ -105,11 +106,13 @@ depth, num_children, body_size);\n\
     return HARIS_SUCCESS;\n\
   }\n}\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static HarisStatus handle_child_buffer_struct_posthead(unsigned char *buf,\n\
-                                                        haris_uint32_t *out_ind,\n\
-                                                        haris_uint32_t sz, \n\
-                                                        int depth, int num_children,\n\
-                                                        int body_size)\n\
+"static\n\
+HarisStatus handle_child_buffer_struct_posthead(unsigned char *buf,\n\
+                                                haris_uint32_t *out_ind,\n\
+                                                haris_uint32_t sz, \n\
+                                                int depth,\n\
+                                                int num_children,\n\
+                                                int body_size)\n\
 {\n\
   HarisStatus result;\n\
   haris_uint32_t ind = *out_ind;\n\
@@ -179,7 +182,8 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
   HARIS_ASSERT(ind + 1 + body_size < sz, INPUT);\n\
   HARIS_ASSERT(ind + 1 + body_size < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   *out_ind = ind + 2;\n\
-  return haris_from_buffer_posthead(ptr, info, buf, sz, out_ind, depth, num_children, body_size);\n\
+  return haris_from_buffer_posthead(ptr, info, buf, sz, out_ind, depth, \n\
+                                    num_children, body_size);\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static HarisStatus haris_from_buffer_posthead(void *ptr,\n\
@@ -216,14 +220,18 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
       haris_uint32_t len, el_size;\n\
       HARIS_ASSERT(ind + 3 < sz, INPUT);\n\
       HARIS_ASSERT(ind + 3 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-      HARIS_ASSERT(buf[ind] == (child->child_type == HARIS_CHILD_TEXT ? 0xC0 : \n\
-        0xC0 | haris_lib_scalar_bit_patterns[child->scalar_element]), STRUCTURE);\n\
+      HARIS_ASSERT(buf[ind] == (child->child_type == HARIS_CHILD_TEXT ?\n\
+                                 0xC0 :\n\
+                                 0xC0 | haris_lib_scalar_bit_patterns[child->scalar_element]),\n\
+                   STRUCTURE);\n\
       haris_read_uint24(buf + ind + 1, (void*)&len);\n\
       el_size = (child->child_type == HARIS_CHILD_TEXT) ? 1 : \n\
         haris_lib_message_scalar_sizes[child->scalar_element];\n\
       HARIS_ASSERT(ind + 3 + len * el_size < sz, INPUT);\n\
-      HARIS_ASSERT(ind + 3 + len * el_size < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-      if ((result = haris_lib_init_list_mem(ptr, info, i, len)) != HARIS_SUCCESS)\n\
+      HARIS_ASSERT(ind + 3 + len * el_size < HARIS_MESSAGE_SIZE_LIMIT,\n\
+                   SIZE);\n\
+      if ((result = haris_lib_init_list_mem(ptr, info, i, len))\n\
+           != HARIS_SUCCESS)\n\
         return result;\n\
       ind += 4;\n\
       for (x = 0; x < len; x ++, ind += el_size) {\n\
@@ -243,7 +251,8 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
       HARIS_ASSERT(ind + 5 < HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
       HARIS_ASSERT(buf[ind] == 0xE0, STRUCTURE);\n\
       haris_read_uint24(buf + ind + 1, (void*)&len);\n\
-      if ((result = haris_lib_init_list_mem(ptr, info, i, len)) != HARIS_SUCCESS)\n\
+      if ((result = haris_lib_init_list_mem(ptr, info, i, len))\n\
+           != HARIS_SUCCESS)\n\
         return result;\n\
       HARIS_ASSERT((buf[ind+4] & 0xC0) == 0x40, STRUCTURE);\n\
       num_children = buf[ind + 4] & 0x3F;\n\
@@ -261,9 +270,11 @@ static CJobStatus write_static_from_buffer_functions(CJob *job)
     }\n\
     case HARIS_CHILD_STRUCT:\n\
     {\n\
-      if ((result = haris_lib_init_struct_mem(ptr, info, i)) != HARIS_SUCCESS)\n\
+      if ((result = haris_lib_init_struct_mem(ptr, info, i))\n\
+           != HARIS_SUCCESS)\n\
         return result;\n\
-      if ((result = haris_from_buffer(*(void**)list_info, child->struct_element, \n\
+      if ((result = haris_from_buffer(*(void**)list_info,\n\
+                                      child->struct_element, \n\
                                       buf, out_ind, sz, depth + 1)) \n\
           != HARIS_SUCCESS)\n\
         return result;\n\
@@ -373,7 +384,8 @@ static CJobStatus write_public_buffer_funcs(CJob *job, ParsedStruct *strct)
 {
   const char *prefix = job->prefix, *name = strct->name;
   CJOB_FMT_PUB_FUNCTION(job, 
-"HarisStatus %s%s_from_buffer(%s%s *strct, unsigned char *buf, haris_uint32_t sz,\n\
+"HarisStatus %s%s_from_buffer(%s%s *strct, unsigned char *buf,\n\
+                              haris_uint32_t sz,\n\
                               unsigned char **out_addr)\n\
 {\n\
   return haris_public_from_buffer(strct, &haris_lib_structures[%d],\n\
