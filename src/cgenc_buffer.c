@@ -39,13 +39,13 @@ static CJobStatus write_static_buffer_funcs(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job,
 "static HarisStatus read_from_buffer_stream(void *_stream, \n\
-                                           unsigned char *dest, \n\
-                                           haris_uint32_t count)\n\
+                                           haris_uint32_t count,\n\
+                                           const unsigned char **dest)\n\
 {\n\
   HarisBufferStream *stream = (HarisBufferStream*)_stream;\n\
   HARIS_ASSERT(count + stream->curr <= stream->sz, INPUT);\n\
   HARIS_ASSERT(count + stream->curr <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-  memcpy(dest, stream->buffer + stream->curr, count);\n\
+  *dest = stream->buffer + stream->curr;\n\
   stream->curr += count;\n\
   return HARIS_SUCCESS;\n\
 }\n\n");

@@ -37,6 +37,7 @@ static CJobStatus write_file_structures(CJob *job)
 "typedef struct {\n\
   FILE *file;\n\
   haris_uint32_t curr;\n\
+  unsigned char buffer[256];\n\
 } HarisFileStream;\n\n");
   return CJOB_SUCCESS;
 }
@@ -45,13 +46,16 @@ static CJobStatus write_static_file_funcs(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job,
 "static HarisStatus read_from_file_stream(void *_stream,\n\
-                                         unsigned char *dest,\n\
-                                         haris_uint32_t count)\n\
+                                         haris_uint32_t count,\n\
+                                         const unsigned char **dest)\n\
 {\n\
   HarisFileStream *stream = (HarisFileStream*)_stream;\n\
   HARIS_ASSERT(count + stream->curr <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-  HARIS_ASSERT(fread(dest, 1, count, stream->file) == count, INPUT);\n\
-  stream->curr += count;\n\
+  HARIS_ASSERT(count <= 256, SIZE);\n\
+  HARIS_ASSERT(fread(stream->buffer, 1, count, stream->file) == count,\n\
+               INPUT);\n\
+  *dest = stream->buffer;\n\
+  stream->curr = count;\n\
   return HARIS_SUCCESS;\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job,

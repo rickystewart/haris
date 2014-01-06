@@ -590,6 +590,10 @@ static CJobStatus write_message_bit_patterns(CJob *job)
 "static const size_t haris_lib_scalar_bit_patterns[] = {\n\
   0, 0, 1, 1, 2, 2, 3, 3, 2, 3\n\
 };\n\n");
+  CJOB_FMT_SOURCE_STRING(job,
+"static const size_t haris_lib_message_size_from_bit_pattern[] = {\n\
+  1, 1, 2, 2, 4, 4, 8, 8, 4, 8\n\
+};\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -635,6 +639,10 @@ static CJobStatus write_public_constructor(CJob *job, ParsedStruct *strct)
 /* Write the GENERAL constructor to the given file. This is a function
    that consumes a HarisStructureInfo pointer and returns a new structure
    of the given type as a void*.
+
+   While none of the scalar fields of the structure will be initialized,
+   all pointer elements (structures and lists) will be initialized to
+   NULL.
 */
 static CJobStatus write_general_constructor(CJob *job)
 {
@@ -877,7 +885,8 @@ static CJobStatus write_scalar_writer_function(CJob *job)
    the relevant portion of the in-memory Haris message. An extra void*
    pointer is passed to functions that need it; this is a pointer
    to the in-memory C structure matching the HarisStructureInfo parameter.
-   In each case, a portion of the message will be written to the buffer.
+   In each case, a portion of the message will be written to the buffer,
+   whether that be the header or the entire body.
 */
 static CJobStatus write_core_wfuncs(CJob *job)
 {
@@ -927,16 +936,16 @@ static CJobStatus write_scalar_reader_function(CJob *job)
 }
 
 /* Writes the principal core message-reading function. This function's purpose
-   is to read the body of a Haris message structure (pointerd to by buf) into
+   is to read the body of a Haris message structure (pointed to by buf) into
    the in-memory C structure given by the void *ptr. The info parameter, as 
    always, tells us the type of the structure we are reading.
 */
 static CJobStatus write_core_rfuncs(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static unsigned char *haris_lib_read_body(void *ptr,\n\
-                                           const HarisStructureInfo *info,\n\
-                                           unsigned char *buf)\n\
+"static const unsigned char *haris_lib_read_body(void *ptr,\n\
+                                                const HarisStructureInfo *info,\n\
+                                                const unsigned char *buf)\n\
 {\n\
   int i;\n\
   HarisScalarType type;\n\
@@ -1027,6 +1036,56 @@ static CJobStatus write_core_size(CJob *job)
 
 /* ********* PROTOCOL FUNCTIONS ********* */
 
+/* These functions are the principal core protocol functions. The protocol
+   core has a special purpose: while the haris_write_ and haris_read_ functions
+   above provide the functionality to write and read message bodies, these 
+   functions give us the power to construct entire messages.
+
+   The protocol core is extremely generalized. The _haris_from_stream and
+   _haris_to_stream functions respectively read and write an in-memory C 
+   structure from an opaque stream object which is passed a void pointer. 
+   Bytes are read and written to the stream with the companion interface
+   function, which is called reader or writer (depending on what it does).
+
+   In order to use these core functions, therefore, you must pass a stream
+   argument and a reader/writer argument that meets the interface. (For 
+   example, in order to serialize to an in-memory buffer, the buffer library
+   defines a HarisBufferStream structure, in addition to a set of functions
+   that allow an in-memory buffer to be reasoned about as if it were a stream.)
+   As long as you expose this streaming functionality, and the functions
+   you pass in match the HarisStreamReader or HarisStreamWriter prototypes,
+   your new protocol should snap into the generated codebase without an issue,
+   and serialize and deserialize correctly as a matter of course.
+
+   If you would like to go about defining your own protocols, the contract
+   is as follows:
+   - First, define a structure that will capture all of the data needed to
+     represent the stream. If you do not believe you need to implement
+     a new structure to capture all of this information, then you can
+     pass in as the `stream` argument a pointer to any other pre-defined
+     object. You can even use NULL as your stream if you can find a way to
+     go without a stream object.
+   - Next, define the reading and writing functions that the library will
+     use to read bytes from and write bytes to the stream. These functions
+     are expected to work as follows:
+     HarisStreamReader: Read n bytes from the stream, copying them onto the
+     given buffer.
+     HarisStreamWriter: Write n bytes from the given buffer onto the stream.
+     Both of these functions should return HARIS_SUCCESS if everything went
+     well, and another error code otherwise. A success code should indicate
+     the read or write was entirely successful (that is, all n bytes were
+     written or read).  
+
+     Furthermore, these functions are expected to do error checking. The
+     core library does not assure the messages do not get too large; the
+     stream functions are expected to keep track of how many bytes have 
+     been written or read and raise an error if any illegal operation
+     is attempted. 
+   - Finally, pass in a pointer to your stream object and a pointer to one
+     of your stream-management functions, depending on which operation 
+     you'd like to perform. You're all done.
+*/
+
 static CJobStatus write_general_child_handler(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job,
@@ -1034,30 +1093,32 @@ static CJobStatus write_general_child_handler(CJob *job)
                                 int depth)\n\
 {\n\
   HarisStatus result;\n\
-  unsigned char header[6];\n\
+  unsigned char first_byte_of_header;\n\
+  const unsigned char *read_buffer;\n\
   HARIS_ASSERT(depth <= HARIS_DEPTH_LIMIT, DEPTH);\n\
-  if ((result = reader(stream, header, 1)) != HARIS_SUCCESS) \n\
+  if ((result = reader(stream, 1, &read_buffer)) != HARIS_SUCCESS) \n\
     return result;\n\
-  if (!(header[0] & 0x40)) return HARIS_SUCCESS; /* test for null */\n\
-  if ((header[0] & 0xC0) == 0x40) { /* structure child */\n\
+  first_byte_of_header = *read_buffer;\n\
+  if (!(first_byte_of_header & 0x40)) return HARIS_SUCCESS; /* test for null */\n\
+  if ((first_byte_of_header & 0xC0) == 0x40) { /* structure child */\n\
     int num_children, body_size;\n\
-    if ((result = reader(stream, header + 1, 1)) != HARIS_SUCCESS) \n\
+    if ((result = reader(stream, 1, &read_buffer)) != HARIS_SUCCESS) \n\
       return result;\n\
-    num_children = header[0] & 0x3F;\n\
-    body_size = header[1];\n\
+    num_children = first_byte_of_header & 0x3F;\n\
+    body_size = *read_buffer;\n\
     return handle_child_struct_posthead(stream, reader, depth, \n\
                                         num_children, body_size);\n\
-  } else if ((header[0] & 0xE0) == 0xC0) { /* scalar list */\n\
+  } else if ((first_byte_of_header & 0xE0) == 0xC0) { /* scalar list */\n\
     haris_uint32_t len, msg_size, array_size;\n\
-    unsigned char buffer[256];\n\
-    if ((result = reader(stream, header + 1, 3)) != HARIS_SUCCESS)\n\
+    if ((result = reader(stream, 3, &read_buffer)) != HARIS_SUCCESS)\n\
       return result;\n\
-    msg_size = header[0] & 0x3;\n\
-    haris_read_uint24(header + 1, &len);\n\
+    msg_size = haris_lib_message_size_from_bit_pattern[first_byte_of_header\n\
+                                                       & 0x3];\n\
+    haris_read_uint24(read_buffer, &len);\n\
     array_size = msg_size * len;\n\
     while (array_size > 0) { \n\
       haris_uint32_t read_size = (array_size <= 256 ? array_size : 256);\n\
-      if ((result = reader(stream, buffer, read_size)) != HARIS_SUCCESS)\n\
+      if ((result = reader(stream, read_size, &read_buffer)) != HARIS_SUCCESS)\n\
         return result;\n\
       array_size -= read_size;\n\
     }\n\
@@ -1065,11 +1126,11 @@ static CJobStatus write_general_child_handler(CJob *job)
   } else { /* structure list */\n\
     haris_uint32_t x, len;\n\
     int num_children, body_size;\n\
-    if ((result = reader(stream, header + 1, 5)) != HARIS_SUCCESS)\n\
+    if ((result = reader(stream, 5, &read_buffer)) != HARIS_SUCCESS)\n\
       return result;\n\
-    haris_read_uint24(header + 1, &len);\n\
-    num_children = header[4] & 0x3F;\n\
-    body_size = header[5];\n\
+    haris_read_uint24(read_buffer, &len);\n\
+    num_children = read_buffer[3] & 0x3F;\n\
+    body_size = read_buffer[4];\n\
     for (x = 0; x < len; x++)\n\
       if ((result = handle_child_struct_posthead(stream, reader, depth,\n\
                                                  num_children, \n\
@@ -1086,9 +1147,9 @@ static CJobStatus write_general_child_handler(CJob *job)
 {\n\
   HarisStatus result;\n\
   int i;\n\
-  unsigned char buffer[256];\n\
+  const unsigned char *read_buffer;\n\
   HARIS_ASSERT(depth <= HARIS_DEPTH_LIMIT, DEPTH);\n\
-  if ((result = reader(stream, buffer, (haris_uint32_t)body_size)) \n\
+  if ((result = reader(stream, (haris_uint32_t)body_size, &read_buffer)) \n\
       != HARIS_SUCCESS)\n\
     return result;\n\
   for (i = 0; i < num_children; i++)\n\
@@ -1110,19 +1171,21 @@ static CJobStatus write_from_stream_funcs(CJob *job)
 {\n\
   HarisStatus result;\n\
   int num_children, body_size;\n\
-  unsigned char header[2];\n\
+  const unsigned char *read_buffer;\n\
+  unsigned char first_byte_of_header;\n\
   HARIS_ASSERT(depth <= HARIS_DEPTH_LIMIT, DEPTH);\n\
-  if ((result = reader(stream, header, 1)) != HARIS_SUCCESS) \n\
+  if ((result = reader(stream, 1, &read_buffer)) != HARIS_SUCCESS) \n\
     return result;\n\
-  HARIS_ASSERT(!(header[0] & 0x80), STRUCTURE); /* check this isn't a list */\n\
-  if (!header[0]) { /* null check */\n\
+  first_byte_of_header = *read_buffer;\n\
+  HARIS_ASSERT(!(first_byte_of_header & 0x80), STRUCTURE); /* check this isn't a list */\n\
+  if (!first_byte_of_header) { /* null check */\n\
     *(char*)ptr = 1; \n\
     return HARIS_SUCCESS;\n\
   }\n\
-  if ((result = reader(stream, header + 1, 1)) != HARIS_SUCCESS) \n\
+  if ((result = reader(stream, 1, &read_buffer)) != HARIS_SUCCESS) \n\
     return result;\n\
-  num_children = header[0] & 0x3F;\n\
-  body_size = header[1];\n\
+  num_children = first_byte_of_header & 0x3F;\n\
+  body_size = *read_buffer;\n\
   HARIS_ASSERT(body_size >= info->body_size &&\n\
                num_children >= info->num_children, STRUCTURE);\n\
   return _haris_from_stream_posthead(ptr, info, stream, reader, depth, \n\
@@ -1140,18 +1203,20 @@ static CJobStatus write_from_stream_funcs(CJob *job)
   int i;\n\
   const HarisChild *child;\n\
   HarisListInfo *list_info;\n\
-  unsigned char body[256], child_header[6];\n\
+  const unsigned char *body, *read_buffer;\n\
+  unsigned char first_byte_of_child_header;\n\
   HARIS_ASSERT(depth <= HARIS_DEPTH_LIMIT, DEPTH);\n\
-  if ((result = reader(stream, body, (haris_uint32_t)body_size)) \n\
+  if ((result = reader(stream, (haris_uint32_t)body_size, &body)) \n\
       != HARIS_SUCCESS)\n\
     return result;\n\
   haris_lib_read_body(ptr, info, body);\n\
   for (i = 0; i < info->num_children; i ++) {\n\
     child = &info->children[i];\n\
     list_info = (HarisListInfo*)((char*)ptr + child->offset);\n\
-    if ((result = reader(stream, child_header, 1)) != HARIS_SUCCESS) \n\
+    if ((result = reader(stream, 1, &read_buffer)) != HARIS_SUCCESS) \n\
       return result;\n\
-    if (!(child_header[0]&0x40)) { /* check whether child is null */\n\
+    first_byte_of_child_header = *read_buffer;\n\
+    if (!(first_byte_of_child_header&0x40)) { /* check whether child is null */\n\
       HARIS_ASSERT(child->nullable, STRUCTURE);\n\
       if (child->child_type != HARIS_CHILD_STRUCT) \n\
         list_info->null = 1;\n\
@@ -1163,16 +1228,15 @@ static CJobStatus write_from_stream_funcs(CJob *job)
     case HARIS_CHILD_TEXT:\n\
     case HARIS_CHILD_SCALAR_LIST:\n\
     {\n\
-      unsigned char buffer[8];\n\
       haris_uint32_t len, msg_size, mem_size, bit_pattern, j;\n\
       char *in_mem_element_pointer;\n\
-      if ((result = reader(stream, child_header + 1, 3)) != HARIS_SUCCESS)\n\
+      if ((result = reader(stream, 3, &read_buffer)) != HARIS_SUCCESS)\n\
         return result;\n\
       msg_size = haris_lib_message_scalar_sizes[child->scalar_element];\n\
       mem_size = haris_lib_in_memory_scalar_sizes[child->scalar_element];\n\
       bit_pattern = haris_lib_scalar_bit_patterns[child->scalar_element];\n\
-      HARIS_ASSERT(child_header[0] == (0xC0 | bit_pattern), STRUCTURE);\n\
-      haris_read_uint24(child_header + 1, &len);\n\
+      HARIS_ASSERT(first_byte_of_child_header == (0xC0 | bit_pattern), STRUCTURE);\n\
+      haris_read_uint24(read_buffer, &len);\n\
       if ((result = _haris_lib_init_list_mem(ptr, info, i, len))\n\
            != HARIS_SUCCESS)\n\
         return result;\n\
@@ -1181,9 +1245,9 @@ static CJobStatus write_from_stream_funcs(CJob *job)
            j ++,   in_mem_element_pointer += mem_size) {\n\
         /* This reads one element from the message at a time into the buffer;\n\
            in the future, batching reads will be an easy optimization */\n\
-        if ((result = reader(stream, buffer, msg_size)) != HARIS_SUCCESS)\n\
+        if ((result = reader(stream, msg_size, &read_buffer)) != HARIS_SUCCESS)\n\
           return result;\n\
-        haris_lib_read_scalar(buffer, (void*)in_mem_element_pointer,\n\
+        haris_lib_read_scalar(read_buffer, (void*)in_mem_element_pointer,\n\
                               child->scalar_element);\n\
       }\n\
       break;\n\
@@ -1193,16 +1257,16 @@ static CJobStatus write_from_stream_funcs(CJob *job)
       haris_uint32_t len, j;\n\
       char *in_mem_element_pointer;\n\
       int num_children, body_size;\n\
-      if ((result = reader(stream, child_header + 1, 5)) != HARIS_SUCCESS)\n\
+      if ((result = reader(stream, 5, &read_buffer)) != HARIS_SUCCESS)\n\
         return result;\n\
-      HARIS_ASSERT(child_header[0] == 0xE0, STRUCTURE);\n\
-      haris_read_uint24(child_header + 1, &len);\n\
+      HARIS_ASSERT(first_byte_of_child_header == 0xE0, STRUCTURE);\n\
+      haris_read_uint24(read_buffer, &len);\n\
       if ((result = _haris_lib_init_list_mem(ptr, info, i, len))\n\
            != HARIS_SUCCESS)\n\
         return result;\n\
-      HARIS_ASSERT((child_header[4] & 0xC0) == 0x40, STRUCTURE);\n\
-      num_children = child_header[4] & 0x3F;\n\
-      body_size = child_header[5];\n\
+      HARIS_ASSERT((read_buffer[3] & 0xC0) == 0x40, STRUCTURE);\n\
+      num_children = read_buffer[3] & 0x3F;\n\
+      body_size = read_buffer[4];\n\
       for (j = 0,  in_mem_element_pointer = (char*)list_info->ptr; \n\
            j < len; \n\
            j ++,   in_mem_element_pointer += child->struct_element->size_of) {\n\

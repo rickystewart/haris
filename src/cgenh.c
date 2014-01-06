@@ -81,8 +81,8 @@ typedef enum {\n\
   HARIS_SUCCESS, HARIS_STRUCTURE_ERROR, HARIS_DEPTH_ERROR, HARIS_SIZE_ERROR,\n\
   HARIS_INPUT_ERROR, HARIS_MEM_ERROR\n\
 } HarisStatus;\n\n\
-typedef HarisStatus (*HarisStreamReader)(void *, unsigned char *, \n\
-                                         haris_uint32_t);\n\n\
+typedef HarisStatus (*HarisStreamReader)(void *, haris_uint32_t, \n\
+                                         const unsigned char **);\n\n\
 typedef HarisStatus (*HarisStreamWriter)(void *, const unsigned char *, \n\
                                          haris_uint32_t);\n\n");
   return CJOB_SUCCESS;
