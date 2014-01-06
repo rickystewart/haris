@@ -1068,9 +1068,16 @@ static CJobStatus write_core_size(CJob *job)
    - Next, define the reading and writing functions that the library will
      use to read bytes from and write bytes to the stream. These functions
      are expected to work as follows:
-     HarisStreamReader: Read n bytes from the stream, copying them onto the
-     given buffer.
+     HarisStreamReader: Read n bytes from the stream, and copy into the 
+     out parameter a pointer to a buffer (n bytes long) that contains the
+     bytes that were read from the stream. The caller does not need to free
+     the pointer (that is, it is managed by the stream interface). The pointer
+     is assumed to be valid until the next call to the reader function, at 
+     which point the pointer immediately becomes invalid. For this reason,
+     the same buffer can be used for all calls. 256 is the maximum number of
+     bytes that a stream reader needs to support.
      HarisStreamWriter: Write n bytes from the given buffer onto the stream.
+
      Both of these functions should return HARIS_SUCCESS if everything went
      well, and another error code otherwise. A success code should indicate
      the read or write was entirely successful (that is, all n bytes were
