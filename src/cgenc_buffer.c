@@ -69,7 +69,6 @@ static CJobStatus write_static_buffer_funcs(CJob *job)
 {\n\
   HarisStatus result;\n\
   HarisBufferStream buffer_stream;\n\
-  HARIS_ASSERT(!*(char*)ptr, STRUCTURE); /* encoded structure can't be null */\n\
   buffer_stream.sz = haris_lib_size(ptr, info, 0, &result);\n\
   if (buffer_stream.sz == 0) return result;\n\
   buffer_stream.buffer = (unsigned char *)malloc(buffer_stream.sz);\n\
@@ -98,7 +97,6 @@ static CJobStatus write_static_buffer_funcs(CJob *job)
                                    read_from_buffer_stream, 0)) != HARIS_SUCCESS)\n\
     return result;\n\
   if (out_addr) *out_addr = buf + buffer_stream.curr;\n\
-  HARIS_ASSERT(!*(char*)ptr, STRUCTURE); /* decoded struct can't be null */\n\
   return HARIS_SUCCESS;\n\
 }\n\n");
   return CJOB_SUCCESS;

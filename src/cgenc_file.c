@@ -77,7 +77,6 @@ static CJobStatus write_static_file_funcs(CJob *job)
 {\n\
   HarisStatus result;\n\
   HarisFileStream file_stream;\n\
-  HARIS_ASSERT(!*(char*)ptr, STRUCTURE); /* the encoded struct can't be null */\n\
   if (haris_lib_size(ptr, info, 0, &result) == 0) return result;\n\
   file_stream.file = f;\n\
   file_stream.curr = 0;\n\
@@ -101,7 +100,6 @@ static CJobStatus write_static_file_funcs(CJob *job)
                                    read_from_file_stream, 0)) != HARIS_SUCCESS)\n\
     return result;\n\
   if (out_sz) *out_sz = file_stream.curr;\n\
-  HARIS_ASSERT(!*(char*)ptr, STRUCTURE); /* the decoded struct can't be null */\n\
   return HARIS_SUCCESS;\n\
 }\n\n");
   return CJOB_SUCCESS;

@@ -107,6 +107,7 @@ static CJobStatus write_header_macros(CJob *job)
   ParsedEnum *enm;
   ParsedStruct *strct;
   ChildField *child;
+  const char *prefix = job->prefix, *strct_name, *child_name;
   CJOB_FMT_HEADER_STRING(job, 
 "/* Changeable size limits for error-checking. You can freely modify these if\n\
    you would like your Haris client to be able to process larger or deeper\n\
@@ -128,27 +129,27 @@ static CJobStatus write_header_macros(CJob *job)
 #define HARIS_ASSERT(cond, err) if (!(cond)) return HARIS_ ## err ## _ERROR\n\n");
   for (i = 0; i < job->schema->num_structs; i ++) {
     strct = &job->schema->structs[i];
+    strct_name = strct->name;
     for (j = 0; j < strct->num_children; j ++) {
       child = &strct->children[j];
+      child_name = child->name;
+      if (child->nullable) {
+        CJOB_FMT_HEADER_STRING(job, 
+                              "#define %s%s_null_%s(X) ((X)->_%s_info.null)\n",
+                               prefix, strct_name, child_name, child_name);
+      }
       if (child->tag == CHILD_STRUCT) {
         CJOB_FMT_HEADER_STRING(job, 
                                "#define %s%s_get_%s(X) ((%s%s*)((X)->_%s))\n\n",
-                               job->prefix, strct->name, child->name,
-                               job->prefix, child->type.strct->name, 
-                               child->name);
+                               prefix, strct_name, child_name, prefix, 
+                               child->type.strct->name, child_name);
       } else {
-        if (child->nullable) 
-          CJOB_FMT_HEADER_STRING(job, 
-                                 "#define %s%s_null_%s(X) ((X)->_%s_info.null)\n",
-                                 job->prefix, strct->name, child->name, 
-                                 child->name);
         CJOB_FMT_HEADER_STRING(job, 
                                "#define %s%s_len_%s(X) \
 ((haris_uint32_t)((X)->_%s_info.len))\n",
-                               job->prefix, strct->name, child->name,
-                               child->name);
+                               prefix, strct_name, child_name, child_name);
         CJOB_FMT_HEADER_STRING(job, "#define %s%s_get_%s(X) ",
-                               job->prefix, strct->name, child->name);
+                               prefix, strct_name, child_name);
         switch (child->tag) {
         case CHILD_TEXT:
           CJOB_FMT_HEADER_STRING(job, "((char*)");
@@ -159,12 +160,12 @@ static CJobStatus write_header_macros(CJob *job)
           break;
         case CHILD_STRUCT_LIST:
           CJOB_FMT_HEADER_STRING(job, "((%s%s*)",
-                                 job->prefix, child->type.struct_list->name);
+                                 prefix, child->type.struct_list->name);
           break;
         default:
           break;
         }
-        CJOB_FMT_HEADER_STRING(job, "((X)->_%s_info.ptr))\n\n", child->name);
+        CJOB_FMT_HEADER_STRING(job, "((X)->_%s_info.ptr))\n\n", child_name);
       }
     }
   }
@@ -205,6 +206,11 @@ static CJobStatus write_reflective_structures(CJob *job)
   haris_uint32_t alloc;\n\
   char           null;\n\
 } HarisListInfo;\n\n");
+  CJOB_FMT_HEADER_STRING(job,
+"typedef struct {\n\
+  void *ptr;\n\
+  char null;\n\
+} HarisSubstructInfo;\n\n");
   CJOB_FMT_HEADER_STRING(job, 
 "typedef struct HarisStructureInfo_ HarisStructureInfo;\n\n");
   CJOB_FMT_HEADER_STRING(job, 
@@ -254,7 +260,7 @@ static CJobStatus write_header_structures(CJob *job)
   CJOB_FMT_HEADER_STRING(job, "\n");
 
   for (i=0; i < job->schema->num_structs; i++) {
-    CJOB_FMT_HEADER_STRING(job, "struct _%s {\n  char _null;\n",
+    CJOB_FMT_HEADER_STRING(job, "struct _%s {\n",
                            job->schema->structs[i].name);
     for (j=0; j < job->schema->structs[i].num_scalars; j++) {
       CJOB_FMT_HEADER_STRING(job, "  %s %s;\n",
@@ -285,7 +291,8 @@ static CJobStatus write_child_field(CJob *job, const ChildField *child)
                            child_name);
     break;
   case CHILD_STRUCT:
-    CJOB_FMT_HEADER_STRING(job, "  void *_%s;\n", child_name);
+    CJOB_FMT_HEADER_STRING(job, "  HarisSubstructInfo _%s_info;\n", 
+                           child_name);
     break;
   }
   return CJOB_SUCCESS;
