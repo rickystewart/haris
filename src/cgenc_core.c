@@ -535,6 +535,7 @@ static CJobStatus write_reflective_arrays(CJob *job)
   int i;
   ParsedStruct *strct;
   CJobStatus result;
+  const char *prefix = job->prefix, *strct_name;
   CJOB_FMT_SOURCE_STRING(job, 
 "static const HarisStructureInfo haris_lib_structures[%d];\n\n",
                          job->schema->num_structs);
@@ -549,12 +550,13 @@ static CJobStatus write_reflective_arrays(CJob *job)
 "static const HarisStructureInfo haris_lib_structures[] = {\n");
   for (i = 0; i < job->schema->num_structs; i ++) {
     strct = &job->schema->structs[i];
+    strct_name = strct->name;
     CJOB_FMT_SOURCE_STRING(job, 
 "  { %d, %s%s_lib_scalars, %d, %s%s_lib_children, %d, sizeof(%s%s) }%s\n",
-                           strct->num_scalars, job->prefix, strct->name, 
-                           strct->num_children, job->prefix, 
-                           strct->name, strct->offset, job->prefix, 
-                           strct->name, 
+                           strct->num_scalars, prefix, strct_name, 
+                           strct->num_children, prefix, 
+                           strct_name, strct->offset, prefix, 
+                           strct_name, 
                            (i + 1 >= job->schema->num_structs ? "" : ","));
   }
   CJOB_FMT_SOURCE_STRING(job, "};\n\n");
@@ -595,7 +597,7 @@ static CJobStatus write_message_bit_patterns(CJob *job)
 };\n\n");
   CJOB_FMT_SOURCE_STRING(job,
 "static const size_t haris_lib_message_size_from_bit_pattern[] = {\n\
-  1, 1, 2, 2, 4, 4, 8, 8, 4, 8\n\
+  1, 2, 4, 8\n\
 };\n\n");
   return CJOB_SUCCESS;
 }
@@ -857,11 +859,12 @@ HarisStatus _haris_lib_init_struct_mem(void *ptr,\n\
                                       const HarisStructureInfo *info,\n\
                                       int field)\n\
 {\n\
-  void **vdptrptr;\n\
-  vdptrptr = (void**)((char*)ptr + info->children[field].offset);\n\
-  if (*vdptrptr) return HARIS_SUCCESS;\n\
-  if ((*vdptrptr = \n\
-      _haris_lib_create(info->children[field].struct_element))\n\
+  HarisSubstructInfo *substruct;\n\
+  substruct = (HarisSubstructInfo*)((char*)ptr + \n\
+                                    info->children[field].offset);\n\
+  if (substruct->ptr) return HARIS_SUCCESS;\n\
+  if ((substruct->ptr = \n\
+       _haris_lib_create(info->children[field].struct_element))\n\
       == NULL) return HARIS_MEM_ERROR;\n\
   return HARIS_SUCCESS;\n}\n\n");
   return CJOB_SUCCESS;
@@ -985,9 +988,9 @@ static CJobStatus write_core_size(CJob *job)
     child = &info->children[i];\n\
     list_info = (HarisListInfo*)((char*)ptr + child->offset);\n\
     if (!child->nullable) {\n\
-      int child_is_null = child->child_type == HARIS_CHILD_STRUCT ?\n\
-        (int)!*(void**)list_info : list_info->null;\n\
-      if (child_is_null) goto StructureError;\n\
+      if ((child->child_type == HARIS_CHILD_STRUCT) ?\n\
+          ((HarisSubstructInfo*)list_info)->null : list_info->null)\n\
+        goto StructureError;\n\
     }\n\
     switch (child->child_type) {\n\
     case HARIS_CHILD_TEXT:\n\
@@ -1017,13 +1020,14 @@ static CJobStatus write_core_size(CJob *job)
       break;\n\
     case HARIS_CHILD_STRUCT:\n\
       substruct_info = (HarisSubstructInfo*)list_info;\n\
-      buf = substruct_info->null ? \n\
-            1 :\n\
-            haris_lib_size(substruct_info->ptr, child->struct_element,\n\
-                           depth + 1, out);\n\
+      buf = (substruct_info->null ? \n\
+             1 :\n\
+             haris_lib_size(substruct_info->ptr, child->struct_element,\n\
+                            depth + 1, out));\n\
       if (buf == 0) return 0;\n\
       else if ((accum += buf) > HARIS_MESSAGE_SIZE_LIMIT) {\n\
-        *out = HARIS_SIZE_ERROR; return 0;\n\
+        *out = HARIS_SIZE_ERROR;\n\
+        return 0;\n\
       }\n\
     }\n\
   }\n\
@@ -1107,7 +1111,7 @@ static CJobStatus write_general_child_handler(CJob *job)
   if ((result = reader(stream, 1, &read_buffer)) != HARIS_SUCCESS) \n\
     return result;\n\
   first_byte_of_header = *read_buffer;\n\
-  if (!(first_byte_of_header & 0x40)) return HARIS_SUCCESS; /* test for null */\n\
+  if (!first_byte_of_header) return HARIS_SUCCESS; /* test for null */\n\
   if ((first_byte_of_header & 0xC0) == 0x40) { /* structure child */\n\
     int num_children, body_size;\n\
     if ((result = reader(stream, 1, &read_buffer)) != HARIS_SUCCESS) \n\
@@ -1116,7 +1120,7 @@ static CJobStatus write_general_child_handler(CJob *job)
     body_size = *read_buffer;\n\
     return handle_child_struct_posthead(stream, reader, depth, \n\
                                         num_children, body_size);\n\
-  } else if ((first_byte_of_header & 0xE0) == 0xC0) { /* scalar list */\n\
+  } else if ((first_byte_of_header & 0xC0) == 0x80) { /* scalar list */\n\
     haris_uint32_t len, msg_size, array_size;\n\
     if ((result = reader(stream, 3, &read_buffer)) != HARIS_SUCCESS)\n\
       return result;\n\
@@ -1221,7 +1225,7 @@ static CJobStatus write_from_stream_funcs(CJob *job)
     if ((result = reader(stream, 1, &read_buffer)) != HARIS_SUCCESS) \n\
       return result;\n\
     first_byte_of_child_header = *read_buffer;\n\
-    if (!(first_byte_of_child_header&0x40)) { /* check whether child is null */\n\
+    if (!first_byte_of_child_header) { /* check whether child is null */\n\
       HARIS_ASSERT(child->nullable, STRUCTURE);\n\
       if (child->child_type != HARIS_CHILD_STRUCT) \n\
         list_info->null = 1;\n\
@@ -1240,7 +1244,7 @@ static CJobStatus write_from_stream_funcs(CJob *job)
       msg_size = haris_lib_message_scalar_sizes[child->scalar_element];\n\
       mem_size = haris_lib_in_memory_scalar_sizes[child->scalar_element];\n\
       bit_pattern = haris_lib_scalar_bit_patterns[child->scalar_element];\n\
-      HARIS_ASSERT(first_byte_of_child_header == (0xC0 | bit_pattern),\n\
+      HARIS_ASSERT(first_byte_of_child_header == (0x80 | bit_pattern),\n\
                    STRUCTURE);\n\
       haris_read_uint24(read_buffer, &len);\n\
       if ((result = _haris_lib_init_list_mem(ptr, info, i, len))\n\
@@ -1265,7 +1269,7 @@ static CJobStatus write_from_stream_funcs(CJob *job)
       int num_children, body_size;\n\
       if ((result = reader(stream, 5, &read_buffer)) != HARIS_SUCCESS)\n\
         return result;\n\
-      HARIS_ASSERT(first_byte_of_child_header == 0xE0, STRUCTURE);\n\
+      HARIS_ASSERT(first_byte_of_child_header == 0xC0, STRUCTURE);\n\
       haris_read_uint24(read_buffer, &len);\n\
       if ((result = _haris_lib_init_list_mem(ptr, info, i, len))\n\
            != HARIS_SUCCESS)\n\
@@ -1343,7 +1347,7 @@ static CJobStatus write_to_stream_funcs(CJob *job)
     case HARIS_CHILD_SCALAR_LIST:\n\
     case HARIS_CHILD_STRUCT_LIST:\n\
       if (list_info->null) {\n\
-        child_header[0] = 0x80;\n\
+        child_header[0] = 0x0;\n\
         if ((result = writer(stream, child_header, 1)) != HARIS_SUCCESS)\n\
           return result;\n\
         continue;\n\
@@ -1367,7 +1371,7 @@ static CJobStatus write_to_stream_funcs(CJob *job)
       char *in_mem_element_pointer;\n\
       msg_size = haris_lib_message_scalar_sizes[child->scalar_element];\n\
       mem_size = haris_lib_in_memory_scalar_sizes[child->scalar_element];\n\
-      child_header[0] = (0xC0 | \n\
+      child_header[0] = (0x80 | \n\
                          haris_lib_scalar_bit_patterns[child->scalar_element]);\n\
       haris_write_uint24(child_header + 1, &list_info->len);\n\
       if ((result = writer(stream, child_header, 4)) != HARIS_SUCCESS)\n\
@@ -1388,7 +1392,7 @@ static CJobStatus write_to_stream_funcs(CJob *job)
     {\n\
       char *in_mem_element_pointer;\n\
       haris_uint32_t j;\n\
-      child_header[0] = 0xE0;\n\
+      child_header[0] = 0xC0;\n\
       haris_write_uint24(child_header + 1, &list_info->len);\n\
       (void)haris_lib_write_nonnull_header(child->struct_element, \n\
                                            child_header + 4);\n\

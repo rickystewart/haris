@@ -24,21 +24,23 @@ ATOMIC DATATYPE ENCODING:
 big-endian byte order.
 - Enums: Enums are stored in a single byte (that is, as Uint8's).
 
+NULL OBJECTS:
+
+A null object can represent either a null list or a null structure, and it can
+be captured in a single byte, which is the NUL byte:
+
+0000 0000
+
 STRUCTURES:
 
-All structures have a 1- or 2-byte header. The first bit of a structure 
-header is always 0; the next bit determines whether the structure is null.
-If the bit is 0, the structure is null, and if it's 1, the structure is not.
-Null structures have a 1-byte header (and no other information), so a null
-structure can be captured in 1 byte.
+All nonnull structures have a 2-byte header. The first two bits of a nonnull
+structure are always "01".
 
-00XX XXXX
-
-If the structure is not null, we need to encode the size of the structure.
+We also need to encode the size of the structure.
 Non-null structures are divided into two parts: the structure body and and 
 children. The body is the fixed-length section of the structure where the
 scalar fields are stored; the children are the sub-structures of the structure,
-and are stored after the structure sequentially. The header of a non-null
+and are stored after the structure body sequentially. The header of a non-null
 structure must keep its body size in the header as well as the number of
 children. The number of children is stored as a 6-bit unsigned integer
 in the lower 6 bits of the first byte of the 2-byte structure header, and
@@ -62,15 +64,12 @@ SCALAR LISTS
 Every list has a header as well. Unlike structures, which can have headers
 that are either 1 or 2 bytes in size, a list header is either 1, 4, or 6 bytes 
 in size. We tell a list from a structure by a "1" in the msb of the first byte 
-of the header. As above, the second most significant bit of the header tells us 
-whether the list is null. A null list has "0" in the 2nd msb:
-
-10XX XXXX
+of the header. 
 
 We further subdivide lists in this manner: a non-null list can either be a
 "scalar" list or a "structure" list. (List elements cannot themselves be
 lists, in order to simplify the mapping between the encoding and the target
-language.) Scalar lists have a "0" in the 3rd msb of the first byte of the 
+language.) Scalar lists have a "0" in the 2nd msb of the first byte of the 
 header. The 2 least significant bits give the size of one array element:
 
 00 - 1 byte
@@ -81,7 +80,7 @@ header. The 2 least significant bits give the size of one array element:
 The 3 bytes following this first byte are a 3-byte unsigned integer giving
 us the number of elements in the list.
 
-110X XXSS    < 3-byte integer >
+10XX XXSS    < 3-byte integer >
 
 S = size of element (as given above)
 
@@ -91,7 +90,7 @@ in the list (not counting the header) can be calculated as
 
 STRUCTURE LISTS
 
-We capture structure lists by encoding "111" in the first 3 bits of the first
+We capture structure lists by encoding "11" in the first 2 bits of the first
 byte of the header. As above, there is a 3-byte integer giving us the number
 of elements in the list directly following the first byte of the header. 
 However, the header does contain some extra information as well.
@@ -103,7 +102,7 @@ largely redundant information and could theoretically be entirely
 omitted. We include the 2-byte structure header after the first byte of the
 header, and then the H-byte integer giving the number of list elements.
 
-111X XXXX    < 3-byte integer >    < 2-byte structure header >
+11XX XXXX    < 3-byte integer >    < 2-byte structure header >
 
 Of course, the list elements follow the header serially.
 
