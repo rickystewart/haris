@@ -318,10 +318,19 @@ static int toplevel_parse(Parser *p)
 static int parse_struct_def(Parser *p)
 {
   ParsedStruct *strct;
+  TypeHashBucket *bucket;
   /* Get structure name */
   if (!expect_token(p, TOKEN_SYMBOL)) return 0;
-  if (get_type(p->hash, p->lex->buffer)) {
-    return trigger_parse_error(p, PARSE_REDUNDANT_SYMBOL, p->lex->buffer);
+  if ((bucket = get_type(p->hash, p->lex->buffer))) {
+    /* We raise an error if there is a predefined type in the schema that
+       A) is not a struct or B) is a struct, but has at least one defined field
+    */
+    if (bucket->tu.tag != TYPE_STRUCT ||
+        bucket->tu.type.strct->num_scalars > 0 ||
+        bucket->tu.type.strct->num_children > 0)
+      return trigger_parse_error(p, PARSE_REDUNDANT_SYMBOL, p->lex->buffer);
+    else
+      strct = bucket->tu.type.strct;
   } else {
     strct = new_hashed_struct(p, p->lex->buffer);
     if (!strct) return 0;
@@ -337,10 +346,17 @@ static int parse_struct_def(Parser *p)
 static int parse_enum_def(Parser *p)
 {
   ParsedEnum *enm;
+  TypeHashBucket *bucket;
   /* Get enumeration name */
   if (!expect_token(p, TOKEN_SYMBOL)) return 0;
-  if (get_type(p->hash, p->lex->buffer)) {
-    return trigger_parse_error(p, PARSE_REDUNDANT_SYMBOL, p->lex->buffer);
+  if ((bucket = get_type(p->hash, p->lex->buffer))) {
+    /* As above, we raise an error if there is a predefined type in the schema
+       that is not an enum or is a non-empty enum */
+    if (bucket->tu.tag != TYPE_ENUM ||
+        bucket->tu.type.enm->num_values > 0)
+      return trigger_parse_error(p, PARSE_REDUNDANT_SYMBOL, p->lex->buffer);
+    else
+      enm = bucket->tu.type.enm;
   } else {
     enm = new_hashed_enum(p, p->lex->buffer);
     if (!enm) return 0;
