@@ -499,9 +499,8 @@ static CJobStatus write_reflective_child_array(CJob *job, ParsedStruct *strct)
     child = &strct->children[i];
     child_name = child->name;
     CJOB_FMT_SOURCE_STRING(job, 
-"  { offsetof(%s%s, _%s%s), %d, %s, ",
+"  { offsetof(%s%s, _%s_info), %d, %s, ",
                            prefix, strct_name, child_name,
-                           child->tag == CHILD_STRUCT ? "" : "_info", 
                            child->nullable, 
                            child->tag == CHILD_SCALAR_LIST ? 
                            scalar_enumerated_name(child->type.scalar_list.tag) :
