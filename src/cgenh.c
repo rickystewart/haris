@@ -135,7 +135,10 @@ static CJobStatus write_header_macros(CJob *job)
       child_name = child->name;
       if (child->nullable) {
         CJOB_FMT_HEADER_STRING(job, 
-                              "#define %s%s_null_%s(X) ((X)->_%s_info.null)\n",
+                               "#define %s%s_null_%s(X) ((int)((X)->_%s_info.null))\n",
+                               prefix, strct_name, child_name, child_name);
+        CJOB_FMT_HEADER_STRING(job,
+                               "#define %s%s_nullify_%s(X) ((X)->_%s_info.null = 1)\n",
                                prefix, strct_name, child_name, child_name);
       }
       if (child->tag != CHILD_STRUCT) {

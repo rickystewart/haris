@@ -663,13 +663,13 @@ static CJobStatus write_general_constructor(CJob *job)
     case HARIS_CHILD_SCALAR_LIST:\n\
     case HARIS_CHILD_STRUCT_LIST:\n\
       list_info = (HarisListInfo*)((char*)new + info->children[i].offset);\n\
-      list_info->alloc = list_info->len = list_info->null = 0;\n\
+      list_info->alloc = list_info->len = list_info->null = 1;\n\
       list_info->ptr = NULL;\n\
       break;\n\
     case HARIS_CHILD_STRUCT:\n\
       substruct_info = (HarisSubstructInfo*)((char*)new + \n\
                                              info->children[i].offset);\n\
-      substruct_info->null = 0;\n\
+      substruct_info->null = 1;\n\
       substruct_info->ptr = NULL;\n\
       break;\n\
     }\n\
@@ -840,6 +840,7 @@ const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
     }\n\
   } else list_info->alloc = sz;\n\
   Success:\n\
+    list_info->null = 0;\n\
     list_info->len = sz;\n\
     return HARIS_SUCCESS;\n\
 }\n\n");
@@ -861,10 +862,11 @@ HarisStatus _haris_lib_init_struct_mem(void *ptr,\n\
   HarisSubstructInfo *substruct;\n\
   substruct = (HarisSubstructInfo*)((char*)ptr + \n\
                                     info->children[field].offset);\n\
-  if (substruct->ptr) return HARIS_SUCCESS;\n\
+  if (substruct->ptr) { substruct->null = 0; return HARIS_SUCCESS; }\n\
   if ((substruct->ptr = \n\
        _haris_lib_create(info->children[field].struct_element))\n\
       == NULL) return HARIS_MEM_ERROR;\n\
+  substruct->null = 0;\n\
   return HARIS_SUCCESS;\n}\n\n");
   return CJOB_SUCCESS;
 }
