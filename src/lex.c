@@ -161,19 +161,21 @@ static LexerStatus handle_string_token(Lexer *lex, Token *tok)
     if (ind == BUFFER_SIZE - 1) {
       lex->errno = LONG_STRING;
       return LEXER_ERROR;
-    }
-    if (ch == '\\') {
+    } else if (ch == EOF) {
+      lex->errno = UNEXPECTED_CHAR;
+      return LEXER_ERROR;
+    } else if (ch == '\\') {
       ch = fgetc(lex->stream);
       if (ch == EOF) {
-	lex->errno = UNEXPECTED_CHAR;
-	return LEXER_ERROR;
+	      lex->errno = UNEXPECTED_CHAR;
+	      return LEXER_ERROR;
       }
     }
     lex->buffer[ind++] = (char)ch;
   }
   *tok = TOKEN_STRING;
   lex->buffer[ind] = '\0';
-  lex->previous = ch;
+  lex->previous = fgetc(lex->stream);
   return LEXER_OK;
 }
 
