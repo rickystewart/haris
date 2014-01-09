@@ -91,7 +91,7 @@ static CJobStatus write_static_buffer_funcs(CJob *job)
 {\n\
   HarisStatus result;\n\
   HarisBufferStream buffer_stream;\n\
-  haris_uint32_t encoded_size = haris_lib_size(ptr, info 0, &result);\n\
+  haris_uint32_t encoded_size = haris_lib_size(ptr, info, 0, &result);\n\
   if (encoded_size == 0) return result;\n\
   HARIS_ASSERT(encoded_size <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   HARIS_ASSERT(encoded_size <= sz, INPUT);\n\
@@ -154,7 +154,7 @@ static CJobStatus write_public_buffer_funcs(CJob *job, ParsedStruct *strct)
                             unsigned char **out_addr)\n\
 {\n\
   return _public_to_buffer(strct, &haris_lib_structures[%d],\n\
-                           out_buf, sz, out_addr);\n}\n\n",
+                           buf, sz, out_addr);\n}\n\n",
                         prefix, name, prefix, name, strct->schema_index);
   return CJOB_SUCCESS;
 }

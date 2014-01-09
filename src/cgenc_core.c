@@ -663,7 +663,8 @@ static CJobStatus write_general_constructor(CJob *job)
     case HARIS_CHILD_SCALAR_LIST:\n\
     case HARIS_CHILD_STRUCT_LIST:\n\
       list_info = (HarisListInfo*)((char*)new + info->children[i].offset);\n\
-      list_info->alloc = list_info->len = list_info->null = 1;\n\
+      list_info->alloc = list_info->len = 0;\n\
+      list_info->null = 1;\n\
       list_info->ptr = NULL;\n\
       break;\n\
     case HARIS_CHILD_STRUCT:\n\
@@ -678,7 +679,7 @@ static CJobStatus write_general_constructor(CJob *job)
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void *_haris_lib_create(const HarisStructureInfo *info)\n\
 {\n\
-  void *new = malloc(info->size_of);\n\
+  void *new = HARIS_MALLOC(info->size_of);\n\
   if (!new) return NULL;\n\
   return haris_lib_create_contents(new, info);\n}\n\n");
   return CJOB_SUCCESS;
@@ -722,7 +723,7 @@ static CJobStatus write_general_destructor(CJob *job)
     case HARIS_CHILD_TEXT:\n\
     case HARIS_CHILD_SCALAR_LIST:\n\
       if (list_info->alloc > 0)\n\
-        free(list_info->ptr);\n\
+        HARIS_FREE(list_info->ptr);\n\
       break;\n\
     case HARIS_CHILD_STRUCT_LIST:\n\
       alloced = ((HarisListInfo*)((char*)ptr + child->offset))->alloc;\n\
@@ -733,7 +734,7 @@ static CJobStatus write_general_destructor(CJob *job)
                                    child_structure);\n\
       /* Intentional break omission */\n\
     case HARIS_CHILD_STRUCT:\n\
-      free(list_info->ptr);\n\
+      HARIS_FREE(list_info->ptr);\n\
       break;\n\
     }\n\
   }\n\
@@ -742,7 +743,7 @@ static CJobStatus write_general_destructor(CJob *job)
 "static void _haris_lib_destroy(void *ptr, const HarisStructureInfo *info)\n\
 {\n\
   haris_lib_destroy_contents(ptr, info);\n\
-  free(ptr);\n}\n\n");
+  HARIS_FREE(ptr);\n}\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -817,7 +818,7 @@ const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
   size_t element_size;\n\
   if (sz == 0 || \n\
       (list_info->alloc >= sz &&\n\
-       (double)sz / (double)list_info->alloc >= HARIS_DEALLOC_FACTOR)\n\
+       (double)sz / (double)list_info->alloc >= HARIS_DEALLOC_FACTOR))\n\
     goto Success;\n\
   switch (child->child_type) {\n\
   case HARIS_CHILD_TEXT:\n\
@@ -830,7 +831,7 @@ const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
   case HARIS_CHILD_STRUCT:\n\
     return HARIS_STRUCTURE_ERROR;\n\
   }\n\
-  testptr = realloc(list_info->ptr, sz * element_size);\n\
+  testptr = HARIS_REALLOC(list_info->ptr, sz * element_size);\n\
   if (!testptr) return HARIS_MEM_ERROR;\n\
   list_info->ptr = testptr;\n\
   if (child->child_type == HARIS_CHILD_STRUCT_LIST) {\n\

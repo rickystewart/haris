@@ -56,7 +56,7 @@ int main(void)
   /* Serialize! After this function is called, the `haris_message` pointer will
      point to the serialized binary message, and `sz` will be the length of
      the message in bytes. */
-  if ((result = Class_to_buffer(class, &haris_message, &sz)) != HARIS_SUCCESS) {
+  if ((result = Class_to_buffer_a(class, &haris_message, &sz)) != HARIS_SUCCESS) {
     fprintf(stderr, "There was an error in serialization.\n");
     exit(1);
   }

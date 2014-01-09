@@ -133,7 +133,16 @@ static CJobStatus write_header_macros(CJob *job)
    memory allocator as much, and higher values will waste less memory but\n\
    will have to reallocate more.\n\
 */\n\n\
-#define HARIS_DEALLOC_FACTOR 0.6\n\
+#define HARIS_DEALLOC_FACTOR 0.6\n\n\
+/* The drop-in memory management functions. If you want, you can use a\n\
+   custom memory allocator, rather than just using the standard library's.\n\
+   A custom allocator needs to implement a function that works like malloc\n\
+   (HARIS_MALLOC), a function that works like realloc (HARIS_REALLOC), \n\
+   and a function that works like free (HARIS_FREE).\n\
+*/\n\n\
+#define HARIS_MALLOC(n) malloc(n)\n\
+#define HARIS_REALLOC(p, n) realloc((p), (n))\n\
+#define HARIS_FREE(p) free(p)\n\
 \n\
 #define HARIS_ASSERT(cond, err) if (!(cond)) return HARIS_ ## err ## _ERROR\n\n");
   for (i = 0; i < job->schema->num_structs; i ++) {
