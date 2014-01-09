@@ -864,10 +864,11 @@ HarisStatus _haris_lib_init_struct_mem(void *ptr,\n\
   HarisSubstructInfo *substruct;\n\
   substruct = (HarisSubstructInfo*)((char*)ptr + \n\
                                     info->children[field].offset);\n\
-  if (substruct->ptr) { substruct->null = 0; return HARIS_SUCCESS; }\n\
+  if (substruct->ptr) goto Success;\n\
   if ((substruct->ptr = \n\
-       _haris_lib_create(info->children[field].struct_element))\n\
-      == NULL) return HARIS_MEM_ERROR;\n\
+       _haris_lib_create(info->children[field].struct_element)) == NULL)\n\
+    return HARIS_MEM_ERROR;\n\
+  Success:\n\
   substruct->null = 0;\n\
   return HARIS_SUCCESS;\n}\n\n");
   return CJOB_SUCCESS;
