@@ -524,6 +524,8 @@ HarisStatus _haris_lib_init_struct_mem(void *ptr,\n\
   return CJOB_SUCCESS;
 }
 
+/* ********* WRITING AND READING MESSAGE BODIES ********* */
+
 /* Writes the core writing-functions to the output file. These functions
    consume a HarisStructureInfo pointer, which is taken to be the type
    of the Haris message, as well as an unsigned char pointer that is

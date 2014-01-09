@@ -102,30 +102,30 @@ static CJobStatus write_readuint(CJob *job)
 "static void haris_read_uint16(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_uint16_t *ptr = (haris_uint16_t*)_ptr;\n\
-  *ptr = (haris_uint16_t)*b << 8 | *(b+1);\n\
+  *ptr = ((haris_uint16_t)b[0]) | ((haris_uint16_t)b[1] << 8);\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_read_uint24(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_uint32_t *ptr = (haris_uint32_t*)_ptr;\n\
-  *ptr = (haris_uint32_t)*b << 16 | (haris_uint32_t)*(b+1) << 8 |\n\
-    *(b+2);\n\
+  *ptr = ((haris_uint32_t)b[0]) | ((haris_uint32_t)b[1] << 8) |\n\
+    ((haris_uint32_t)b[2] << 16);\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_read_uint32(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_uint32_t *ptr = (haris_uint32_t*)_ptr;\n\
-  *ptr = (haris_uint32_t)*b << 24 | (haris_uint32_t)*(b+1) << 16 |\n\
-    (haris_uint32_t)*(b+2) << 8 | *(b+3);\n\
+  *ptr = ((haris_uint32_t)b[0]) | ((haris_uint32_t)b[1] << 8) |\n\
+    ((haris_uint32_t)b[2] << 16) | ((haris_uint32_t)b[3] << 24);\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_read_uint64(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_uint64_t *ptr = (haris_uint64_t*)_ptr;\n\
-  *ptr = (haris_uint64_t)*b << 56 | (haris_uint64_t)*(b+1) << 48 |\n\
-    (haris_uint64_t)*(b+2) << 40 | (haris_uint64_t)*(b+3) << 32 |\n\
-    (haris_uint64_t)*(b+4) << 24 | (haris_uint64_t)*(b+5) << 16 |\n\
-    (haris_uint64_t)*(b+6) << 8 | *(b+7);\n\
+  *ptr = ((haris_uint64_t)b[0]) | ((haris_uint64_t)b[1] << 8) |\n\
+    ((haris_uint64_t)b[2] << 16) | ((haris_uint64_t)b[3] << 24) |\n\
+    ((haris_uint64_t)b[4] << 32) | ((haris_uint64_t)b[5] << 40) |\n\
+    ((haris_uint64_t)b[6] << 48) | ((haris_uint64_t)b[7] << 56);\n\
 }\n\n");
   return CJOB_SUCCESS;
 }
@@ -194,41 +194,41 @@ static CJobStatus write_writeuint(CJob *job)
 "static void haris_write_uint16(unsigned char *b, const void *_ptr)\n\
 {  \n\
   haris_uint16_t i = *(const haris_uint16_t*)_ptr;\n\
-  *b = i >> 8;\n\
-  *(b+1) = i;\n\
+  *b = i;\n\
+  *(b+1) = i >> 8;\n\
   return;\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_write_uint24(unsigned char *b, const void *_ptr)\n\
 {\n\
   haris_uint32_t i = *(const haris_uint32_t*)_ptr;\n\
-  *b = i >> 16;\n\
+  *b = i;\n\
   *(b+1) = i >> 8;\n\
-  *(b+2) = i;\n\
+  *(b+2) = i >> 16;\n\
   return;\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_write_uint32(unsigned char *b, const void *_ptr)\n\
 {\n\
   haris_uint32_t i = *(const haris_uint32_t*)_ptr;\n\
-  *b = i >> 24;\n\
-  *(b+1) = i >> 16;\n\
-  *(b+2) = i >> 8;\n\
-  *(b+3) = i;\n\
+  *b = i;\n\
+  *(b+1) = i >> 8;\n\
+  *(b+2) = i >> 16;\n\
+  *(b+3) = i >> 24;\n\
   return;\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void haris_write_uint64(unsigned char *b, const void *_ptr)\n\
 {\n\
   haris_uint64_t i = *(const haris_uint64_t*)_ptr;\n\
-  *b = i >> 56;\n\
-  *(b+1) = i >> 48;\n\
-  *(b+2) = i >> 40;\n\
-  *(b+3) = i >> 32;\n\
-  *(b+4) = i >> 24;\n\
-  *(b+5) = i >> 16;\n\
-  *(b+6) = i >> 8;\n\
-  *(b+7) = i;\n\
+  *b = i;\n\
+  *(b+1) = i >> 8;\n\
+  *(b+2) = i >> 16;\n\
+  *(b+3) = i >> 24;\n\
+  *(b+4) = i >> 32;\n\
+  *(b+5) = i >> 40;\n\
+  *(b+6) = i >> 48;\n\
+  *(b+7) = i >> 56;\n\
   return;\n\
 }\n\n");
   return CJOB_SUCCESS;
