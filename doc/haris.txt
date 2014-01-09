@@ -18,10 +18,10 @@ the structure.
 ATOMIC DATATYPE ENCODING:
 
 - Booleans: Booleans are encoded in one byte. An encoding of 0 represents
-"False", and an encoding of 1 represents "True".
-- Integers: Integers are encoded in big-endian two's complement byte order.
+"False", and an encoding of any number but 0 represents "True".
+- Integers: Integers are encoded in little-endian two's complement byte order.
 - Floats: Floats are encoded in their corresponding IEEE 754 formats in
-big-endian byte order.
+little-endian byte order.
 - Enums: Enums are stored in a single byte (that is, as Uint8's).
 
 NULL OBJECTS:
