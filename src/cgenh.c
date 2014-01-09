@@ -124,7 +124,16 @@ static CJobStatus write_header_macros(CJob *job)
 #define HARIS_FLOAT32_SIGBITS 23\n\
 #define HARIS_FLOAT32_BIAS    127\n\
 #define HARIS_FLOAT64_SIGBITS 52\n\
-#define HARIS_FLOAT64_BIAS    1023\n\
+#define HARIS_FLOAT64_BIAS    1023\n\n\
+/* The _init_ deallocation factor. If you initialize a list to have length\n\
+   N, but the list is already allocated to have length A, then the list\n\
+   will be reallocated to have length N if and only if N/A is less than\n\
+   the deallocation factor. The deallocation factor must be between 0.0 and\n\
+   1.0; lower values will waste more memory but will not interface with the\n\
+   memory allocator as much, and higher values will waste less memory but\n\
+   will have to reallocate more.\n\
+*/\n\n\
+#define HARIS_DEALLOC_FACTOR 0.6\n\
 \n\
 #define HARIS_ASSERT(cond, err) if (!(cond)) return HARIS_ ## err ## _ERROR\n\n");
   for (i = 0; i < job->schema->num_structs; i ++) {

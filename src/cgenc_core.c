@@ -816,7 +816,8 @@ const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
   haris_uint32_t i;\n\
   size_t element_size;\n\
   if (sz == 0 || \n\
-      list_info->alloc >= sz)\n\
+      (list_info->alloc >= sz &&\n\
+       (double)sz / (double)list_info->alloc >= HARIS_DEALLOC_FACTOR)\n\
     goto Success;\n\
   switch (child->child_type) {\n\
   case HARIS_CHILD_TEXT:\n\

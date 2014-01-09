@@ -64,7 +64,6 @@ static CJobStatus write_static_file_funcs(CJob *job)
                                         haris_uint32_t count)\n\
 {\n\
   HarisFileStream *stream = (HarisFileStream*)_stream;\n\
-  HARIS_ASSERT(count + stream->curr <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   HARIS_ASSERT(fwrite(src, 1, count, stream->file) == count, INPUT);\n\
   stream->curr += count;\n\
   return HARIS_SUCCESS;\n\
@@ -77,7 +76,9 @@ static CJobStatus write_static_file_funcs(CJob *job)
 {\n\
   HarisStatus result;\n\
   HarisFileStream file_stream;\n\
-  if (haris_lib_size(ptr, info, 0, &result) == 0) return result;\n\
+  haris_uint32_t encoded_size = haris_lib_size(ptr, info, 0, &result);\n\
+  if (encoded_size == 0) return result;\n\
+  HARIS_ASSERT(encoded_size <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
   file_stream.file = f;\n\
   file_stream.curr = 0;\n\
   if ((result = _haris_to_stream(ptr, info, &file_stream,\n\
