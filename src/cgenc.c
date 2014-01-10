@@ -2,6 +2,7 @@
 #include "cgenc_core.h"
 #include "cgenc_file.h"
 #include "cgenc_buffer.h"
+#include "cgenc_fd.h"
 
 static CJobStatus write_source_protocol_funcs(CJob *job);
 
@@ -29,6 +30,9 @@ static CJobStatus write_source_protocol_funcs(CJob *job)
       return result;
   if (job->protocols.file)
     if ((result = write_file_protocol_funcs(job)) != CJOB_SUCCESS)
+      return result;
+  if (job->protocols.fd)
+    if ((result = write_fd_protocol_funcs(job)) != CJOB_SUCCESS)
       return result;
   return CJOB_SUCCESS;
 }

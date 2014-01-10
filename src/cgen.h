@@ -96,6 +96,7 @@ typedef struct {
 typedef struct {
   int buffer;
   int file;
+  int fd;
 } CJobProtocols;
 
 typedef struct {

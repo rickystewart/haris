@@ -1,18 +1,11 @@
 #include "cgenc_file.h"
 
 static CJobStatus write_file_structures(CJob *);
-static CJobStatus write_public_file_funcs(CJob *, ParsedStruct *);
 static CJobStatus write_static_file_funcs(CJob *);
+static CJobStatus write_public_file_funcs(CJob *, ParsedStruct *);
 
 /* =============================PUBLIC INTERFACE============================= */
 
-/* Writes the file protocol functions to the output source stream. They are
-   HarisStatus S_from_file(S *, FILE *);
-   HarisStatus S_to_file(S *, FILE *);
-   static HarisStatus _S_from_file(S *, FILE *, haris_uint32_t *, int);
-   static HarisStatus _S_to_file(S *, FILE *);
-   static int handle_child_file(FILE *, int);
-*/
 CJobStatus write_file_protocol_funcs(CJob *job)
 {
   CJobStatus result;
@@ -66,7 +59,7 @@ static CJobStatus write_static_file_funcs(CJob *job)
   HARIS_ASSERT(fread(stream->buffer, 1, count, stream->file) == count,\n\
                INPUT);\n\
   *dest = stream->buffer;\n\
-  stream->curr = count;\n\
+  stream->curr += count;\n\
   return HARIS_SUCCESS;\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job,
@@ -76,6 +69,7 @@ static CJobStatus write_static_file_funcs(CJob *job)
 {\n\
   HarisFileStream *stream = (HarisFileStream*)_stream;\n\
   haris_uint32_t copy_size;\n\
+  HARIS_ASSERT(count <= 1000, SIZE);\n\
   if (count + stream->curr > 1000) {\n\
     copy_size = 1000 - stream->curr;\n\
     memcpy(stream->buffer + stream->curr, src, copy_size);\n\

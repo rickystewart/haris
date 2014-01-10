@@ -371,6 +371,8 @@ static CJobStatus register_protocol(CJob *job, char **argv, int i)
     job->protocols.buffer = 1;
   else if (!strcmp(argv[i+1], "file")) 
     job->protocols.file = 1;
+  else if (!strcmp(argv[i+1], "fd"))
+    job->protocols.fd = 1;
   else {
     fprintf(stderr, "Unrecognized protocol %s.\n", argv[i+1]);
     return CJOB_JOB_ERROR;
