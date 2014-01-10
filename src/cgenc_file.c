@@ -33,11 +33,22 @@ CJobStatus write_file_protocol_funcs(CJob *job)
 
 static CJobStatus write_file_structures(CJob *job)
 {
+  /* Obviously, the `file` member is the file we're reading to/writing from.
+     `buffer` is used for scratch space: the read calls read into the buffer,
+     and the write calls use the array as a simple output buffer (that is,
+     we write the bytes into the array until it's full and then call fwrite).
+     `curr`'s meaning varies based on the context: in a read context, it stores
+     the total number of bytes we've seen so far. This is used to make sure the
+     message doesn't get too big. In a write context, it's used to store the
+     current index into the buffer array (that is, the index at which we 
+     write the new bytes when the next call to `write_to_file_stream` is
+     made).
+*/
   CJOB_FMT_HEADER_STRING(job,
 "typedef struct {\n\
   FILE *file;\n\
   haris_uint32_t curr;\n\
-  unsigned char buffer[256];\n\
+  unsigned char buffer[1000];\n\
 } HarisFileStream;\n\n");
   return CJOB_SUCCESS;
 }
@@ -51,7 +62,7 @@ static CJobStatus write_static_file_funcs(CJob *job)
 {\n\
   HarisFileStream *stream = (HarisFileStream*)_stream;\n\
   HARIS_ASSERT(count + stream->curr <= HARIS_MESSAGE_SIZE_LIMIT, SIZE);\n\
-  HARIS_ASSERT(count <= 256, SIZE);\n\
+  HARIS_ASSERT(count <= 1000, SIZE);\n\
   HARIS_ASSERT(fread(stream->buffer, 1, count, stream->file) == count,\n\
                INPUT);\n\
   *dest = stream->buffer;\n\
@@ -64,8 +75,18 @@ static CJobStatus write_static_file_funcs(CJob *job)
                                         haris_uint32_t count)\n\
 {\n\
   HarisFileStream *stream = (HarisFileStream*)_stream;\n\
-  HARIS_ASSERT(fwrite(src, 1, count, stream->file) == count, INPUT);\n\
-  stream->curr += count;\n\
+  haris_uint32_t copy_size;\n\
+  if (count + stream->curr > 1000) {\n\
+    copy_size = 1000 - stream->curr;\n\
+    memcpy(stream->buffer + stream->curr, src, copy_size);\n\
+    HARIS_ASSERT(fwrite(stream->buffer, 1, 1000, stream->file) == count, \n\
+                        INPUT);\n\
+    memcpy(stream->buffer, src + copy_size, count - copy_size);\n\
+    stream->curr = count - copy_size;\n\
+  } else {\n\
+    memcpy(stream->buffer + stream->curr, src, count);\n\
+    stream->curr += count;\n\
+  }\n\
   return HARIS_SUCCESS;\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job,
@@ -84,7 +105,9 @@ static CJobStatus write_static_file_funcs(CJob *job)
   if ((result = _haris_to_stream(ptr, info, &file_stream,\n\
                                  write_to_file_stream)) != HARIS_SUCCESS)\n\
     return result;\n\
-  if (out_sz) *out_sz = file_stream.curr;\n\
+  HARIS_ASSERT(fwrite(file_stream.buffer, 1, file_stream.curr, \n\
+                      file_stream.file) == file_stream.curr, INPUT);\n\
+  if (out_sz) *out_sz = encoded_size;\n\
   return HARIS_SUCCESS;\n\
 }\n\n");
   CJOB_FMT_PRIV_FUNCTION(job,

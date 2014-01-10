@@ -702,9 +702,10 @@ static CJobStatus write_core_size(CJob *job)
      the pointer (that is, it is managed by the stream interface). The pointer
      is assumed to be valid until the next call to the reader function, at 
      which point the pointer immediately becomes invalid. For this reason,
-     the same buffer can be used for all calls. 256 is the maximum number of
+     the same buffer can be used for all calls. 1000 is the maximum number of
      bytes that a stream reader needs to support.
      HarisStreamWriter: Write n bytes from the given buffer onto the stream.
+     Again, only writes of size 1000 need be supported.
 
      Both of these functions should return HARIS_SUCCESS if everything went
      well, and another error code otherwise. A success code should indicate
