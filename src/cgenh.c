@@ -232,10 +232,10 @@ static CJobStatus write_reflective_structures(CJob *job)
   CJOB_FMT_HEADER_STRING(job, 
 "typedef struct HarisStructureInfo_ HarisStructureInfo;\n\n");
   CJOB_FMT_HEADER_STRING(job, 
-strdup("typedef struct {\n\
+"typedef struct {\n\
   size_t offset;\n\
   HarisScalarType type;\n\
-} HarisScalar;\n\n"));
+} HarisScalar;\n\n");
   CJOB_FMT_HEADER_STRING(job, 
 "typedef struct {\n\
   size_t offset;\n\

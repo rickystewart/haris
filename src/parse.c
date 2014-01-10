@@ -249,7 +249,7 @@ static int assert_lexer_ok(Parser *p, LexerStatus status)
 static int trigger_parse_error(Parser *p, ParserError err, char *msg)
 {
   if (msg) {
-    p->errbuf = strdup(msg);
+    p->errbuf = util_strdup(msg);
     p->errno = p->errbuf ? err : PARSE_MEM_ERROR;
   } else {
     p->errno = err;

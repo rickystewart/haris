@@ -127,7 +127,7 @@ static TypeHashBucket *new_bucket(char *name)
 {
   TypeHashBucket *bucket = (TypeHashBucket*)malloc(sizeof *bucket);
   if (!bucket) return NULL;
-  bucket->name = strdup(name);
+  bucket->name = util_strdup(name);
   if (!bucket->name) {
     free(bucket);
     return NULL;

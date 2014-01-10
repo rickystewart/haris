@@ -87,6 +87,8 @@ typedef struct {
   ParsedEnum *enums;
 } ParsedSchema;
 
+char *util_strdup(const char *);
+
 ParsedSchema *create_parsed_schema(void);
 void destroy_parsed_schema(ParsedSchema *);
 

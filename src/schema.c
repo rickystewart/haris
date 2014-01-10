@@ -10,6 +10,14 @@ static int add_list_of_scalars_or_enums_field(ParsedStruct *, char *, int,
 
 /* =============================PUBLIC INTERFACE============================= */
 
+char *util__haris_to_stream(const char *s)
+{
+  char *ret = (char*)malloc(strlen(s) + 1);
+  if (!ret) return ret;
+  strcpy(ret, s);
+  return ret;
+}
+
 /* Dynamically allocate a parsed schema, returning a pointer to it. */
 ParsedSchema *create_parsed_schema(void)
 {
@@ -69,7 +77,7 @@ ParsedStruct *new_struct(ParsedSchema *schema, char *name)
   } 
   ret = schema->structs + schema->num_structs;
   ret->schema_index = schema->num_structs;
-  ret->name = strdup(name);
+  ret->name = util_strdup(name);
   ret->num_scalars = ret->num_children = 0;
   ret->offset = 0;
   ret->scalars_alloc = ret->children_alloc = (int)arr_size;
@@ -97,7 +105,7 @@ ParsedEnum *new_enum(ParsedSchema *schema, char *name)
     schema->enums = array;
   }
   ret = schema->enums + schema->num_enums;
-  ret->name = strdup(name);
+  ret->name = util_strdup(name);
   ret->num_values = 0;
   ret->values_alloc = (int)arr_size;
   ret->values = malloc(arr_size * sizeof *ret->values);
@@ -138,7 +146,7 @@ int add_enum_field(ParsedStruct *strct, char *name, ParsedEnum *field)
   int i = strct->num_scalars;
   if (strct->num_scalars == strct->scalars_alloc) 
     if (!realloc_struct_scalars(strct)) return 0;
-  strct->scalars[i].name = strdup(name);
+  strct->scalars[i].name = util_strdup(name);
   if (!strct->scalars[i].name) return 0;
   strct->scalars[i].offset = strct->offset;
   strct->scalars[i].type.tag = SCALAR_ENUM;
@@ -157,7 +165,7 @@ int add_scalar_field(ParsedStruct *strct, char *name, ScalarTag field)
                                          enumerated fields */
   if (strct->num_scalars == strct->scalars_alloc) 
     if (!realloc_struct_scalars(strct)) return 0;
-  strct->scalars[i].name = strdup(name);
+  strct->scalars[i].name = util_strdup(name);
   if (!strct->scalars[i].name) return 0;
   strct->scalars[i].offset = strct->offset;
   strct->scalars[i].type.tag = field;
@@ -174,7 +182,7 @@ int add_struct_field(ParsedStruct *strct, char *name, int nullable,
   int i = strct->num_children;
   if (strct->num_children == strct->children_alloc)
     if (!realloc_struct_children(strct)) return 0;
-  strct->children[i].name = strdup(name);
+  strct->children[i].name = util_strdup(name);
   if (!strct->children[i].name) return 0;
   strct->children[i].nullable = nullable;
   strct->children[i].tag = CHILD_STRUCT;
@@ -189,7 +197,7 @@ int add_text_field(ParsedStruct *strct, char *name, int nullable)
   int i = strct->num_children;
   if (strct->num_children == strct->children_alloc)
     if (!realloc_struct_children(strct)) return 0;
-  strct->children[i].name = strdup(name);
+  strct->children[i].name = util_strdup(name);
   if (!strct->children[i].name) return 0;
   strct->children[i].nullable = nullable;
   strct->children[i].tag = CHILD_TEXT;
@@ -223,7 +231,7 @@ int add_list_of_structs_field(ParsedStruct *strct, char *name, int nullable,
   int i = strct->num_children;
   if (strct->num_children == strct->children_alloc)
     if (!realloc_struct_children(strct)) return 0;
-  strct->children[i].name = strdup(name);
+  strct->children[i].name = util_strdup(name);
   if (!strct->children[i].name) return 0;
   strct->children[i].nullable = nullable;
   strct->children[i].tag = CHILD_STRUCT_LIST;
@@ -244,7 +252,7 @@ int add_enumerated_value(ParsedEnum *enm, char *name)
     if (!array) return 0;
     enm->values = array;
   }
-  enm->values[i] = strdup(name);
+  enm->values[i] = util_strdup(name);
   if (!enm->values[i]) return 0;
   enm->num_values++;
   return 1;
@@ -305,7 +313,7 @@ static int add_list_of_scalars_or_enums_field(ParsedStruct *strct, char *name,
   int i = strct->num_children;
   if (strct->num_children == strct->children_alloc)
     if (!realloc_struct_children(strct)) return 0;
-  strct->children[i].name = strdup(name);
+  strct->children[i].name = util_strdup(name);
   if (!strct->children[i].name) return 0;
   strct->children[i].nullable = nullable;
   strct->children[i].tag = CHILD_SCALAR_LIST;

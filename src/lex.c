@@ -11,9 +11,9 @@ Lexer *create_lexer(FILE *stream, char *filename)
   Lexer *ret = (Lexer*)malloc(sizeof *ret);
   char *buf = (char*)malloc(BUFFER_SIZE);
   if (filename)
-    filename = strdup(filename);
+    filename = util_strdup(filename);
   else
-    filename = strdup("(unnamed)");
+    filename = util_strdup("(unnamed)");
   if (!ret || !buf || !filename) {
     free(ret);
     free(buf);
