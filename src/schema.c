@@ -10,14 +10,6 @@ static int add_list_of_scalars_or_enums_field(ParsedStruct *, char *, int,
 
 /* =============================PUBLIC INTERFACE============================= */
 
-char *util_strdup(const char *s)
-{
-  char *ret = (char*)malloc(strlen(s) + 1);
-  if (!ret) return ret;
-  strcpy(ret, s);
-  return ret;
-}
-
 /* Dynamically allocate a parsed schema, returning a pointer to it. */
 ParsedSchema *create_parsed_schema(void)
 {

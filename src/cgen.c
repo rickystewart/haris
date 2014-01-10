@@ -135,7 +135,7 @@ char *strformat(const char *fmt, ...)
   char *ret;
   va_list ap;
   va_start(ap, fmt);
-  if (vasprintf(&ret, fmt, ap) < 0) return NULL;
+  if (util_vasprintf(&ret, fmt, ap) < 0) return NULL;
   va_end(ap);
   return ret;
 }

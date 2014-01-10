@@ -1,7 +1,7 @@
 #ifndef __LEX_H
 #define __LEX_H
 
-#include "schema.h"
+#include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>

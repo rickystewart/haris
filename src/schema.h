@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "util.h"
 
 /* schema.h contains data definitions for the in-memory representation of
    the given user schema. The parser consumes tokens from the input file
@@ -86,8 +87,6 @@ typedef struct {
   int enums_alloc;
   ParsedEnum *enums;
 } ParsedSchema;
-
-char *util_strdup(const char *);
 
 ParsedSchema *create_parsed_schema(void);
 void destroy_parsed_schema(ParsedSchema *);
