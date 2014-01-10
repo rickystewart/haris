@@ -10,7 +10,7 @@ static int add_list_of_scalars_or_enums_field(ParsedStruct *, char *, int,
 
 /* =============================PUBLIC INTERFACE============================= */
 
-char *util__haris_to_stream(const char *s)
+char *util_strdup(const char *s)
 {
   char *ret = (char*)malloc(strlen(s) + 1);
   if (!ret) return ret;
