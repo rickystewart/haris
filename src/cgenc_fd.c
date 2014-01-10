@@ -27,6 +27,8 @@ CJobStatus write_fd_protocol_funcs(CJob *job)
 static CJobStatus write_fd_structures(CJob *job)
 {
   CJOB_FMT_HEADER_STRING(job, "#include <unistd.h>\n#include<errno.h>\n\n");
+  /* See cgenc_file.c for information about these structure elements; the 
+     basic idea is the same here. */
   CJOB_FMT_HEADER_STRING(job, 
 "typedef struct {\n\
   int fd;\n\
