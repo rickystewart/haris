@@ -36,7 +36,7 @@ precheck: all $(TEST_FILES)
 # Make the precheck (that is, all the code that is required to compile
 # the tests), but also enter the test directory and run them.
 check: precheck
-	cd test && $(MAKE) -C check
+	$(MAKE) -C test check
 
 clean:
 	rm $(OBJS) $(TEST_FILES) $(TEST_HEADERS) $(RESULT)
