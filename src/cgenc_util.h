@@ -1,5 +1,5 @@
-#ifndef __CGENC_UTIL_H
-#define __CGENC_UTIL_H
+#ifndef CGENC_UTIL_H_
+#define CGENC_UTIL_H_
 
 #include "cgen.h"
 

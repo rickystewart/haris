@@ -1,5 +1,5 @@
-#ifndef __LEX_H
-#define __LEX_H
+#ifndef LEX_H_
+#define LEX_H_
 
 #include "util.h"
 #include <stdio.h>

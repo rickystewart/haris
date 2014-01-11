@@ -539,8 +539,8 @@ static CJobStatus output_to_header_file(CJob *job, FILE *out)
   int i;
   CJobStatus result;
   CJOB_FPRINTF(out, 
-"#ifndef __HARIS_H__ \n\
-#define __HARIS_H__ \n\n");
+"#ifndef HARIS_H__ \n\
+#define HARIS_H__ \n\n");
   for (i = 0; i < job->strings.header_strings.num_strings; i ++)
     CJOB_FPRINTF(out, "%s", job->strings.header_strings.strings[i]);
   CJOB_FPRINTF(out, "\n\n");

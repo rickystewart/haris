@@ -1,5 +1,5 @@
-#ifndef __PARSE_H
-#define __PARSE_H
+#ifndef PARSE_H_
+#define PARSE_H_
 
 #include <stdio.h>
 #include <string.h>

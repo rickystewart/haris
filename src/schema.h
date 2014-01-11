@@ -1,5 +1,5 @@
-#ifndef __SCHEMA_H
-#define __SCHEMA_H
+#ifndef SCHEMA_H_
+#define SCHEMA_H_
 
 #include <stdlib.h>
 #include <string.h>

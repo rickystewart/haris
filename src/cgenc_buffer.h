@@ -1,5 +1,5 @@
-#ifndef __CGENC_BUFFER_H
-#define __CGENC_BUFFER_H
+#ifndef CGENC_BUFFER_H_
+#define CGENC_BUFFER_H_
 
 #include "cgen.h"
 
