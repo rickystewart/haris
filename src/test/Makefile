@@ -16,7 +16,7 @@ CFLAGS = -Wall -Wextra -pedantic -std=c99
 #    the end of the list.
 # Now, in src/, your new test will be built when make check is run.
 
-all:	$(TEST_PROGRAMS)
+check:	$(TEST_PROGRAMS)
 
 %.test:	%.c %.haris.c %.haris.h test_util.c test_util.h
 	$(CC) $(CFLAGS) -o $@ $(@:.test=.c) $(@:.test=.haris.c) test_util.c
