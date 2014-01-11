@@ -1,0 +1,4 @@
+# SIMPLE.HARIS: contains a single simple structure.
+# Are you excited? Here it is:
+
+struct Simple ( Uint64 u )

@@ -1,13 +1,26 @@
+TEST_PROGRAMS = simple.test
+
 CC = gcc
-CFLAGS = -Wall -Wextra -pedantic -std=c99 -g
+CFLAGS = -Wall -Wextra -pedantic -std=c99
 
-all:	class class_read_back
+# To add a test program to the framework, take the following steps:
+# 1) Come up with a unique name for the test. Your test should use
+#    exactly 1 .haris file; once you have your name N, create the
+#    schema N.haris and put it in the test/ directory. 
+# 2) Create a file N.c which will have the test logic in it; this file
+#    needs a main() function, as it contains the logic for the
+#    entire test program. Make sure it includes "test_util.h"
+#    and uses the htest.h library.
+# 3) Go up to the src/ directory; in the Makefile there, there is
+#    a variable called TEST_FILES. Just add the file N.haris.c to
+#    the end of the list.
+# Now, in src/, your new test will be built when make check is run.
 
-class:	class_main.c
-	$(CC) $(CFLAGS) class.c class_main.c class_common.c -o class
+all:	$(TEST_PROGRAMS)
 
-class_read_back:	class_read_back.c
-	$(CC) $(CFLAGS) class.c class_read_back.c class_common.c -o class_read_back
+%.test:	%.c %.haris.c %.haris.h test_util.c test_util.h
+	$(CC) $(CFLAGS) -o $@ $(@:.test=.c) $(@:.test=.haris.c) test_util.c
+	./$@
 
 clean:
-	rm class class_read_back class.msg
+	rm $(TEST_PROGRAMS)
