@@ -5,7 +5,8 @@ static CJobStatus write_header_boilerplate(CJob *);
 static CJobStatus write_header_macros(CJob *);
 static CJobStatus write_header_structures(CJob *);
 static CJobStatus write_reflective_structures(CJob *);
-static CJobStatus write_child_field(CJob *, const ChildField *child);
+static CJobStatus write_structure_definition(CJob *, ParsedStruct *);
+static CJobStatus write_child_field(CJob *, const ChildField *);
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -267,33 +268,45 @@ static CJobStatus write_reflective_structures(CJob *job)
 static CJobStatus write_header_structures(CJob *job)
 {
   CJobStatus result;
-  int i, j;
+  int i;
   if ((result = write_reflective_structures(job)) != CJOB_SUCCESS)
     return result;
-  for (i=0; i < job->schema->num_structs; i++) {
-    CJOB_FMT_HEADER_STRING(job, "typedef struct _%s %s%s;\n", 
-                job->schema->structs[i].name,
-                job->prefix, job->schema->structs[i].name);
-  }
-  CJOB_FMT_HEADER_STRING(job, "\n");
 
-  for (i=0; i < job->schema->num_structs; i++) {
-    CJOB_FMT_HEADER_STRING(job, "struct _%s {\n",
-                           job->schema->structs[i].name);
-    for (j=0; j < job->schema->structs[i].num_scalars; j++) {
-      CJOB_FMT_HEADER_STRING(job, "  %s %s;\n",
-                  scalar_type_name(job->schema->structs[i].scalars[j].type.tag),
-                  job->schema->structs[i].scalars[j].name);
-    }
-    for (j=0; j < job->schema->structs[i].num_children; j++) {
-      if ((result = write_child_field(job, 
-                                      job->schema->structs[i].children + j)) 
-          != CJOB_SUCCESS) 
-        return result;
-    }
-    CJOB_FMT_HEADER_STRING(job, "};\n\n");
+  for (i = 0; i < job->schema->num_structs; i ++) {
+    if ((result = write_structure_definition(job, job->schema->structs + i))
+        != CJOB_SUCCESS)
+      return result;
   }
 
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_structure_definition(CJob *job, ParsedStruct *strct)
+{
+  CJobStatus result;
+  int i;
+  unsigned j;
+  const char *prefix = job->prefix, *name = strct->name;
+  static const ScalarTag scalars_by_size[] = {
+    SCALAR_UINT64, SCALAR_INT64, SCALAR_FLOAT64, SCALAR_UINT32, SCALAR_INT32, 
+    SCALAR_FLOAT32, SCALAR_UINT16, SCALAR_INT16, SCALAR_BOOL, SCALAR_ENUM, 
+    SCALAR_UINT8, SCALAR_INT8
+  };
+  CJOB_FMT_HEADER_STRING(job, "typedef struct {\n");
+  for (i = 0; i < strct->num_children; i ++) { 
+    if ((result = write_child_field(job, strct->children + i)) != CJOB_SUCCESS)
+      return result;
+  }
+  for (j = 0; j < sizeof scalars_by_size / sizeof scalars_by_size[0]; j ++) {
+    for (i = 0; i < strct->num_scalars; i ++) {
+      if (strct->scalars[i].type.tag == scalars_by_size[j]) {
+        CJOB_FMT_HEADER_STRING(job, "  %s %s;\n",
+                               scalar_type_name(strct->scalars[i].type.tag),
+                               strct->scalars[i].name);
+      }
+    }
+  }
+  CJOB_FMT_HEADER_STRING(job, "} %s%s;\n\n", prefix, name);
   return CJOB_SUCCESS;
 }
 
