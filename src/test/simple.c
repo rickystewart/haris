@@ -238,9 +238,53 @@ static int buffer_decoding_test_3(void)
   return 1;
 }
 
+static int buffer_decoding_test_4(void)
+{
+  unsigned char buffer[15] = { 0x40, 0xD, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    *out_addr;
+  Simple *simple = Simple_create();
+  HTEST_ASSERT(simple);
+  HTEST_ASSERT(Simple_from_buffer(simple, buffer, sizeof buffer, &out_addr) 
+               == HARIS_SUCCESS);
+  HTEST_ASSERT(out_addr - buffer == 15);
+  HTEST_ASSERT(simple->u == 0);
+  Simple_destroy(simple);
+  return 1;
+}
+
+static int buffer_decoding_test_5(void)
+{
+  unsigned char buffer[256] = { 0x40, 0xFE, 0, 0x11, 0, 0, 0, 0, 0, 0 },
+    *out_addr;
+  Simple *simple = Simple_create();
+  HTEST_ASSERT(simple);
+  HTEST_ASSERT(Simple_from_buffer(simple, buffer, sizeof buffer, &out_addr) 
+               == HARIS_SUCCESS);
+  HTEST_ASSERT(out_addr - buffer == 256);
+  HTEST_ASSERT(simple->u == 0x1100);
+  Simple_destroy(simple);
+  return 1;
+}
+
+static int buffer_decoding_test_6(void)
+{
+  unsigned char buffer[21] = { 0x41, 0xA, 0, 0, 0xAB, 0, 0, 0, 0, 0, 0, 0,
+                                0x80, 0x5, 0, 0, 1, 2, 3, 4, 5 /* list of 5 1-byte scalars */ },
+    *out_addr;
+  Simple *simple = Simple_create();
+  HTEST_ASSERT(simple);
+  HTEST_ASSERT(Simple_from_buffer(simple, buffer, sizeof buffer, &out_addr) 
+                == HARIS_SUCCESS);
+  HTEST_ASSERT(out_addr - buffer == 21);
+  HTEST_ASSERT(simple->u == 0xAB0000);
+  Simple_destroy(simple);
+  return 1;
+}
+
 static int (* const buffer_decoding_test_functions[])(void) = {
   buffer_decoding_test_1, buffer_decoding_test_2,
-  buffer_decoding_test_3
+  buffer_decoding_test_3, buffer_decoding_test_4,
+  buffer_decoding_test_5, buffer_decoding_test_6
 };
 
 static int buffer_decoding_tests(void)
@@ -308,9 +352,65 @@ static int file_decoding_test_3(void)
   return 1;
 }
 
+static int file_decoding_test_4(void)
+{
+  unsigned char buffer[15] = { 0x40, 0xD, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+  haris_uint32_t sz;
+  Simple *simple = Simple_create();
+  FILE *f = tmpfile();
+  HTEST_ASSERT(simple && f);
+  fwrite(buffer, 1, 15, f);
+  rewind(f);
+  HTEST_ASSERT(Simple_from_file(simple, f, &sz) == HARIS_SUCCESS);
+  HTEST_ASSERT(sz == 15);
+  HTEST_ASSERT(fgetc(f) == EOF);
+  HTEST_ASSERT(simple->u == 0);
+  Simple_destroy(simple);
+  fclose(f);
+  return 1;
+}
+
+static int file_decoding_test_5(void)
+{
+  unsigned char buffer[256] = { 0x40, 0xFE, 0, 0x11, 0, 0, 0, 0, 0, 0 };
+  haris_uint32_t sz;
+  Simple *simple = Simple_create();
+  FILE *f = tmpfile();
+  HTEST_ASSERT(simple && f);
+  fwrite(buffer, 1, 256, f);
+  rewind(f);
+  HTEST_ASSERT(Simple_from_file(simple, f, &sz) == HARIS_SUCCESS);
+  HTEST_ASSERT(sz == 256);
+  HTEST_ASSERT(fgetc(f) == EOF);
+  HTEST_ASSERT(simple->u == 0x1100);
+  Simple_destroy(simple);
+  fclose(f);
+  return 1;
+}
+
+static int file_decoding_test_6(void)
+{
+  unsigned char buffer[19] = { 0x41, 0xA, 0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                0x80, 0x3, 0, 0, 1, 2, 3 /* list of 3 1-byte scalars */ };
+  haris_uint32_t sz;
+  Simple *simple = Simple_create();
+  FILE *f = tmpfile();
+  HTEST_ASSERT(simple && f);
+  fwrite(buffer, 1, 19, f);
+  rewind(f);
+  HTEST_ASSERT(Simple_from_file(simple, f, &sz) == HARIS_SUCCESS);
+  HTEST_ASSERT(sz == 19);
+  HTEST_ASSERT(fgetc(f) == EOF);
+  HTEST_ASSERT(simple->u == 0xAB);
+  Simple_destroy(simple);
+  fclose(f);
+  return 1;
+}
+
 static int (* const file_decoding_test_functions[])(void) = {
   file_decoding_test_1, file_decoding_test_2,
-  file_decoding_test_3
+  file_decoding_test_3, file_decoding_test_4,
+  file_decoding_test_5, file_decoding_test_6
 };
 
 static int file_decoding_tests(void)

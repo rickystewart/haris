@@ -1,8 +1,8 @@
 #ifndef HTEST_H_
 #define HTEST_H_
 
-/* A very, very, very, VERY simple unit testing framework for use by the
-   unit tests. Here's how it works:
+/* A very, very, very, VERY simple testing framework for use by the
+   Haris test library. Here's how it works:
 
     1) A "test" is a function of this type:
        int test(void);
@@ -42,6 +42,16 @@ int run_tests(void)
 
     No additional source files are required; the whole framework is contained
     in this file.
+
+    FAQ:
+    Q) Instead of HTEST_RUN(test), why couldn't I just do HTEST_ASSERT(test())?
+    A) You can, but you don't want to for two reasons:
+       - HTEST_RUN(test) is fewer keystrokes.
+       - The second HTEST_ASSERT will also print an error message, so if
+         the test function fails two error messages will be printed, the
+         second one being kind of cryptic. HTEST_RUN fails silently,
+         allowing you to capture the logic of the links between the tests
+         without printing an extra error message if something fails.
 */
 
 
