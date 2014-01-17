@@ -213,7 +213,7 @@ static CJobStatus write_reflective_arrays(CJob *job)
   CJobStatus result;
   const char *prefix = job->prefix, *strct_name;
   CJOB_FMT_SOURCE_STRING(job, 
-"static const HarisStructureInfo haris_lib_structures[%d];\n\n",
+"extern const HarisStructureInfo haris_lib_structures[%d];\n\n",
                          job->schema->num_structs);
   for (i = 0; i < job->schema->num_structs; i ++) {
     strct = &job->schema->structs[i];
@@ -223,7 +223,7 @@ static CJobStatus write_reflective_arrays(CJob *job)
       return result;
   }
   CJOB_FMT_SOURCE_STRING(job, 
-"static const HarisStructureInfo haris_lib_structures[] = {\n");
+"const HarisStructureInfo haris_lib_structures[] = {\n");
   for (i = 0; i < job->schema->num_structs; i ++) {
     strct = &job->schema->structs[i];
     strct_name = strct->name;
@@ -301,7 +301,7 @@ static CJobStatus write_public_constructor(CJob *job, ParsedStruct *strct)
 static CJobStatus write_general_constructor(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static void *haris_lib_create_contents(void *new,\n\
+"static void *haris_lib_create_contents(void *strct,\n\
                                         const HarisStructureInfo *info)\n\
 {\n\
   int i;\n\
@@ -312,26 +312,26 @@ static CJobStatus write_general_constructor(CJob *job)
     case HARIS_CHILD_TEXT:\n\
     case HARIS_CHILD_SCALAR_LIST:\n\
     case HARIS_CHILD_STRUCT_LIST:\n\
-      list_info = (HarisListInfo*)((char*)new + info->children[i].offset);\n\
+      list_info = (HarisListInfo*)((char*)strct + info->children[i].offset);\n\
       list_info->alloc = list_info->len = 0;\n\
       list_info->null = 1;\n\
       list_info->ptr = NULL;\n\
       break;\n\
     case HARIS_CHILD_STRUCT:\n\
-      substruct_info = (HarisSubstructInfo*)((char*)new + \n\
+      substruct_info = (HarisSubstructInfo*)((char*)strct + \n\
                                              info->children[i].offset);\n\
       substruct_info->null = 1;\n\
       substruct_info->ptr = NULL;\n\
       break;\n\
     }\n\
   }\n\
-  return new;\n}\n\n");
+  return strct;\n}\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void *_haris_lib_create(const HarisStructureInfo *info)\n\
 {\n\
-  void *new = HARIS_MALLOC(info->size_of);\n\
-  if (!new) return NULL;\n\
-  return haris_lib_create_contents(new, info);\n}\n\n");
+  void *strct = HARIS_MALLOC(info->size_of);\n\
+  if (!strct) return NULL;\n\
+  return haris_lib_create_contents(strct, info);\n}\n\n");
   return CJOB_SUCCESS;
 }
 
