@@ -247,8 +247,8 @@ static CJobStatus write_readfloat(CJob *job)
   \n\
   if (i == 0) { *ptr = 0.0; return; }\n\
   \n\
-  result = (i & ((1LL << HARIS_FLOAT32_SIGBITS) - 1));\n\
-  result /= (1LL << HARIS_FLOAT32_SIGBITS); \n\
+  result = (i & (((haris_uint32_t)1 << HARIS_FLOAT32_SIGBITS) - 1));\n\
+  result /= ((haris_uint32_t)1 << HARIS_FLOAT32_SIGBITS); \n\
   result += 1.0;\n\
 \n\
   shift = ((i >> HARIS_FLOAT32_SIGBITS) & 255) - HARIS_FLOAT32_BIAS;\n\
@@ -269,8 +269,8 @@ static CJobStatus write_readfloat(CJob *job)
   \n\
   if (i == 0) { *ptr = 0.0; return; }\n\
   \n\
-  result = (i & (( 1LL << HARIS_FLOAT64_SIGBITS) - 1));\n\
-  result /= (1LL << HARIS_FLOAT64_SIGBITS); \n\
+  result = (i & (((haris_uint64_t)1 << HARIS_FLOAT64_SIGBITS) - 1));\n\
+  result /= ((haris_uint64_t)1 << HARIS_FLOAT64_SIGBITS); \n\
   result += 1.0;\n\
 \n\
   shift = ((i >> HARIS_FLOAT64_SIGBITS) & 2047) - HARIS_FLOAT64_BIAS;\n\
@@ -313,7 +313,8 @@ static CJobStatus write_writefloat(CJob *job)
   while (fnorm < 1.0) { fnorm *= 2.0; shift--; }\n\
   fnorm = fnorm - 1.0;\n\
 \n\
-  significand = fnorm * ((1LL << HARIS_FLOAT32_SIGBITS) + 0.5f);\n\
+  significand = fnorm * (((haris_uint32_t)1 << HARIS_FLOAT32_SIGBITS)\n\
+                          + 0.5f);\n\
 \n\
   exp = shift + ((1<<7) - 1); \n\
 \n\
@@ -346,7 +347,8 @@ static CJobStatus write_writefloat(CJob *job)
   while (fnorm < 1.0) { fnorm *= 2.0; shift--; }\n\
   fnorm = fnorm - 1.0;\n\
 \n\
-  significand = fnorm * ((1LL<<HARIS_FLOAT64_SIGBITS) + 0.5f);\n\
+  significand = fnorm * (((haris_uint64_t)1<<HARIS_FLOAT64_SIGBITS)\n\
+                         + 0.5f);\n\
 \n\
   exp = shift + ((1<<10) - 1); \n\
 \n\

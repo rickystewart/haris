@@ -30,9 +30,11 @@
 /* Main entry point for the C compiler. The main point of interest here is 
    the cgen_main() function, which accepts as its input the `argv` and `argc` 
    that were passed to the main() function. This function processes the 
-   command-line arguments, constructs a CJob, and runs the CJob if all the 
-   command-line arguments could be successfully processed and the parsing 
-   succeeded.
+   command-line arguments and contructs a "CJob", which is a data structure
+   used to capture arbitrary compilation jobs requested at the command line.
+   If all the command-line options could be successfully parsed, and
+   there were no compile-time errors relating to the processing of the schema,
+   the CJob is then "run" by a static function called "run_cjob".
 
    In sum, a compiled Haris library is made up, roughly, of two parts:
    1) The core library. This body of code is largely unchanging, and
@@ -60,10 +62,11 @@ typedef struct {
   char **strings;
 } CJobStringStack;
 
-/* A structure that is used to organize the output. In fact, only one function
+/* A structure that is used to organize the output of a C compilation job. 
+   In fact, only one function
    actually writes the output to the output files; the rest of the functions
-   store strings in this data structure, which are written out later. There
-   are four stacks here; which stack you store a string in decides
+   store strings in this data structure, which are written out to disk later. 
+   There are four stacks here; which stack you store a string in decides
    A) which file it is written to. Strings in the header_strings stack are
    written to the header file; the rest are written to the source file.
    B) What, if any, action should be taken with the content of the strings.
@@ -109,8 +112,12 @@ typedef struct {
                           compile time */
 } CJob;
 
+/* The entry point for the C compiler (same arguments as the true main
+   function). */
 CJobStatus cgen_main(int, char **);
 
+/* A collection of public functions that are used by more than one of the 
+   source files of the C compiler. */
 CJobStatus add_header_string(CJob *, char *);
 CJobStatus add_source_string(CJob *, char *);
 CJobStatus add_public_function(CJob *, char *);

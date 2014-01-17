@@ -123,12 +123,6 @@ static CJobStatus write_static_buffer_funcs(CJob *job)
 }\n\n");
   return CJOB_SUCCESS;
 }
-
-/* This function handles the _from_buffer and _to_buffer public functions.
-   These functions both primarily call their static helper functions, though
-   they do some error checking to ensure that the structure produces a 
-   valid message.
-*/
    
 static CJobStatus write_public_buffer_funcs(CJob *job, ParsedStruct *strct)
 {

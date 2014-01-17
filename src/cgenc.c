@@ -11,11 +11,9 @@ static CJobStatus write_source_protocol_funcs(CJob *job);
 CJobStatus write_source_file(CJob *job)
 {
   CJobStatus result;
-  if ((result = write_source_public_funcs(job)) != CJOB_SUCCESS)
-    return result;
-  if ((result = write_source_core_funcs(job)) != CJOB_SUCCESS)
-    return result;
-  if ((result = write_source_protocol_funcs(job)) != CJOB_SUCCESS)
+  if ((result = write_source_public_funcs(job)) != CJOB_SUCCESS ||
+      (result = write_source_core_funcs(job)) != CJOB_SUCCESS ||
+      (result = write_source_protocol_funcs(job)) != CJOB_SUCCESS)
     return result;
   return CJOB_SUCCESS;
 }

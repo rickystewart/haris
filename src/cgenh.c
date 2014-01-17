@@ -257,14 +257,7 @@ static CJobStatus write_reflective_structures(CJob *job)
   return CJOB_SUCCESS;
 }
 
-/* We need to make two passes through the structure array to define 
-   our structures. First, for every structure S (and assuming a prefix P), 
-   we do
-     typedef struct haris_PS PS;
-   ... which has the dual effect of performing the typedef and "forward-
-   declaring" the structure so that we don't get any nasty compile errors.
-   Then, we loop through the structures again and define them. 
-*/
+/* Write all structure definitions from the schema into the output file. */
 static CJobStatus write_header_structures(CJob *job)
 {
   CJobStatus result;
@@ -281,6 +274,25 @@ static CJobStatus write_header_structures(CJob *job)
   return CJOB_SUCCESS;
 }
 
+/* Write a single structure definition (these are the Haris structures
+   as defined in the schema). The only subtlety here is field ordering. Take
+   this Haris schema:
+
+   struct UhOh ( Int8 i1, Uint64 u1, Int8 i2, Uint64 u2)
+
+   Encoded, the body of this structure is 18 bytes long -- 1 for each of the
+   Int8's, and 8 for each of the Uint64's. This is fine, and expected. 
+   However, if we don't reorder the fields, on most machines, sizeof(UhOh) will 
+   be 32 in the actual C API (since 8-byte integers generally have to align to 
+   8 bytes). There's no excuse for this, since field ordering in the C 
+   structure is irrelevant to the C programmer. The optimal ordering in this
+   case is ( u1, u2, i1, i2 ), which is 24 bytes (well-aligned).
+
+   So, this function takes care to order its scalars by size, decreasing.
+   In many cases, this can result in nontrivial savings. (The actual ordering
+   is just implemented by way of nested loops over the set of all scalar
+   types.)
+*/
 static CJobStatus write_structure_definition(CJob *job, ParsedStruct *strct)
 {
   CJobStatus result;

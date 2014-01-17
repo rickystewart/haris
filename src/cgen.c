@@ -36,8 +36,8 @@ static FILE *open_source_file(const char *prefix, const char *suffix);
    `haris` will be selected.
    -n : Select name prefix. If no option is given, then the empty string will be
    used as a name prefix.
-   -p : Select protocol. Possible protocols, at this time, are `buffer` and `file`.
-   You must select at least one protocol.
+   -p : Select protocol. Possible protocols, at this time, are `buffer`, 
+   `file`, and `fd`. You must select at least one protocol.
    -O : Select optimization. Optimizations have not yet been implemented.
 */
 CJobStatus cgen_main(int argc, char **argv)
@@ -360,11 +360,14 @@ follows:\n\
   -p : Choose a protocol. Acceptable protocols at this time are\n\
          file\n\
          buffer\n\
+         fd\n\
        You must choose at least one protocol.\n\
 In addition to these options, you must provide at least one <ARGUMENT_FILE>, \
 which is the name of a .haris schema file to compile.\n");
 }
 
+/* At argv[i] is the "-p" switch; investigate argv[i+1] to determine
+   what protocol the user would like to use. */
 static CJobStatus register_protocol(CJob *job, char **argv, int i)
 {
   if (!strcmp(argv[i+1], "buffer"))
@@ -380,6 +383,8 @@ static CJobStatus register_protocol(CJob *job, char **argv, int i)
   return CJOB_SUCCESS;
 }
 
+/* At argv[i] is the "-O" switch; investigate argv[i+1] to determine
+   what optimization the user would like to use. */
 static CJobStatus register_optimization(CJob *job, char **argv, int i)
 {
   (void)job;
@@ -389,6 +394,8 @@ static CJobStatus register_optimization(CJob *job, char **argv, int i)
   return CJOB_JOB_ERROR;
 }
 
+/* At argv[i] is the name of a file to open and parse. Run the given
+   parser over that input file. */
 static CJobStatus register_file_to_parse(char **argv, int i, 
                                          Parser *parser)
 {
@@ -437,14 +444,14 @@ Run `haris -l c -h` for help.\n");
       fprintf(stderr, "Structure %s is empty.\n", 
               strct->name);
       return CJOB_SCHEMA_ERROR;
-    } else if (strct->offset > 256) {
+    } else if (strct->offset > 255) {
       fprintf(stderr, 
               "Structure %s has a body size of %d; 255 is the maximum.\n", 
               strct->name, strct->offset);
       return CJOB_SCHEMA_ERROR;
     } else if (strct->num_children > 63) {
       fprintf(stderr,
-              "Structure %s has %d children; 62 is the maximum.\n",
+              "Structure %s has %d children; 63 is the maximum.\n",
               strct->name, strct->num_children);
       return CJOB_SCHEMA_ERROR;
     }
@@ -458,12 +465,17 @@ Run `haris -l c -h` for help.\n");
   return CJOB_SUCCESS;
 }
 
+/* Given a CJob, which is assumed to be valid, compile the CJob into 
+   a pair of C files. This is where the magic actually happens:
+   all of the strings that will make up the header and source files
+   are generated and allocated, and the `output_to_file` function
+   actually writes them out to disk. */
 static CJobStatus compile(CJob *job)
 {
   CJobStatus result;
-  if ((result = write_header_file(job)) != CJOB_SUCCESS ||
-      (result = write_source_file(job)) != CJOB_SUCCESS ||
-      (result = output_to_file(job)) != CJOB_SUCCESS)
+  if ((result = write_header_file(job)) != CJOB_SUCCESS || /* cgenh.c */
+      (result = write_source_file(job)) != CJOB_SUCCESS || /* cgenc.c */
+      (result = output_to_file(job)) != CJOB_SUCCESS) /* cgen.c (this file) */
     goto Failure;
   return CJOB_SUCCESS;
   Failure:
@@ -482,6 +494,10 @@ static CJobStatus compile(CJob *job)
 }
 
 /* ********** OUTPUT ********** */
+/* All of the compilation functions actually just allocate a bunch of 
+   strings and store them in the CJob -- file output doesn't actually
+   happen until the end. These are the functions that manipulate the
+   strings and actually write them out to disk. */
 
 static FILE *open_source_file(const char *prefix, const char *suffix)
 {

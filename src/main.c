@@ -9,9 +9,7 @@ static int delegate_to_c(int argc, char **argv);
 
 /* Take the appropriate action given the first command-line argument:
    1) If the argument is -h, call usage() and terminate.
-   2) If the argument is -l, identify which compiler is being executed 
-      and take the appropriate action. Currently, only the C compiler is
-      supported.
+   2) If the argument is -l, delegate the command to the correct compiler.
 */
 int main(int argc, char **argv)
 {
@@ -44,7 +42,7 @@ static void version(void)
 
 static void usage(void)
 {
-  fprintf(stderr,
+  fprintf(stdout,
 "Usage: haris -l [language] [options] file...\n\n\
 The Haris tool is a collection of compilers. (The size of this collection, \
 currently, is 1.) To show this message, run `haris -h`.\n\n\
@@ -57,6 +55,12 @@ use a particular compiler, run `haris -l X -h` where X is the applicable \
 language code.\n");
 }
 
+/* Given the argc and argv parameters from main, delegate the command to the
+   correct compiler (currently, only the C compiler is supported).
+
+   argv[1] is assumed to be "-l" (this is something that should be confirmed
+   by the caller).
+*/
 static int delegate_compiler(int argc, char **argv)
 {
   if (argc <= 2) {
@@ -73,6 +77,14 @@ Run `haris -h` for help.\n", argv[2]);
   }
 }
 
+/* Delegate the command to the C compiler. This function's primary job is
+   to work with the C compiler interface (the CJobStatus parameter type)
+   and return the correct value (0 on success, and another number on error).
+
+   The C compiler is meant to do its own error-reporting (since the C compiler
+   knows better than we do about the errors it encounters), so this function
+   should not do any output.
+*/
 static int delegate_to_c(int argc, char **argv)
 {
   CJobStatus result = cgen_main(argc, argv);
