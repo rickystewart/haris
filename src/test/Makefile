@@ -1,7 +1,7 @@
 TEST_PROGRAMS = simple.test #numtest.test
 
-CC = g++
-CFLAGS = -Wall -Wextra -pedantic #-std=c99
+CC = gcc
+CFLAGS = -Wall -Wextra -pedantic -std=c99
 
 # To add a test program to the framework, take the following steps:
 # 1) Come up with a unique name for the test. Your test should use
