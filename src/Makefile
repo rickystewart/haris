@@ -40,3 +40,4 @@ check: precheck
 
 clean:
 	rm $(OBJS) $(TEST_FILES) $(TEST_HEADERS) $(RESULT)
+	$(MAKE) -C test clean

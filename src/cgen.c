@@ -85,6 +85,7 @@ language %s.\n", argv[i+1]);
         goto Finish;
     }
   }
+  finalize_parser(parser);
   /* Make changes to job to reflect optional arguments */
   if (!job->output) job->output = "haris";
   if (!job->prefix) job->prefix = "";
@@ -504,10 +505,7 @@ static FILE *open_source_file(const char *prefix, const char *suffix)
   char *filename = (char*)malloc(strlen(prefix) + strlen(suffix) + 1); 
   FILE *out;
   if (!filename) return NULL;
-
-  *filename = '\0';
-  (void)strcat(filename, prefix);
-  (void)strcat(filename, suffix);
+  sprintf(filename, "%s%s", prefix, suffix);
   out = fopen(filename, "w");
   free(filename);
   return out;

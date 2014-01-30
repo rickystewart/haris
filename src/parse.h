@@ -30,12 +30,14 @@ typedef enum {
   use NULL as the file name if you don't have an adequate name for
   the input stream.
   3) Finally, if both of those operations succeeded, we can call parse()
-  to run the parser and generate output.
+  to run the parser.
   4) Repeat steps 2-3 as many times as necessary; a single parser can
   be rebound an arbitrary number of times. If you bind multiple input
   streams to a parser, the compiled schema will reflect all of the input
   streams you've parsed.
-  5) Finally, destroy the parser with destroy_parser(). This will destroy
+  5) Call finalize_parser() to finalize the output of the parser; at this
+  point, you can investigate the generated schema.
+  6) Finally, destroy the parser with destroy_parser(). This will destroy
   all of the parser's resources, including the parsed schema. Do not call
   this function until you have no more use of your parsed schema.
 
@@ -75,9 +77,9 @@ typedef struct {
 } Parser;
 
 Parser *create_parser(void);
-void destroy_parser(Parser *);
-
 int bind_parser(Parser *, FILE *, char *);
+void finalize_parser(Parser *);
+void destroy_parser(Parser *);
 
 void diagnose_parse_error(Parser *);
 

@@ -92,6 +92,13 @@ int bind_parser(Parser *p, FILE *stream, char *filename)
   return 1;
 }
 
+/* Finalize the output for the given parser. */
+void finalize_parser(Parser *p)
+{
+  finalize_schema(p->schema);
+  return;
+}
+
 /* Run the given parser to completion, handling any errors that
    may occur along the way. */
 int parse(Parser *p)

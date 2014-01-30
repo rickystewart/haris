@@ -62,6 +62,7 @@ typedef struct {
 
 struct _ParsedStruct {
   char *name;
+  size_t inmem_size;
   int schema_index;
   int offset;
   int num_scalars;
@@ -89,6 +90,7 @@ typedef struct {
 } ParsedSchema;
 
 ParsedSchema *create_parsed_schema(void);
+void finalize_schema(ParsedSchema *);
 void destroy_parsed_schema(ParsedSchema *);
 
 ParsedStruct *new_struct(ParsedSchema *, char *);

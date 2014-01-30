@@ -5,6 +5,8 @@ static int field_length(ScalarTag);
 static int realloc_struct_scalars(ParsedStruct *);
 static int realloc_struct_children(ParsedStruct *);
 
+static int compute_struct_inmem_size(ParsedStruct *);
+
 static int add_list_of_scalars_or_enums_field(ParsedStruct *, char *, int,
                                               ScalarTag, ParsedEnum *);
 
@@ -30,25 +32,44 @@ ParsedSchema *create_parsed_schema(void)
 }
 
 /* Destroy a parsed schema and all of its data. */
-void destroy_parsed_schema(ParsedSchema *p)
+void destroy_parsed_schema(ParsedSchema *schema)
 {
   int i, j;
-  for (i=0; i<p->num_structs; i++) {
-    for (j=0; j<p->structs[i].num_scalars; j++)
-      free(p->structs[i].scalars[j].name);
-    free(p->structs[i].scalars);
-    for (j=0; j<p->structs[i].num_children; j++)
-      free(p->structs[i].children[j].name);
-    free(p->structs[i].children);
+  for (i = 0; i < schema->num_structs; i ++) {
+    for (j = 0; j < schema->structs[i].num_scalars; j ++)
+      free(schema->structs[i].scalars[j].name);
+    free(schema->structs[i].scalars);
+    for (j = 0; j < schema->structs[i].num_children; j ++)
+      free(schema->structs[i].children[j].name);
+    free(schema->structs[i].children);
   }
-  for (i=0; i<p->num_enums; i++) {
-    for (j=0; j<p->enums[i].num_values; j++)
-      free(p->enums[i].values[j]);
-    free(p->enums[i].values);
+  for (i = 0; i < schema->num_enums; i ++) {
+    for (j = 0; j < schema->enums[i].num_values; j ++)
+      free(schema->enums[i].values[j]);
+    free(schema->enums[i].values);
   }
-  free(p->structs);
-  free(p->enums);
-  free(p);
+  free(schema->structs);
+  free(schema->enums);
+  free(schema);
+  return;
+}
+
+void finalize_schema(ParsedSchema *schema)
+{
+  int i, changed;
+  ParsedStruct *strct;
+  for (;;) {
+    changed = 0;
+    for (i = 0; i < schema->num_structs; i ++) {
+      strct = &schema->structs[i];
+      if (strct->inmem_size == 0) {
+        if (compute_struct_inmem_size(strct)) {
+          changed = 1;
+        }
+      }
+    }
+    if (!changed) break;
+  }
   return;
 }
 
@@ -72,6 +93,7 @@ ParsedStruct *new_struct(ParsedSchema *schema, char *name)
   ret->name = util_strdup(name);
   ret->num_scalars = ret->num_children = 0;
   ret->offset = 0;
+  ret->inmem_size = 0;
   ret->scalars_alloc = ret->children_alloc = (int)arr_size;
   ret->scalars = malloc(arr_size * sizeof *ret->scalars);
   ret->children = malloc(arr_size * sizeof *ret->children);
@@ -111,10 +133,10 @@ ParsedEnum *new_enum(ParsedSchema *schema, char *name)
 int struct_name_collide(ParsedStruct *strct, char *name)
 {
   int i;
-  for (i=0; i<strct->num_scalars; i++)
+  for (i = 0; i<strct->num_scalars; i++)
     if (!strcmp(strct->scalars[i].name, name))
       return 1;
-  for (i=0; i<strct->num_children; i++)
+  for (i = 0; i<strct->num_children; i++)
     if (!strcmp(strct->children[i].name, name))
       return 1;
   return 0;
@@ -125,7 +147,7 @@ int struct_name_collide(ParsedStruct *strct, char *name)
 int enum_name_collide(ParsedEnum *enm, char *name)
 {
   int i;
-  for (i=0; i<enm->num_values; i++)
+  for (i = 0; i<enm->num_values; i++)
     if (!strcmp(enm->values[i], name))
       return 1;
   return 0;
@@ -296,6 +318,36 @@ static int realloc_struct_children(ParsedStruct *strct)
   if (!array) return 0;
   strct->children = array;
   return 1;
+}
+
+static int compute_struct_inmem_size(ParsedStruct *strct)
+{
+  size_t sz;
+  int i, can_compute;
+  if (strct->inmem_size != 0) {
+    return 0;
+  } else if (strct->num_children == 0) {
+    strct->inmem_size = (size_t)strct->offset + 2U;
+    return 1;
+  } else {
+    sz = 0;
+    can_compute = 1;
+    for (i = 0; i < strct->num_children; i ++) {
+      if (strct->children[i].tag != CHILD_STRUCT ||
+          strct->children[i].type.strct->inmem_size == 0) {
+        can_compute = 0;
+        break;
+      } else {
+        sz += strct->children[i].type.strct->inmem_size;
+      } 
+    }
+    if (can_compute) {
+      strct->inmem_size = sz + (size_t)strct->offset + 2U;
+      return 1;
+    } else {
+      return 0;
+    }
+  }
 }
 
 static int add_list_of_scalars_or_enums_field(ParsedStruct *strct, char *name, 
