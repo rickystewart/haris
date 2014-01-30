@@ -54,6 +54,8 @@ void destroy_parsed_schema(ParsedSchema *schema)
   return;
 }
 
+/* Finalize the given schema -- this entails precomputing the sizes of
+   all structures, wherever that computation is possible. */
 void finalize_schema(ParsedSchema *schema)
 {
   int i, changed;
@@ -320,6 +322,13 @@ static int realloc_struct_children(ParsedStruct *strct)
   return 1;
 }
 
+/* Compute the maximum encoded size of the given structure, if possible.
+   A structure has a maximum encoded size IF 1) it has no children or 
+   2) all of its children are structures that have a maximum encoded size.
+   This is a helper function that finalize_schema leverages.
+
+   This function returns 1 if the structure's inmem_size field was changed,
+   and 0 otherwise. */
 static int compute_struct_inmem_size(ParsedStruct *strct)
 {
   size_t sz;
