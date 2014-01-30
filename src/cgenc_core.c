@@ -304,34 +304,14 @@ static CJobStatus write_general_constructor(CJob *job)
 "static void *haris_lib_create_contents(void *strct,\n\
                                         const HarisStructureInfo *info)\n\
 {\n\
-  int i;\n\
-  HarisListInfo *list_info;\n\
-  HarisSubstructInfo *substruct_info;\n\
-  for (i = 0; i < info->num_children; i++) {\n\
-    switch (info->children[i].child_type) {\n\
-    case HARIS_CHILD_TEXT:\n\
-    case HARIS_CHILD_SCALAR_LIST:\n\
-    case HARIS_CHILD_STRUCT_LIST:\n\
-      list_info = (HarisListInfo*)((char*)strct + info->children[i].offset);\n\
-      list_info->alloc = list_info->len = 0;\n\
-      list_info->null = 1;\n\
-      list_info->ptr = NULL;\n\
-      break;\n\
-    case HARIS_CHILD_STRUCT:\n\
-      substruct_info = (HarisSubstructInfo*)((char*)strct + \n\
-                                             info->children[i].offset);\n\
-      substruct_info->null = 1;\n\
-      substruct_info->ptr = NULL;\n\
-      break;\n\
-    }\n\
-  }\n\
+  memset(strct, 0, info->size_of);\n\
   return strct;\n}\n\n");
   CJOB_FMT_PRIV_FUNCTION(job, 
 "static void *_haris_lib_create(const HarisStructureInfo *info)\n\
 {\n\
   void *strct = HARIS_MALLOC(info->size_of);\n\
   if (!strct) return NULL;\n\
-  return haris_lib_create_contents(strct, info);\n}\n\n");
+  return memset(strct, 0, info->size_of);\n}\n\n");
   return CJOB_SUCCESS;
 }
 
@@ -464,7 +444,6 @@ const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
   void *testptr;\n\
   const HarisChild *child = &info->children[field];\n\
   HarisListInfo *list_info = (HarisListInfo*)((char*)ptr + child->offset);\n\
-  haris_uint32_t i;\n\
   size_t element_size;\n\
   if (sz == 0 || \n\
       (list_info->alloc >= sz &&\n\
@@ -485,14 +464,11 @@ const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
   if (!testptr) return HARIS_MEM_ERROR;\n\
   list_info->ptr = testptr;\n\
   if (child->child_type == HARIS_CHILD_STRUCT_LIST) {\n\
-    for (i = list_info->alloc; i < sz; i ++) {\n\
-      haris_lib_create_contents((char*)testptr + i * element_size,\n\
-                                child->struct_element);\n\
-      list_info->alloc ++;\n\
-    }\n\
-  } else list_info->alloc = sz;\n\
+    memset(testptr, 0, sz * element_size);\n\
+  }\n\
+  list_info->alloc = sz;\n\
   Success:\n\
-    list_info->null = 0;\n\
+    list_info->has = 1;\n\
     list_info->len = sz;\n\
     return HARIS_SUCCESS;\n\
 }\n\n");
@@ -519,7 +495,7 @@ HarisStatus _haris_lib_init_struct_mem(void *ptr,\n\
        _haris_lib_create(info->children[field].struct_element)) == NULL)\n\
     return HARIS_MEM_ERROR;\n\
   Success:\n\
-  substruct->null = 0;\n\
+  substruct->has = 1;\n\
   return HARIS_SUCCESS;\n}\n\n");
   return CJOB_SUCCESS;
 }
@@ -612,20 +588,20 @@ static CJobStatus write_core_size(CJob *job)
     list_info = (HarisListInfo*)((char*)ptr + child->offset);\n\
     if (!child->nullable) {\n\
       if ((child->child_type == HARIS_CHILD_STRUCT) ?\n\
-          ((HarisSubstructInfo*)list_info)->null : list_info->null)\n\
+          !((HarisSubstructInfo*)list_info)->has : !list_info->has)\n\
         goto StructureError;\n\
     }\n\
     switch (child->child_type) {\n\
     case HARIS_CHILD_TEXT:\n\
     case HARIS_CHILD_SCALAR_LIST:\n\
-      if (list_info->null)\n\
+      if (!list_info->has)\n\
         accum += 1;\n\
       else\n\
         accum += 4 + \n\
           list_info->len * haris_lib_message_scalar_sizes[child->scalar_element];\n\
       break;\n\
     case HARIS_CHILD_STRUCT_LIST:\n\
-      if (list_info->null)\n\
+      if (!list_info->has)\n\
         accum += 1;\n\
       else {\n\
         accum += 6;\n\
@@ -643,7 +619,7 @@ static CJobStatus write_core_size(CJob *job)
       break;\n\
     case HARIS_CHILD_STRUCT:\n\
       substruct_info = (HarisSubstructInfo*)list_info;\n\
-      buf = (substruct_info->null ? \n\
+      buf = (!substruct_info->has ? \n\
              1 :\n\
              haris_lib_size(substruct_info->ptr, child->struct_element,\n\
                             depth + 1, out));\n\
@@ -852,9 +828,9 @@ static CJobStatus write_from_stream_funcs(CJob *job)
     if (!first_byte_of_child_header) { /* check whether child is null */\n\
       HARIS_ASSERT(child->nullable, STRUCTURE);\n\
       if (child->child_type != HARIS_CHILD_STRUCT) \n\
-        list_info->null = 1;\n\
+        list_info->has = 0;\n\
       else \n\
-        ((HarisSubstructInfo*)list_info)->null = 1;\n\
+        ((HarisSubstructInfo*)list_info)->has = 0;\n\
       continue;\n\
     }\n\
     switch (child->child_type) {\n\
@@ -970,7 +946,7 @@ static CJobStatus write_to_stream_funcs(CJob *job)
     case HARIS_CHILD_TEXT:\n\
     case HARIS_CHILD_SCALAR_LIST:\n\
     case HARIS_CHILD_STRUCT_LIST:\n\
-      if (list_info->null) {\n\
+      if (!list_info->has) {\n\
         child_header[0] = 0x0;\n\
         if ((result = writer(stream, child_header, 1)) != HARIS_SUCCESS)\n\
           return result;\n\
@@ -978,7 +954,7 @@ static CJobStatus write_to_stream_funcs(CJob *job)
       }\n\
       break;\n\
     case HARIS_CHILD_STRUCT:\n\
-      if (((HarisSubstructInfo*)list_info)->null) {\n\
+      if (!((HarisSubstructInfo*)list_info)->has) {\n\
         child_header[0] = 0x0;\n\
         if ((result = writer(stream, child_header, 1)) != HARIS_SUCCESS)\n\
           return result;\n\

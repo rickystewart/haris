@@ -123,6 +123,10 @@ CJobStatus add_source_string(CJob *, char *);
 CJobStatus add_public_function(CJob *, char *);
 CJobStatus add_private_function(CJob *, char *);
 
+/* A loose wrapper around asprintf; consumes a format string and a set of
+   parameters and writes it out to a new dynamically allocated string. 
+   Returns either that new string or NULL if there was a memory or format
+   error. */
 char *strformat(const char *, ...);
 
 const char *scalar_type_suffix(ScalarTag);

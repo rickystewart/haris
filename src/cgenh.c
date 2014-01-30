@@ -154,10 +154,10 @@ static CJobStatus write_header_macros(CJob *job)
       child_name = child->name;
       if (child->nullable) {
         CJOB_FMT_HEADER_STRING(job, 
-                               "#define %s%s_null_%s(X) ((int)((X)->_%s_info.null))\n",
+                               "#define %s%s_has_%s(X) ((int)((X)->_%s_info.has))\n",
                                prefix, strct_name, child_name, child_name);
         CJOB_FMT_HEADER_STRING(job,
-                               "#define %s%s_nullify_%s(X) ((X)->_%s_info.null = 1)\n",
+                               "#define %s%s_clear_%s(X) ((X)->_%s_info.has = 0)\n",
                                prefix, strct_name, child_name, child_name);
       }
       if (child->tag != CHILD_STRUCT) {
@@ -223,12 +223,12 @@ static CJobStatus write_reflective_structures(CJob *job)
   void *         ptr;\n\
   haris_uint32_t len;\n\
   haris_uint32_t alloc;\n\
-  char           null;\n\
+  char           has;\n\
 } HarisListInfo;\n\n");
   CJOB_FMT_HEADER_STRING(job,
 "typedef struct {\n\
   void *ptr;\n\
-  char null;\n\
+  char has;\n\
 } HarisSubstructInfo;\n\n");
   CJOB_FMT_HEADER_STRING(job, 
 "typedef struct HarisStructureInfo_ HarisStructureInfo;\n\n");
