@@ -301,12 +301,6 @@ static CJobStatus write_public_constructor(CJob *job, ParsedStruct *strct)
 static CJobStatus write_general_constructor(CJob *job)
 {
   CJOB_FMT_PRIV_FUNCTION(job, 
-"static void *haris_lib_create_contents(void *strct,\n\
-                                        const HarisStructureInfo *info)\n\
-{\n\
-  memset(strct, 0, info->size_of);\n\
-  return strct;\n}\n\n");
-  CJOB_FMT_PRIV_FUNCTION(job, 
 "static void *_haris_lib_create(const HarisStructureInfo *info)\n\
 {\n\
   void *strct = HARIS_MALLOC(info->size_of);\n\
