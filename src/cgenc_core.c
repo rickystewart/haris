@@ -2,7 +2,16 @@
 #include "cgenc_util.h"
 
 /* Functions relating to the public constructors, destructors, and
-   initializers */
+   initializers, including the algorithms for writing structures to, and 
+   reading them from, generalized streams. These functions, combined with
+   the scalar-writing functions from cgenc_util.{ch}, provide most of the 
+   plumbing necessary to do Haris serialization and deserialization; the
+   only thing that is left at that point is to plug in a protocol. This 
+   entails constructing an interface for the protocol that matches the
+   generalized stream interface presented here, as well as constructing
+   a set of public-facing functions that wrap the low-level stream functions
+   as well as the protocol functions. This is the job of 
+   cgenc_{buffer,fd,file}.{ch}. */
 
 static CJobStatus write_public_constructor(CJob *, ParsedStruct *);
 static CJobStatus write_general_constructor(CJob *);
@@ -477,7 +486,10 @@ static CJobStatus write_init_struct(CJob *job, ParsedStruct *strct,
   ChildField *child = &strct->children[field];
   if (child_is_embeddable(child)) {
     CJOB_FMT_PUB_FUNCTION(job, 
-"HarisStatus %s%s_init_%s(%s%s *strct) { return HARIS_SUCCESS; }\n\n",
+"HarisStatus %s%s_init_%s(%s%s *strct) { \n\
+  (void)strct;\n\
+  return HARIS_SUCCESS;\n\
+}\n\n",
                           prefix, struct_name, child->name, 
                           prefix, struct_name);
   } else {
