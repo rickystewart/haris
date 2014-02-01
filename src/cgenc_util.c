@@ -240,6 +240,7 @@ static CJobStatus write_readfloat(CJob *job)
 "static void haris_read_float32(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_float32 *ptr = (haris_float32*)_ptr;\n\
+  const int float32_sigbits = 23, float32_bias = 127;\n\
   haris_float64 result;\n\
   haris_int64_t shift;\n\
   haris_uint32_t i;\n\
@@ -247,11 +248,11 @@ static CJobStatus write_readfloat(CJob *job)
   \n\
   if (i == 0) { *ptr = 0.0; return; }\n\
   \n\
-  result = (i & (((haris_uint32_t)1 << HARIS_FLOAT32_SIGBITS) - 1));\n\
-  result /= ((haris_uint32_t)1 << HARIS_FLOAT32_SIGBITS); \n\
+  result = (i & (((haris_uint32_t)1 << float32_sigbits) - 1));\n\
+  result /= ((haris_uint32_t)1 << float32_sigbits); \n\
   result += 1.0;\n\
 \n\
-  shift = ((i >> HARIS_FLOAT32_SIGBITS) & 255) - HARIS_FLOAT32_BIAS;\n\
+  shift = ((i >> float32_sigbits) & 255) - float32_bias;\n\
   while (shift > 0) { result *= 2.0; shift--; }\n\
   while (shift < 0) { result /= 2.0; shift++; }\n\
 \n\
@@ -263,17 +264,18 @@ static CJobStatus write_readfloat(CJob *job)
 "static void haris_read_float64(const unsigned char *b, void *_ptr)\n\
 {\n\
   haris_float64 result, *ptr = (haris_float64*)_ptr;\n\
+  const int float64_sigbits = 52, float64_bias = 1023;\n\
   haris_int64_t shift;\n\
   haris_uint64_t i;\n\
   haris_read_uint64(b, &i);\n\
   \n\
   if (i == 0) { *ptr = 0.0; return; }\n\
   \n\
-  result = (i & (((haris_uint64_t)1 << HARIS_FLOAT64_SIGBITS) - 1));\n\
-  result /= ((haris_uint64_t)1 << HARIS_FLOAT64_SIGBITS); \n\
+  result = (i & (((haris_uint64_t)1 << float64_sigbits) - 1));\n\
+  result /= ((haris_uint64_t)1 << float64_sigbits); \n\
   result += 1.0;\n\
 \n\
-  shift = ((i >> HARIS_FLOAT64_SIGBITS) & 2047) - HARIS_FLOAT64_BIAS;\n\
+  shift = ((i >> float64_sigbits) & 2047) - float64_bias;\n\
   while (shift > 0) { result *= 2.0; shift--; }\n\
   while (shift < 0) { result /= 2.0; shift++; }\n\
 \n\
@@ -292,6 +294,7 @@ static CJobStatus write_writefloat(CJob *job)
   haris_float32 f = *(const haris_float32*)_ptr;\n\
   haris_float64 fnorm;\n\
   int shift;\n\
+  const int float32_sigbits = 23;\n\
   long sign, exp, significand;\n\
   haris_uint32_t result;\n\
 \n\
@@ -313,7 +316,7 @@ static CJobStatus write_writefloat(CJob *job)
   while (fnorm < 1.0) { fnorm *= 2.0; shift--; }\n\
   fnorm = fnorm - 1.0;\n\
 \n\
-  significand = fnorm * (((haris_uint32_t)1 << HARIS_FLOAT32_SIGBITS)\n\
+  significand = fnorm * (((haris_uint32_t)1 << float32_sigbits)\n\
                           + 0.5f);\n\
 \n\
   exp = shift + ((1<<7) - 1); \n\
@@ -325,6 +328,7 @@ static CJobStatus write_writefloat(CJob *job)
 "static void haris_write_float64(unsigned char *b, const void *_ptr)\n\
 {\n\
   haris_float64 fnorm, f = *(const haris_float64*)_ptr;\n\
+  const int float64_sigbits = 52;\n\
   int shift;\n\
   long sign, exp, significand;\n\
   haris_uint64_t result;\n\
@@ -347,7 +351,7 @@ static CJobStatus write_writefloat(CJob *job)
   while (fnorm < 1.0) { fnorm *= 2.0; shift--; }\n\
   fnorm = fnorm - 1.0;\n\
 \n\
-  significand = fnorm * (((haris_uint64_t)1<<HARIS_FLOAT64_SIGBITS)\n\
+  significand = fnorm * (((haris_uint64_t)1<<float64_sigbits)\n\
                          + 0.5f);\n\
 \n\
   exp = shift + ((1<<10) - 1); \n\
