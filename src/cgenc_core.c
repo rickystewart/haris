@@ -281,12 +281,12 @@ static CJobStatus write_reflective_arrays(CJob *job)
     if (strct->num_children == 0) {
       CJOB_FMT_SOURCE_STRING(job, "0, NULL, ");
     } else {
-      CJOBT_FMT_SOURCE_STRING(job, "%d, %s%s_lib_children, ", 
-                              strct->num_children, prefix, strct_name);
+      CJOB_FMT_SOURCE_STRING(job, "%d, %s%s_lib_children, ", 
+                             strct->num_children, prefix, strct_name);
     }
     CJOB_FMT_SOURCE_STRING(job, "%d, sizeof(%s%s) }%s\n", 
                            strct->offset, prefix, strct_name, 
-                           (i + 1 >= job->schema->num_structs ? "" : ","))
+                           (i + 1 >= job->schema->num_structs ? "" : ","));
   }
   CJOB_FMT_SOURCE_STRING(job, "};\n\n");
   return CJOB_SUCCESS;
