@@ -216,7 +216,7 @@ static CJobStatus write_reflective_structures(CJob *job)
   CJOB_FMT_HEADER_STRING(job, 
 "typedef enum {\n\
   HARIS_CHILD_TEXT, HARIS_CHILD_SCALAR_LIST, HARIS_CHILD_STRUCT_LIST,\n\
-  HARIS_CHILD_STRUCT\n\
+  HARIS_CHILD_STRUCT, HARIS_CHILD_EMBEDDED_STRUCT\n\
 } HarisChildType;\n\n");
   CJOB_FMT_HEADER_STRING(job, 
 "typedef struct {\n\
@@ -240,6 +240,7 @@ static CJobStatus write_reflective_structures(CJob *job)
   CJOB_FMT_HEADER_STRING(job, 
 "typedef struct {\n\
   size_t offset;\n\
+  size_t has_offset;\n\
   int nullable;\n\
   HarisScalarType scalar_element;\n\
   const HarisStructureInfo *struct_element;\n\
@@ -325,7 +326,7 @@ static CJobStatus write_structure_definition(CJob *job, ParsedStruct *strct)
 /* Write a child field to the output file. */
 static CJobStatus write_child_field(CJob *job, const ChildField *child)
 {
-  const char *child_name = child->name;
+  const char *child_name = child->name, *prefix = job->prefix;
   switch (child->tag) {
   case CHILD_TEXT:
   case CHILD_SCALAR_LIST:
@@ -334,8 +335,15 @@ static CJobStatus write_child_field(CJob *job, const ChildField *child)
                            child_name);
     break;
   case CHILD_STRUCT:
-    CJOB_FMT_HEADER_STRING(job, "  HarisSubstructInfo _%s_info;\n", 
-                           child_name);
+    if (child_is_embeddable(child)) {
+      CJOB_FMT_HEADER_STRING(job, "\
+  %s%s _%s_info;\n\
+  char _%s_has;\n",          prefix, child->type.strct->name, child_name,
+                             child_name);
+    } else {
+      CJOB_FMT_HEADER_STRING(job, "  HarisSubstructInfo _%s_info;\n", 
+                             child_name);
+    }
     break;
   }
   return CJOB_SUCCESS;

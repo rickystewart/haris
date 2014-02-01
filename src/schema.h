@@ -62,7 +62,10 @@ typedef struct {
 
 struct _ParsedStruct {
   char *name;
-  size_t inmem_size;
+  size_t max_size; /* The maximum encoded size of this structure in bytes.
+                      Could be smaller if it has nullable structure fields. 
+                      Used primarily by the C compiler to determine which
+                      structures can be embeddable. */
   int schema_index;
   int offset;
   int num_scalars;

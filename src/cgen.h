@@ -129,6 +129,7 @@ CJobStatus add_private_function(CJob *, char *);
    error. */
 char *strformat(const char *, ...);
 
+int child_is_embeddable(const ChildField *);
 const char *scalar_type_suffix(ScalarTag);
 int scalar_bit_pattern(ScalarTag type);
 int sizeof_scalar(ScalarTag type);

@@ -17,6 +17,12 @@ static CJobStatus write_init_struct(CJob *, ParsedStruct *, int);
 static CJobStatus write_general_init_struct_member(CJob *);
 
 static CJobStatus write_reflective_arrays(CJob *);
+static CJobStatus write_reflective_scalar_array(CJob *, ParsedStruct *);
+static CJobStatus write_reflective_child_array(CJob *, ParsedStruct *);
+static CJobStatus write_reflective_embedded_struct(CJob *, ParsedStruct *,
+                                                   ChildField *);
+static CJobStatus write_reflective_nonembedded_child(CJob *, ParsedStruct *,
+                                                     ChildField *);
 
 static CJobStatus write_in_memory_scalar_sizes(CJob *);
 static CJobStatus write_message_scalar_sizes(CJob *);
@@ -139,6 +145,7 @@ static const char *child_enumerated_name(ChildTag type)
   }
 }
 
+/* Write the descriptive array of scalars for the given struct. */
 static CJobStatus write_reflective_scalar_array(CJob *job, ParsedStruct *strct)
 {
   int i;
@@ -159,11 +166,13 @@ static CJobStatus write_reflective_scalar_array(CJob *job, ParsedStruct *strct)
   return CJOB_SUCCESS;
 }
 
+/* Write the descriptive array of children for the given struct. */
 static CJobStatus write_reflective_child_array(CJob *job, ParsedStruct *strct)
 {
   int i;
   ChildField *child;
-  const char *prefix = job->prefix, *strct_name = strct->name, *child_name;
+  const char *prefix = job->prefix, *strct_name = strct->name;
+  CJobStatus result;
   if (strct->num_children == 0) {
     CJOB_FMT_SOURCE_STRING(job, "#define %s%s_lib_children NULL\n\n",
                            prefix, strct_name);
@@ -174,29 +183,69 @@ static CJobStatus write_reflective_child_array(CJob *job, ParsedStruct *strct)
                          prefix, strct_name);
   for (i = 0; i < strct->num_children; i ++) {
     child = &strct->children[i];
-    child_name = child->name;
-    CJOB_FMT_SOURCE_STRING(job, 
-"  { offsetof(%s%s, _%s_info), %d, %s, ",
-                           prefix, strct_name, child_name,
-                           child->nullable, 
-                           child->tag == CHILD_SCALAR_LIST ? 
-                           scalar_enumerated_name(child->type.scalar_list.tag) :
-                             child->tag == CHILD_TEXT ?
-                             "HARIS_SCALAR_UINT8" :
-                             "HARIS_SCALAR_BLANK");
-    if (child->tag == CHILD_STRUCT_LIST || child->tag == CHILD_STRUCT) {
-      CJOB_FMT_SOURCE_STRING(job, "&haris_lib_structures[%d], ",
-                             child->tag == CHILD_STRUCT_LIST ?
-                             child->type.struct_list->schema_index :
-                             child->type.strct->schema_index);
+    if (child_is_embeddable(child)) {
+      if ((result = write_reflective_embedded_struct(job, strct, child)) 
+          != CJOB_SUCCESS)
+        return result;
     } else {
-      CJOB_FMT_SOURCE_STRING(job, "NULL, ");
+      if ((result = write_reflective_nonembedded_child(job, strct, child))
+          != CJOB_SUCCESS)
+        return result;
     }
-    CJOB_FMT_SOURCE_STRING(job, "%s }%s\n", 
-                           child_enumerated_name(child->tag), 
+    CJOB_FMT_SOURCE_STRING(job, "%s\n", 
                            (i + 1 >= strct->num_children ? "" : ","));
   }
   CJOB_FMT_SOURCE_STRING(job, "};\n\n");
+  return CJOB_SUCCESS;
+}
+
+/* Write the given child (which must be an embeddable structure child) 
+   reflective structure definition into the source file; the output is
+   a valid HarisChild structure definition. */
+static CJobStatus write_reflective_embedded_struct(CJob *job, 
+                                                   ParsedStruct *strct,
+                                                   ChildField *child)
+{
+  const char *prefix = job->prefix, *strct_name = strct->name, 
+             *child_name = child->name;
+  CJOB_FMT_SOURCE_STRING(job, 
+"  { offsetof(%s%s, _%s_info), offsetof(%s%s, _%s_has), %d,\n\
+     HARIS_SCALAR_BLANK, &haris_lib_structures[%d],\n\
+     HARIS_CHILD_EMBEDDED_STRUCT }",
+                         prefix, strct_name, child_name,
+                         prefix, strct_name, child_name,
+                         child->nullable, 
+                         child->type.strct->schema_index);
+  return CJOB_SUCCESS;
+}
+
+/* Write the reflective child definition into the source (the child will not
+   be embedded); the output is a valid HarisChild structure definition). */
+static CJobStatus write_reflective_nonembedded_child(CJob *job, 
+                                                     ParsedStruct *strct,
+                                                     ChildField *child)
+{  
+  const char *prefix = job->prefix, *strct_name = strct->name, 
+             *child_name = child->name;
+  CJOB_FMT_SOURCE_STRING(job, 
+"  { offsetof(%s%s, _%s_info), 0U, %d, %s, ",
+                         prefix, strct_name, child_name,
+                         child->nullable, 
+                         child->tag == CHILD_SCALAR_LIST ? 
+                         scalar_enumerated_name(child->type.scalar_list.tag) :
+                         child->tag == CHILD_TEXT ?
+                           "HARIS_SCALAR_UINT8" :
+                           "HARIS_SCALAR_BLANK");
+  if (child->tag == CHILD_STRUCT_LIST || child->tag == CHILD_STRUCT) {
+    CJOB_FMT_SOURCE_STRING(job, "&haris_lib_structures[%d], ",
+                           child->tag == CHILD_STRUCT_LIST ?
+                           child->type.struct_list->schema_index :
+                           child->type.strct->schema_index);
+  } else {
+    CJOB_FMT_SOURCE_STRING(job, "NULL, ");
+  }
+  CJOB_FMT_SOURCE_STRING(job, "%s }", 
+                         child_enumerated_name(child->tag));
   return CJOB_SUCCESS;
 }
 
@@ -356,9 +405,16 @@ static CJobStatus write_general_destructor(CJob *job)
         haris_lib_destroy_contents((char*)list_info->ptr +\n\
                                      j * child_structure->size_of,\n\
                                    child_structure);\n\
-      /* Intentional break omission */\n\
-    case HARIS_CHILD_STRUCT:\n\
       HARIS_FREE(list_info->ptr);\n\
+      break;\n\
+    case HARIS_CHILD_STRUCT:\n\
+      child_structure = child->struct_element;\n\
+      _haris_lib_destroy(((HarisSubstructInfo*)list_info)->ptr, \n\
+                         child_structure);\n\
+      break;\n\
+    case HARIS_CHILD_EMBEDDED_STRUCT:\n\
+      child_structure = child->struct_element;\n\
+      haris_lib_destroy_contents((void*)list_info, child_structure);\n\
       break;\n\
     }\n\
   }\n\
@@ -413,13 +469,22 @@ static CJobStatus write_init_list(CJob *job, ParsedStruct *strct,
 static CJobStatus write_init_struct(CJob *job, ParsedStruct *strct,
                                     int field)
 {
-  const char *prefix = job->prefix, *name = strct->name;
-  CJOB_FMT_PUB_FUNCTION(job, 
+  const char *prefix = job->prefix, *struct_name = strct->name;
+  ChildField *child = &strct->children[field];
+  if (child_is_embeddable(child)) {
+    CJOB_FMT_PUB_FUNCTION(job, 
+"HarisStatus %s%s_init_%s(%s%s *strct) { return HARIS_SUCCESS; }\n\n",
+                          prefix, struct_name, child->name, 
+                          prefix, struct_name);
+  } else {
+    CJOB_FMT_PUB_FUNCTION(job, 
 "HarisStatus %s%s_init_%s(%s%s *strct)\n\
 {\n\
   return _haris_lib_init_struct_mem((void*)strct, &haris_lib_structures[%d], \
-%d);\n}\n\n", prefix, name, strct->children[field].name, prefix, name, 
-              strct->schema_index, field);
+%d);\n}\n\n",             prefix, struct_name, child->name, 
+                          prefix, struct_name, 
+                          strct->schema_index, field);
+  }
   return CJOB_SUCCESS;
 }
 
@@ -451,7 +516,7 @@ const HarisStructureInfo *info, int field, haris_uint32_t sz)\n\
   case HARIS_CHILD_STRUCT_LIST:\n\
     element_size = child->struct_element->size_of;\n\
     break;\n\
-  case HARIS_CHILD_STRUCT:\n\
+  default:\n\
     return HARIS_STRUCTURE_ERROR;\n\
   }\n\
   testptr = HARIS_REALLOC(list_info->ptr, sz * element_size);\n\
@@ -616,6 +681,16 @@ static CJobStatus write_core_size(CJob *job)
       buf = (!substruct_info->has ? \n\
              1 :\n\
              haris_lib_size(substruct_info->ptr, child->struct_element,\n\
+                            depth + 1, out));\n\
+      if (buf == 0) return 0;\n\
+      else if ((accum += buf) > HARIS_MESSAGE_SIZE_LIMIT) {\n\
+        *out = HARIS_SIZE_ERROR;\n\
+        return 0;\n\
+      }\n\
+    case HARIS_CHILD_EMBEDDED_STRUCT:\n\
+      buf = (!*((char*)ptr + child->has_offset) ?\n\
+             1 :\n\
+             haris_lib_size((void*)list_info, child->struct_element,\n\
                             depth + 1, out));\n\
       if (buf == 0) return 0;\n\
       else if ((accum += buf) > HARIS_MESSAGE_SIZE_LIMIT) {\n\
@@ -821,10 +896,18 @@ static CJobStatus write_from_stream_funcs(CJob *job)
     first_byte_of_child_header = *read_buffer;\n\
     if (!first_byte_of_child_header) { /* check whether child is null */\n\
       HARIS_ASSERT(child->nullable, STRUCTURE);\n\
-      if (child->child_type != HARIS_CHILD_STRUCT) \n\
+      switch (child->child_type) {\n\
+      case HARIS_CHILD_TEXT:\n\
+      case HARIS_CHILD_SCALAR_LIST:\n\
+      case HARIS_CHILD_STRUCT_LIST:\n\
         list_info->has = 0;\n\
-      else \n\
+        break;\n\
+      case HARIS_CHILD_STRUCT:\n\
         ((HarisSubstructInfo*)list_info)->has = 0;\n\
+        break;\n\
+      case HARIS_CHILD_EMBEDDED_STRUCT:\n\
+        *((char*)ptr + child->has_offset) = 0;\n\
+      }\n\
       continue;\n\
     }\n\
     switch (child->child_type) {\n\
@@ -875,26 +958,31 @@ static CJobStatus write_from_stream_funcs(CJob *job)
            j < len; \n\
            j ++,   in_mem_element_pointer += child->struct_element->size_of) {\n\
         if ((result = _haris_from_stream_posthead(in_mem_element_pointer, \n\
-                                                 child->struct_element, \n\
-                                                 stream, reader, depth + 1, \n\
-                                                 num_children, \n\
-                                                 body_size)) != HARIS_SUCCESS)\n\
+                                                  child->struct_element, \n\
+                                                  stream, reader, depth + 1, \n\
+                                                  num_children, \n\
+                                                  body_size)) != HARIS_SUCCESS)\n\
           return result;\n\
       }\n\
       break;\n\
     }\n\
     case HARIS_CHILD_STRUCT:\n\
-    {\n\
       if ((result = _haris_lib_init_struct_mem(ptr, info, i))\n\
            != HARIS_SUCCESS)\n\
         return result;\n\
-      if ((result = _haris_from_stream(*(void**)list_info,\n\
+      if ((result = _haris_from_stream(((HarisSubstructInfo*)list_info)->ptr,\n\
                                       child->struct_element, \n\
                                       stream, reader, depth + 1)) \n\
           != HARIS_SUCCESS)\n\
         return result;\n\
       break;\n\
-    }\n\
+    case HARIS_CHILD_EMBEDDED_STRUCT:\n\
+      if ((result = _haris_from_stream((void*)list_info,\n\
+                                       child->struct_element,\n\
+                                       stream, reader, depth + 1))\n\
+          != HARIS_SUCCESS)\n\
+        return result;\n\
+      break;\n\
     }\n\
   }\n\
   for (; i < num_children; i ++) {\n\
@@ -941,18 +1029,17 @@ static CJobStatus write_to_stream_funcs(CJob *job)
     case HARIS_CHILD_SCALAR_LIST:\n\
     case HARIS_CHILD_STRUCT_LIST:\n\
       if (!list_info->has) {\n\
-        child_header[0] = 0x0;\n\
-        if ((result = writer(stream, child_header, 1)) != HARIS_SUCCESS)\n\
-          return result;\n\
-        continue;\n\
+        goto WriteNull;\n\
       }\n\
       break;\n\
     case HARIS_CHILD_STRUCT:\n\
       if (!((HarisSubstructInfo*)list_info)->has) {\n\
-        child_header[0] = 0x0;\n\
-        if ((result = writer(stream, child_header, 1)) != HARIS_SUCCESS)\n\
-          return result;\n\
-        continue;\n\
+        goto WriteNull;\n\
+      }\n\
+      break;\n\
+    case HARIS_CHILD_EMBEDDED_STRUCT:\n\
+      if (!*((char*)ptr + child->has_offset)) {\n\
+        goto WriteNull;\n\
       }\n\
       break;\n\
     }\n\
@@ -1009,7 +1096,19 @@ static CJobStatus write_to_stream_funcs(CJob *job)
                                     stream, writer)) != HARIS_SUCCESS)\n\
         return result;\n\
       break;\n\
+    case HARIS_CHILD_EMBEDDED_STRUCT:\n\
+      if ((result = _haris_to_stream((void*)list_info,\n\
+                                     child->struct_element,\n\
+                                     stream, writer)) != HARIS_SUCCESS)\n\
+        return result;\n\
+      break;\n\
     }\n\
+    continue;\n\
+   WriteNull:\n\
+    child_header[0] = 0x0;\n\
+    if ((result = writer(stream, child_header, 1)) != HARIS_SUCCESS)\n\
+      return result;\n\
+    continue;\n\
   }\n\
   return HARIS_SUCCESS;\n\
 }\n\n");
