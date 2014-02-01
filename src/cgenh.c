@@ -5,8 +5,14 @@ static CJobStatus write_header_boilerplate(CJob *);
 static CJobStatus write_header_macros(CJob *);
 static CJobStatus write_header_structures(CJob *);
 static CJobStatus write_reflective_structures(CJob *);
-static CJobStatus write_structure_definition(CJob *, ParsedStruct *);
+static CJobStatus write_structure_definition(CJob *, const ParsedStruct *);
 static CJobStatus write_child_field(CJob *, const ChildField *);
+
+static CJobStatus write_macros_for_child(CJob *, const ParsedStruct *, 
+                                         const ChildField *);
+static CJobStatus write_macros_for_embedded_struct(CJob *, 
+                                                   const ParsedStruct *, 
+                                                   const ChildField *);
 
 /* =============================PUBLIC INTERFACE============================= */
 
@@ -107,8 +113,6 @@ static CJobStatus write_header_macros(CJob *job)
   int i, j;
   ParsedEnum *enm;
   ParsedStruct *strct;
-  ChildField *child;
-  const char *prefix = job->prefix, *strct_name, *child_name;
   CJOB_FMT_HEADER_STRING(job, 
 "/* Changeable size limits for error-checking. You can freely modify these if\n\
    you would like your Haris client to be able to process larger or deeper\n\
@@ -140,44 +144,8 @@ static CJobStatus write_header_macros(CJob *job)
 #define HARIS_ASSERT(cond, err) if (!(cond)) return HARIS_ ## err ## _ERROR\n\n");
   for (i = 0; i < job->schema->num_structs; i ++) {
     strct = &job->schema->structs[i];
-    strct_name = strct->name;
     for (j = 0; j < strct->num_children; j ++) {
-      child = &strct->children[j];
-      child_name = child->name;
-      if (child->nullable) {
-        CJOB_FMT_HEADER_STRING(job, 
-                               "#define %s%s_has_%s(X) ((int)((X)->_%s_info.has))\n",
-                               prefix, strct_name, child_name, child_name);
-        CJOB_FMT_HEADER_STRING(job,
-                               "#define %s%s_clear_%s(X) ((X)->_%s_info.has = 0)\n",
-                               prefix, strct_name, child_name, child_name);
-      }
-      if (child->tag != CHILD_STRUCT) {
-        CJOB_FMT_HEADER_STRING(job, 
-                               "#define %s%s_len_%s(X) \
-((haris_uint32_t)((X)->_%s_info.len))\n",
-                               prefix, strct_name, child_name, child_name);
-      }
-      CJOB_FMT_HEADER_STRING(job, "#define %s%s_get_%s(X) ",
-                             prefix, strct_name, child_name);
-      switch (child->tag) {
-      case CHILD_TEXT:
-        CJOB_FMT_HEADER_STRING(job, "((char*)");
-        break;
-      case CHILD_SCALAR_LIST:
-        CJOB_FMT_HEADER_STRING(job, "((%s*)", 
-                               scalar_type_name(child->type.scalar_list.tag));
-        break;
-      case CHILD_STRUCT_LIST:
-        CJOB_FMT_HEADER_STRING(job, "((%s%s*)",
-                               prefix, child->type.struct_list->name);
-        break;
-      case CHILD_STRUCT:
-        CJOB_FMT_HEADER_STRING(job, "((%s%s*)", prefix, 
-                               child->type.strct->name);
-        break;
-      }
-      CJOB_FMT_HEADER_STRING(job, "((X)->_%s_info.ptr))\n\n", child_name);
+      write_macros_for_child(job, strct, &strct->children[j]);
     }
   }
   for (i = 0; i < job->schema->num_enums; i ++) {
@@ -192,6 +160,69 @@ static CJobStatus write_header_macros(CJob *job)
   return CJOB_SUCCESS;
 }
 
+static CJobStatus write_macros_for_child(CJob *job, const ParsedStruct *strct, 
+                                         const ChildField *child)
+{
+  const char *prefix = job->prefix, *strct_name = strct->name,
+             *child_name = child->name;
+  if (child_is_embeddable(child)) {
+    return write_macros_for_embedded_struct(job, strct, child);
+  }
+  if (child->nullable) {
+    CJOB_FMT_HEADER_STRING(job, 
+                           "#define %s%s_has_%s(X) ((int)((X)->_%s_info.has))\n",
+                           prefix, strct_name, child_name, child_name);
+    CJOB_FMT_HEADER_STRING(job,
+                           "#define %s%s_clear_%s(X) ((X)->_%s_info.has = 0)\n",
+                           prefix, strct_name, child_name, child_name);
+  }
+  if (child->tag != CHILD_STRUCT) {
+    CJOB_FMT_HEADER_STRING(job, 
+                           "#define %s%s_len_%s(X) \
+((haris_uint32_t)((X)->_%s_info.len))\n",
+                           prefix, strct_name, child_name, child_name);
+  }
+  CJOB_FMT_HEADER_STRING(job, "#define %s%s_get_%s(X) ",
+                         prefix, strct_name, child_name);
+  switch (child->tag) {
+  case CHILD_TEXT:
+    CJOB_FMT_HEADER_STRING(job, "((char*)");
+    break;
+  case CHILD_SCALAR_LIST:
+    CJOB_FMT_HEADER_STRING(job, "((%s*)", 
+                           scalar_type_name(child->type.scalar_list.tag));
+    break;
+  case CHILD_STRUCT_LIST:
+    CJOB_FMT_HEADER_STRING(job, "((%s%s*)",
+                           prefix, child->type.struct_list->name);
+    break;
+  case CHILD_STRUCT:
+    CJOB_FMT_HEADER_STRING(job, "((%s%s*)", prefix, 
+                           child->type.strct->name);
+    break;
+  }
+  CJOB_FMT_HEADER_STRING(job, "((X)->_%s_info.ptr))\n\n", child_name);
+  return CJOB_SUCCESS;
+}
+
+static CJobStatus write_macros_for_embedded_struct(CJob *job, 
+                                                   const ParsedStruct *strct, 
+                                                   const ChildField *child)
+{
+  const char *prefix = job->prefix, *strct_name = strct->name,
+             *child_name = child->name;
+  if (child->nullable) {
+    CJOB_FMT_HEADER_STRING(job, "#define %s%s_has_%s(X) ((int)(X->_%s_has))\n",
+                           prefix, strct_name, child_name, child_name);
+    CJOB_FMT_HEADER_STRING(job, "#define %s%s_clear_%s(X) ((X)->_%s_has = 0)\n",
+                           prefix, strct_name, child_name, child_name);
+  }
+  CJOB_FMT_HEADER_STRING(job, "#define %s%s_get_%s(X) (&((X)->_%s_info))\n",
+                         prefix, strct_name, child_name, child_name);
+  CJOB_FMT_HEADER_STRING(job, "#define %s%s_init_%s(X) (HARIS_SUCCESS)\n",
+                         prefix, strct_name, child_name);
+  return CJOB_SUCCESS;
+}
 
 /* Write the generic structures that capture the makeup of the defined 
    structures.
@@ -286,7 +317,7 @@ static CJobStatus write_header_structures(CJob *job)
    is just implemented by way of nested loops over the set of all scalar
    types.)
 */
-static CJobStatus write_structure_definition(CJob *job, ParsedStruct *strct)
+static CJobStatus write_structure_definition(CJob *job, const ParsedStruct *strct)
 {
   CJobStatus result;
   int i;
