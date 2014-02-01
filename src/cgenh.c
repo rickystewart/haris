@@ -118,14 +118,6 @@ static CJobStatus write_header_macros(CJob *job)
 #define HARIS_DEPTH_LIMIT 64\n\
 #define HARIS_MESSAGE_SIZE_LIMIT 1000000000\n\
 \n\
-/* \"Magic numbers\" for use by float-reading and -writing functions; do not \n\
-   modify\n\
-*/\n\
-\n\
-#define HARIS_FLOAT32_SIGBITS 23\n\
-#define HARIS_FLOAT32_BIAS    127\n\
-#define HARIS_FLOAT64_SIGBITS 52\n\
-#define HARIS_FLOAT64_BIAS    1023\n\n\
 /* The _init_ deallocation factor. If you initialize a list to have length\n\
    N, but the list is already allocated to have length A, then the list\n\
    will be reallocated to have length N if and only if N/A is less than\n\
