@@ -6,7 +6,7 @@ TEST_FILES = test/simple.haris.c test/numtest.haris.c
 TEST_HEADERS = $(TEST_FILES:.c=.h)
 
 CC = gcc
-CFLAGS = -Wall -Wextra -pedantic -Wconversion -Wsign-conversion -O3 -std=c99
+CFLAGS = -Wall -Wextra -Wformat -pedantic -Wconversion -Wsign-conversion -O3 -std=c99
 
 HARIS_FLAGS = -p buffer -p file
 
