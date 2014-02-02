@@ -60,12 +60,14 @@ typedef struct {
   ChildType type;
 } ChildField;
 
+typedef struct {
+  size_t max_size; /* The maximum encoded size of this structure in bytes.
+                      Could be smaller if it has nullable structure fields. */
+} StructMetadata;
+
 struct _ParsedStruct {
   char *name;
-  size_t max_size; /* The maximum encoded size of this structure in bytes.
-                      Could be smaller if it has nullable structure fields. 
-                      Used primarily by the C compiler to determine which
-                      structures can be embeddable. */
+  StructMetadata meta;
   int schema_index;
   int offset;
   int num_scalars;

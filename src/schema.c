@@ -64,7 +64,7 @@ void finalize_schema(ParsedSchema *schema)
     changed = 0;
     for (i = 0; i < schema->num_structs; i ++) {
       strct = &schema->structs[i];
-      if (strct->max_size == 0) {
+      if (strct->meta.max_size == 0) {
         if (compute_struct_inmem_size(strct)) {
           changed = 1;
         }
@@ -95,7 +95,7 @@ ParsedStruct *new_struct(ParsedSchema *schema, char *name)
   ret->name = util_strdup(name);
   ret->num_scalars = ret->num_children = 0;
   ret->offset = 0;
-  ret->max_size = 0;
+  ret->meta.max_size = 0;
   ret->scalars_alloc = ret->children_alloc = (int)arr_size;
   ret->scalars = malloc(arr_size * sizeof *ret->scalars);
   ret->children = malloc(arr_size * sizeof *ret->children);
@@ -333,25 +333,26 @@ static int compute_struct_inmem_size(ParsedStruct *strct)
 {
   size_t sz;
   int i, can_compute;
-  if (strct->max_size != 0) {
+  StructMetadata *meta = &strct->meta;
+  if (meta->max_size != 0) {
     return 0;
   } else if (strct->num_children == 0) {
-    strct->max_size = (size_t)strct->offset + 2U;
+    meta->max_size = (size_t)strct->offset + 2U;
     return 1;
   } else {
     sz = 0;
     can_compute = 1;
     for (i = 0; i < strct->num_children; i ++) {
       if (strct->children[i].tag != CHILD_STRUCT ||
-          strct->children[i].type.strct->max_size == 0) {
+          strct->children[i].type.strct->meta.max_size == 0) {
         can_compute = 0;
         break;
       } else {
-        sz += strct->children[i].type.strct->max_size;
+        sz += strct->children[i].type.strct->meta.max_size;
       } 
     }
     if (can_compute) {
-      strct->max_size = sz + (size_t)strct->offset + 2U;
+      meta->max_size = sz + (size_t)strct->offset + 2U;
       return 1;
     } else {
       return 0;
