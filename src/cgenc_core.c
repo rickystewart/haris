@@ -214,7 +214,7 @@ static CJobStatus write_reflective_embedded_struct(CJob *job,
   const char *prefix = job->prefix, *strct_name = strct->name, 
              *child_name = child->name;
   CJOB_FMT_SOURCE_STRING(job, 
-"  { offsetof(%s%s, _%s_info), offsetof(%s%s, _%s_has), %d,\n\
+"  { offsetof(%s%s, _%s_embedded), offsetof(%s%s, _%s_has), %d,\n\
      HARIS_SCALAR_BLANK, &haris_lib_structures[%d],\n\
      HARIS_CHILD_EMBEDDED_STRUCT }",
                          prefix, strct_name, child_name,
