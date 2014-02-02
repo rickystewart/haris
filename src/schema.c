@@ -6,6 +6,7 @@ static int realloc_struct_scalars(ParsedStruct *);
 static int realloc_struct_children(ParsedStruct *);
 
 static int compute_struct_inmem_size(ParsedStruct *);
+static void compute_max_sizes(ParsedSchema *);
 
 static int add_list_of_scalars_or_enums_field(ParsedStruct *, char *, int,
                                               ScalarTag, ParsedEnum *);
@@ -58,21 +59,7 @@ void destroy_parsed_schema(ParsedSchema *schema)
    all structures, wherever that computation is possible. */
 void finalize_schema(ParsedSchema *schema)
 {
-  int i, changed;
-  ParsedStruct *strct;
-  for (;;) {
-    changed = 0;
-    for (i = 0; i < schema->num_structs; i ++) {
-      strct = &schema->structs[i];
-      if (strct->meta.max_size == 0) {
-        if (compute_struct_inmem_size(strct)) {
-          changed = 1;
-        }
-      }
-    }
-    if (!changed) break;
-  }
-  return;
+  compute_max_sizes(schema);
 }
 
 /* Creates a new structure in the given schema with the given name, returning
@@ -320,6 +307,24 @@ static int realloc_struct_children(ParsedStruct *strct)
   if (!array) return 0;
   strct->children = array;
   return 1;
+}
+
+static void compute_max_sizes(ParsedSchema *schema)
+{
+  int i, changed;
+  ParsedStruct *strct;
+  for (;;) {
+    changed = 0;
+    for (i = 0; i < schema->num_structs; i ++) {
+      strct = &schema->structs[i];
+      if (strct->meta.max_size == 0) {
+        if (compute_struct_inmem_size(strct)) {
+          changed = 1;
+        }
+      }
+    }
+    if (!changed) break;
+  }
 }
 
 /* Compute the maximum encoded size of the given structure, if possible.

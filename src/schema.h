@@ -62,7 +62,10 @@ typedef struct {
 
 typedef struct {
   size_t max_size; /* The maximum encoded size of this structure in bytes.
-                      Could be smaller if it has nullable structure fields. */
+                      Could be smaller if it has nullable structure fields. 
+                      If == 0 after finalization, then this structure has no
+                      guaranteed maximum size (likely due to a list field or
+                      a recursive child). */
 } StructMetadata;
 
 struct _ParsedStruct {
