@@ -147,35 +147,6 @@ int child_is_embeddable(const ChildField *child)
          child->type.strct->meta.max_size > 0U;
 }
 
-const char *scalar_type_suffix(ScalarTag type)
-{
-  switch (type) {
-  case SCALAR_UINT8:
-  case SCALAR_ENUM:
-  case SCALAR_BOOL:
-    return "uint8";
-  case SCALAR_INT8:
-    return "int8";
-  case SCALAR_UINT16:
-    return "uint16";
-  case SCALAR_INT16:
-    return "int16";
-  case SCALAR_UINT32:
-    return "uint32";
-  case SCALAR_INT32:
-    return "int32";
-  case SCALAR_UINT64:
-    return "uint64";
-  case SCALAR_INT64:
-    return "int64";
-  case SCALAR_FLOAT32:
-    return "float32";
-  case SCALAR_FLOAT64:
-    return "float64";
-  }
-  return NULL;
-}
-
 const char *scalar_type_name(ScalarTag type)
 {
   switch (type) {
