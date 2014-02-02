@@ -7,6 +7,7 @@ static CJobStatus write_header_structures(CJob *);
 static CJobStatus write_reflective_structures(CJob *);
 static CJobStatus write_structure_definition(CJob *, const ParsedStruct *);
 static CJobStatus write_child_field(CJob *, const ChildField *);
+static CJobStatus write_embedded_child_metadata(CJob *, const ChildField *);
 
 static CJobStatus write_macros_for_child(CJob *, const ParsedStruct *, 
                                          const ChildField *);
@@ -350,6 +351,13 @@ static CJobStatus write_structure_definition(CJob *job, const ParsedStruct *strc
       }
     }
   }
+  /* Metadata goes after the scalars since all metadata is of type `char`, and
+     chars go last in the structure for alignment reasons. */
+  for (i = 0; i < strct->num_children; i ++) {
+    if ((result = write_embedded_child_metadata(job, strct->children + i))
+        != CJOB_SUCCESS) 
+      return result;
+  }
   CJOB_FMT_HEADER_STRING(job, "};\n\n");
   return CJOB_SUCCESS;
 }
@@ -367,15 +375,27 @@ static CJobStatus write_child_field(CJob *job, const ChildField *child)
     break;
   case CHILD_STRUCT:
     if (child_is_embeddable(child)) {
-      CJOB_FMT_HEADER_STRING(job, "\
-  %s%s _%s_embedded;\n\
-  char _%s_has;\n",          prefix, child->type.strct->name, child_name,
-                             child_name);
+      CJOB_FMT_HEADER_STRING(job, "%s%s _%s_embedded;\n", prefix, 
+                             child->type.strct->name, child_name);
     } else {
       CJOB_FMT_HEADER_STRING(job, "  HarisSubstructInfo _%s_info;\n", 
                              child_name);
     }
     break;
+  }
+  return CJOB_SUCCESS;
+}
+
+/* Write the metadata structure fields for the given child to the output file.
+   Only embedded children have metadata (this is a char boolean tag that 
+   tells us whether the structure is present or not); therefore, if this
+   function is called on a child that is not embedded, this is a noop. */
+static CJobStatus write_embedded_child_metadata(CJob *job,
+                                                const ChildField *child)
+{
+  const char *child_name = child->name;
+  if (child->tag == CHILD_STRUCT && child_is_embeddable(child)) {
+    CJOB_FMT_HEADER_STRING(job, "  char _%s_has;\n", child_name);
   }
   return CJOB_SUCCESS;
 }
