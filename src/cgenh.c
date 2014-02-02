@@ -286,11 +286,19 @@ static CJobStatus write_header_structures(CJob *job)
 {
   CJobStatus result;
   int i;
+  ParsedStruct *strct;
   if ((result = write_reflective_structures(job)) != CJOB_SUCCESS)
     return result;
 
   for (i = 0; i < job->schema->num_structs; i ++) {
-    if ((result = write_structure_definition(job, job->schema->structs + i))
+    strct = &job->schema->structs[i];
+    CJOB_FMT_HEADER_STRING(job, "typedef struct %s%s %s%s;\n", 
+                           job->prefix, strct->name, 
+                           job->prefix, strct->name);
+  }
+  CJOB_FMT_HEADER_STRING(job, "\n");
+  for (i = 0; i < job->schema->num_structs; i ++) {
+    if ((result = write_structure_definition(job, &job->schema->structs[i]))
         != CJOB_SUCCESS)
       return result;
   }
@@ -328,7 +336,7 @@ static CJobStatus write_structure_definition(CJob *job, const ParsedStruct *strc
     SCALAR_FLOAT32, SCALAR_UINT16, SCALAR_INT16, SCALAR_BOOL, SCALAR_ENUM, 
     SCALAR_UINT8, SCALAR_INT8
   };
-  CJOB_FMT_HEADER_STRING(job, "typedef struct {\n");
+  CJOB_FMT_HEADER_STRING(job, "struct %s%s {\n", prefix, name);
   for (i = 0; i < strct->num_children; i ++) { 
     if ((result = write_child_field(job, strct->children + i)) != CJOB_SUCCESS)
       return result;
@@ -342,7 +350,7 @@ static CJobStatus write_structure_definition(CJob *job, const ParsedStruct *strc
       }
     }
   }
-  CJOB_FMT_HEADER_STRING(job, "} %s%s;\n\n", prefix, name);
+  CJOB_FMT_HEADER_STRING(job, "};\n\n");
   return CJOB_SUCCESS;
 }
 
