@@ -7,6 +7,9 @@ static int realloc_struct_children(ParsedStruct *);
 
 static int compute_struct_inmem_size(ParsedStruct *);
 static void compute_max_sizes(ParsedSchema *);
+static void compute_embeddability(ParsedSchema *);
+static int reachable_from_embedded_children(ParsedStruct *find, 
+                                            ParsedStruct *root);
 
 static int add_list_of_scalars_or_enums_field(ParsedStruct *, char *, int,
                                               ScalarTag, ParsedEnum *);
@@ -60,6 +63,7 @@ void destroy_parsed_schema(ParsedSchema *schema)
 void finalize_schema(ParsedSchema *schema)
 {
   compute_max_sizes(schema);
+  compute_embeddability(schema);
 }
 
 /* Creates a new structure in the given schema with the given name, returning
@@ -190,6 +194,7 @@ int add_struct_field(ParsedStruct *strct, char *name, int nullable,
   strct->children[i].nullable = nullable;
   strct->children[i].tag = CHILD_STRUCT;
   strct->children[i].type.strct = field;
+  strct->children[i].meta.embeddable = 1;
   strct->num_children++;
   return 1;
 }
@@ -204,6 +209,7 @@ int add_text_field(ParsedStruct *strct, char *name, int nullable)
   if (!strct->children[i].name) return 0;
   strct->children[i].nullable = nullable;
   strct->children[i].tag = CHILD_TEXT;
+  strct->children[i].meta.embeddable = 0;
   strct->num_children++;
   return 1;
 }
@@ -239,6 +245,7 @@ int add_list_of_structs_field(ParsedStruct *strct, char *name, int nullable,
   strct->children[i].nullable = nullable;
   strct->children[i].tag = CHILD_STRUCT_LIST;
   strct->children[i].type.struct_list = field;
+  strct->children[i].meta.embeddable = 0;
   strct->num_children++;
   return 1;
 }
@@ -325,6 +332,60 @@ static void compute_max_sizes(ParsedSchema *schema)
     }
     if (!changed) break;
   }
+}
+
+/* All structure children are initialized by default to be marked embeddable;
+   this function discerns which children are not actually embeddable, and
+   edits the children to reflect that.
+
+   A child is not actually embeddable if you can reach the parent structure
+   by following the child through the graph of the child's embedded children.
+   For example, in the following schema:
+   @struct A
+   @struct B
+   struct A ( B? b )
+   struct B ( A? a )
+   ... we start at structure A, which has a single child (B). Since we can
+   find A in the graph of B's embedded children (B.a has type A) we edit
+   A.b to be unembedded. Then, proceeding to structure B, we don't find B
+   in A's embedded children (since we marked A.b unembedded earlier) so
+   it remains unembedded. */
+static void compute_embeddability(ParsedSchema *schema)
+{
+  int i, j;
+  ChildField *child;
+  ParsedStruct *strct, *child_struct;
+  for (i = 0; i < schema->num_structs; i ++) {
+    strct = &schema->structs[i];
+    for (j = 0; j < strct->num_children; j ++) {
+      child = &strct->children[j];
+      if (child->tag != CHILD_STRUCT || !child->meta.embeddable)
+        continue;
+      child_struct = child->type.strct;
+      if (reachable_from_embedded_children(strct, child_struct))
+        child->meta.embeddable = 0;
+    }
+  }
+}
+
+/* Tests whether find == root, or whether find can be found within the graph
+   of root's embedded children. */
+static int reachable_from_embedded_children(ParsedStruct *find, 
+                                            ParsedStruct *root)
+{
+  int i;
+  ChildField *child;
+  ParsedStruct *child_struct;
+  if (find == root) return 1;
+  for (i = 0; i < root->num_children; i ++) {
+    child = &root->children[i];
+    if (child->tag != CHILD_STRUCT || !child->meta.embeddable)
+      continue;
+    child_struct = child->type.strct;
+    if (reachable_from_embedded_children(find, child_struct))
+      return 1;
+  }
+  return 0;
 }
 
 /* Compute the maximum encoded size of the given structure, if possible.

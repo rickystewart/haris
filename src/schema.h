@@ -54,8 +54,20 @@ typedef union {
 } ChildType;
 
 typedef struct {
+  int embeddable; /* A child is embeddable if it is a structure and if 
+                     including the structure itself in the structure 
+                     definition (rather than a pointer to the structure)
+                     doesn't result in an invalid definition. This is a
+                     part of the schema definition, though it is used
+                     primarily by the C code generator; this is a tight
+                     coupling that should be lifted out if we continue to
+                     add another language compiler to this codebase. */
+} ChildMetadata;
+
+typedef struct {
   char *name;
   int nullable;
+  ChildMetadata meta;
   ChildTag tag;
   ChildType type;
 } ChildField;

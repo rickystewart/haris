@@ -221,7 +221,7 @@ static CJobStatus write_macros_for_embedded_struct(CJob *job,
   CJOB_FMT_HEADER_STRING(job, "#define %s%s_get_%s(X) (&((X)->_%s_embedded))\n",
                          prefix, strct_name, child_name, child_name);
   CJOB_FMT_HEADER_STRING(job, "#define %s%s_init_%s(X) (((X)->_%s_has = 1),HARIS_SUCCESS)\n",
-                         prefix, strct_name, child_name);
+                         prefix, strct_name, child_name, child_name);
   return CJOB_SUCCESS;
 }
 
@@ -375,7 +375,7 @@ static CJobStatus write_child_field(CJob *job, const ChildField *child)
     break;
   case CHILD_STRUCT:
     if (child_is_embeddable(child)) {
-      CJOB_FMT_HEADER_STRING(job, "%s%s _%s_embedded;\n", prefix, 
+      CJOB_FMT_HEADER_STRING(job, "  %s%s _%s_embedded;\n", prefix, 
                              child->type.strct->name, child_name);
     } else {
       CJOB_FMT_HEADER_STRING(job, "  HarisSubstructInfo _%s_info;\n", 

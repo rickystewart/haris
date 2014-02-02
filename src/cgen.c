@@ -144,7 +144,7 @@ char *strformat(const char *fmt, ...)
 int child_is_embeddable(const ChildField *child)
 {
   return child->tag == CHILD_STRUCT && 
-         child->type.strct->meta.max_size > 0U;
+         child->meta.embeddable;
 }
 
 const char *scalar_type_name(ScalarTag type)
