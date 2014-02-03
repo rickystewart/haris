@@ -37,6 +37,7 @@ static CJobStatus write_file_structures(CJob *job)
      write the new bytes when the next call to `write_to_file_stream` is
      made).
 */
+  CJOB_FMT_HEADER_STRING(job, "#include <stdio.h>\n\n");
   CJOB_FMT_HEADER_STRING(job,
 "typedef struct {\n\
   FILE *file;\n\

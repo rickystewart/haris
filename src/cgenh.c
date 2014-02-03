@@ -39,11 +39,7 @@ CJobStatus write_header_file(CJob *job)
 */
 static CJobStatus write_header_boilerplate(CJob *job)
 {
-  CJOB_FMT_HEADER_STRING(job, 
-"#include <stdio.h>\n\
-#include <stdlib.h>\n\
-#include <stddef.h>\n\
-#include <string.h>\n\n");
+  CJOB_FMT_HEADER_STRING(job, "#include <stddef.h>\n");
   CJOB_FMT_HEADER_STRING(job, 
 "/* In order to generate C code, the utility library needs exact-precision\n\
    unsigned and signed integers. In particular, in order to ensure that we don't\n\

@@ -578,7 +578,8 @@ static CJobStatus output_to_source_file(CJob *job, FILE *out)
   CJOB_FPRINTF(out, 
 "#include <stdio.h>\n\
 #include <stddef.h>\n\
-#include <stdlib.h>\n\n\
+#include <stdlib.h>\n\
+#include <string.h>\n\
 #include \"%s.h\"\n\n", find_proper_filename(job->output));
   for (i = 0; i < job->strings.private_functions.num_strings; i ++)
     if ((result = output_prototype(out, job->strings.private_functions.strings[i]))
