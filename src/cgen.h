@@ -14,6 +14,10 @@
                           { if (add_header_string(job, strformat(__VA_ARGS__)) \
                                  != CJOB_SUCCESS) \
                               return CJOB_MEM_ERROR; } while (0)
+#define CJOB_FMT_HEADER_BOTTOM_STRING(job, ...) do \
+                          { if (add_header_bottom_string(job, \
+                                strformat(__VA_ARGS__)) != CJOB_SUCCESS) \
+                              return CJOB_MEM_ERROR; } while (0)
 #define CJOB_FMT_SOURCE_STRING(job, ...) do \
                           { if (add_source_string(job, strformat(__VA_ARGS__)) \
                                  != CJOB_SUCCESS) \
@@ -89,6 +93,10 @@ typedef struct {
 typedef struct {
   CJobStringStack header_strings; /* Strings that will be copied verbatim into
                                      the header file */
+  CJobStringStack header_bottom_strings; /* Strings that will be copied 
+                                            verbatim into the header file, but
+                                            at the bottom of the file, after
+                                            the function declarations */
   CJobStringStack source_strings; /* Strings to copy into the .c file */
   CJobStringStack public_functions; /* Functions that are part of the public
                                        interface of the library */
@@ -119,6 +127,7 @@ CJobStatus cgen_main(int, char **);
 /* A collection of public functions that are used by more than one of the 
    source files of the C compiler. */
 CJobStatus add_header_string(CJob *, char *);
+CJobStatus add_header_bottom_string(CJob *, char *);
 CJobStatus add_source_string(CJob *, char *);
 CJobStatus add_public_function(CJob *, char *);
 CJobStatus add_private_function(CJob *, char *);

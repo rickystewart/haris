@@ -110,6 +110,13 @@ CJobStatus add_header_string(CJob *job, char *s)
   return CJOB_SUCCESS;
 }
 
+CJobStatus add_header_bottom_string(CJob *job, char *s)
+{
+  if (!push_string(&job->strings.header_bottom_strings, s))
+    return CJOB_MEM_ERROR;
+  return CJOB_SUCCESS;
+}
+
 CJobStatus add_source_string(CJob *job, char *s)
 {
   if (!push_string(&job->strings.source_strings, s))
@@ -278,7 +285,8 @@ static CJob *new_cjob(void)
   if (!init_string_stack(&ret->strings.header_strings) ||
       !init_string_stack(&ret->strings.source_strings) ||
       !init_string_stack(&ret->strings.public_functions) ||
-      !init_string_stack(&ret->strings.private_functions))
+      !init_string_stack(&ret->strings.private_functions) ||
+      !init_string_stack(&ret->strings.header_bottom_strings))
     goto Failure;
   return ret;
   Failure:
@@ -539,6 +547,8 @@ static CJobStatus output_to_header_file(CJob *job, FILE *out)
     if ((result = output_prototype(out, job->strings.public_functions.strings[i]))
         != CJOB_SUCCESS)
       return result;
+  for (i = 0; i < job->strings.header_bottom_strings.num_strings; i ++) 
+    CJOB_FPRINTF(out, "%s", job->strings.header_bottom_strings.strings[i]);
   CJOB_FPRINTF(out, "#endif\n\n");
   return CJOB_SUCCESS;
 }

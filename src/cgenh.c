@@ -170,39 +170,39 @@ static CJobStatus write_macros_for_child(CJob *job, const ParsedStruct *strct,
     return write_macros_for_embedded_struct(job, strct, child);
   }
   if (child->nullable) {
-    CJOB_FMT_HEADER_STRING(job, 
+    CJOB_FMT_HEADER_BOTTOM_STRING(job, 
                            "#define %s%s_has_%s(X) ((int)((X)->_%s_info.has))\n",
                            prefix, strct_name, child_name, child_name);
-    CJOB_FMT_HEADER_STRING(job,
+    CJOB_FMT_HEADER_BOTTOM_STRING(job,
                            "#define %s%s_clear_%s(X) ((X)->_%s_info.has = 0)\n",
                            prefix, strct_name, child_name, child_name);
   }
   if (child->tag != CHILD_STRUCT) {
-    CJOB_FMT_HEADER_STRING(job, 
+    CJOB_FMT_HEADER_BOTTOM_STRING(job, 
                            "#define %s%s_len_%s(X) \
 ((haris_uint32_t)((X)->_%s_info.len))\n",
                            prefix, strct_name, child_name, child_name);
   }
-  CJOB_FMT_HEADER_STRING(job, "#define %s%s_get_%s(X) ",
+  CJOB_FMT_HEADER_BOTTOM_STRING(job, "#define %s%s_get_%s(X) ",
                          prefix, strct_name, child_name);
   switch (child->tag) {
   case CHILD_TEXT:
-    CJOB_FMT_HEADER_STRING(job, "((char*)");
+    CJOB_FMT_HEADER_BOTTOM_STRING(job, "((char*)");
     break;
   case CHILD_SCALAR_LIST:
-    CJOB_FMT_HEADER_STRING(job, "((%s*)", 
+    CJOB_FMT_HEADER_BOTTOM_STRING(job, "((%s*)", 
                            scalar_type_name(child->type.scalar_list.tag));
     break;
   case CHILD_STRUCT_LIST:
-    CJOB_FMT_HEADER_STRING(job, "((%s%s*)",
+    CJOB_FMT_HEADER_BOTTOM_STRING(job, "((%s%s*)",
                            prefix, child->type.struct_list->name);
     break;
   case CHILD_STRUCT:
-    CJOB_FMT_HEADER_STRING(job, "((%s%s*)", prefix, 
+    CJOB_FMT_HEADER_BOTTOM_STRING(job, "((%s%s*)", prefix, 
                            child->type.strct->name);
     break;
   }
-  CJOB_FMT_HEADER_STRING(job, "((X)->_%s_info.ptr))\n\n", child_name);
+  CJOB_FMT_HEADER_BOTTOM_STRING(job, "((X)->_%s_info.ptr))\n\n", child_name);
   return CJOB_SUCCESS;
 }
 
@@ -213,14 +213,14 @@ static CJobStatus write_macros_for_embedded_struct(CJob *job,
   const char *prefix = job->prefix, *strct_name = strct->name,
              *child_name = child->name;
   if (child->nullable) {
-    CJOB_FMT_HEADER_STRING(job, "#define %s%s_has_%s(X) ((int)(X->_%s_has))\n",
+    CJOB_FMT_HEADER_BOTTOM_STRING(job, "#define %s%s_has_%s(X) ((int)(X->_%s_has))\n",
                            prefix, strct_name, child_name, child_name);
-    CJOB_FMT_HEADER_STRING(job, "#define %s%s_clear_%s(X) ((X)->_%s_has = 0)\n",
+    CJOB_FMT_HEADER_BOTTOM_STRING(job, "#define %s%s_clear_%s(X) ((X)->_%s_has = 0)\n",
                            prefix, strct_name, child_name, child_name);
   }
-  CJOB_FMT_HEADER_STRING(job, "#define %s%s_get_%s(X) (&((X)->_%s_embedded))\n",
+  CJOB_FMT_HEADER_BOTTOM_STRING(job, "#define %s%s_get_%s(X) (&((X)->_%s_embedded))\n",
                          prefix, strct_name, child_name, child_name);
-  CJOB_FMT_HEADER_STRING(job, "#define %s%s_init_%s(X) (((X)->_%s_has = 1),HARIS_SUCCESS)\n",
+  CJOB_FMT_HEADER_BOTTOM_STRING(job, "#define %s%s_init_%s(X) (((X)->_%s_has = 1),HARIS_SUCCESS)\n",
                          prefix, strct_name, child_name, child_name);
   return CJOB_SUCCESS;
 }
