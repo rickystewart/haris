@@ -485,8 +485,12 @@ static CJobStatus write_init_struct(CJob *job, ParsedStruct *strct,
   const char *prefix = job->prefix, *struct_name = strct->name;
   ChildField *child = &strct->children[field];
   if (child_is_embeddable(child)) {
+    /* We surround the function name in parentheses so as not to confuse the
+       parser; embeddable children have masking function macros added to the
+       header file to cover this definition of the _init_ function. */
     CJOB_FMT_PUB_FUNCTION(job, 
-"HarisStatus %s%s_init_%s(%s%s *strct) { \n\
+"HarisStatus (%s%s_init_%s)(%s%s *strct)\n\
+{ \n\
   (void)strct;\n\
   return HARIS_SUCCESS;\n\
 }\n\n",
