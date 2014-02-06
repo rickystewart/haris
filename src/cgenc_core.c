@@ -491,11 +491,11 @@ static CJobStatus write_init_struct(CJob *job, ParsedStruct *strct,
     CJOB_FMT_PUB_FUNCTION(job, 
 "HarisStatus (%s%s_init_%s)(%s%s *strct)\n\
 { \n\
-  (void)strct;\n\
+  strct->_%s_has = 1;\n\
   return HARIS_SUCCESS;\n\
 }\n\n",
                           prefix, struct_name, child->name, 
-                          prefix, struct_name);
+                          prefix, struct_name, child->name);
   } else {
     CJOB_FMT_PUB_FUNCTION(job, 
 "HarisStatus %s%s_init_%s(%s%s *strct)\n\
